@@ -1,31 +1,50 @@
 import SwiftUI
 
-/// Ranked FTS results. Tapping a row hands a `FoodChoice` to the Quantity sheet.
+/// Name matches from the Library first ("Yours"), then ranked FTS results from the
+/// bundled database. Tapping a row hands a `FoodChoice` to whoever opened the sheet.
 struct SearchResultsList: View {
+    let local: [FoodChoice]
     let results: [BundledFood]
     let errorMessage: String?
     let onSelect: (FoodChoice) -> Void
 
     var body: some View {
         List {
-            if let errorMessage {
-                ContentUnavailableView(
-                    "Search unavailable",
-                    systemImage: "exclamationmark.triangle",
-                    description: Text(errorMessage)
-                )
-                .listRowSeparator(.hidden)
-            } else if results.isEmpty {
+            if local.isEmpty, results.isEmpty, errorMessage == nil {
                 ContentUnavailableView.search
                     .listRowSeparator(.hidden)
-            } else {
-                ForEach(results) { food in
-                    Button {
-                        onSelect(FoodChoice(bundled: food))
-                    } label: {
-                        ResultRow(food: food)
+            }
+            if !local.isEmpty {
+                Section("Yours") {
+                    ForEach(local) { choice in
+                        Button {
+                            onSelect(choice)
+                        } label: {
+                            ChoiceRow(choice: choice)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                }
+            }
+            if let errorMessage {
+                Section("Database") {
+                    ContentUnavailableView(
+                        "Search unavailable",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text(errorMessage)
+                    )
+                    .listRowSeparator(.hidden)
+                }
+            } else if !results.isEmpty {
+                Section("Database") {
+                    ForEach(results) { food in
+                        Button {
+                            onSelect(FoodChoice(bundled: food))
+                        } label: {
+                            ResultRow(food: food)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
         }

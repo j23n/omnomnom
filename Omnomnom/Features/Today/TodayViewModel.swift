@@ -91,15 +91,10 @@ final class TodayViewModel {
         healthRefresh += 1
     }
 
-    /// Re-logs the same food and amount at the current time.
+    /// Re-logs the same item and amount at the current time, from the entry's snapshot.
     func repeatEntry(_ entry: LogEntry, using logger: EntryLogger) async {
-        guard let food = entry.food else {
-            banner = "This food is no longer available to repeat."
-            return
-        }
-        let now = Date.now
         do {
-            let result = try await logger.log(food: food, grams: entry.grams, mealSlot: MealSlot.inferred(from: now), at: now)
+            let result = try await logger.repeatEntry(entry, at: Date.now)
             banner = result.bannerMessage ?? "Logged \(entry.foodName) again."
         } catch {
             AppLog.store.error("repeat failed: \(error.localizedDescription, privacy: .public)")

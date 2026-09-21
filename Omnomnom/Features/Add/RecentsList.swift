@@ -2,60 +2,76 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-/// Foods logged before, most recent first, so a repeat meal needs no search.
+/// Before any typing: foods and recipes logged before, most recent first, then the
+/// recipes and custom foods never logged, so a new recipe is one tap away.
 struct RecentsList: View {
+    /// Recipes are hidden when picking an ingredient, since recipes do not nest.
+    let includesRecipes: Bool
     let onSelect: (FoodChoice) -> Void
 
     @Query(sort: \Food.lastUsed, order: .reverse) private var foods: [Food]
+    @Query(sort: \Recipe.lastUsed, order: .reverse) private var recipes: [Recipe]
 
-    private var recents: [Food] {
-        Array(foods.filter { $0.lastUsed != nil }.prefix(20))
+    /// Foods and recipes with a last use, merged by that date, at most 20.
+    private var recents: [FoodChoice] {
+        var items = foods.compactMap { food -> RecentItem? in
+            guard let lastUsed = food.lastUsed, let choice = food.choice else { return nil }
+            return RecentItem(choice: choice, lastUsed: lastUsed)
+        }
+        if includesRecipes {
+            items += recipes.compactMap { recipe -> RecentItem? in
+                guard let lastUsed = recipe.lastUsed else { return nil }
+                return RecentItem(choice: recipe.choice, lastUsed: lastUsed)
+            }
+        }
+        return items.sorted { $0.lastUsed > $1.lastUsed }.prefix(20).map(\.choice)
+    }
+
+    /// Library items never logged, by name.
+    private var unused: [FoodChoice] {
+        let customFoods = foods.filter { $0.kind == .custom && $0.lastUsed == nil }.compactMap(\.choice)
+        let newRecipes = includesRecipes ? recipes.filter { $0.lastUsed == nil }.map(\.choice) : []
+        return (customFoods + newRecipes).sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     var body: some View {
         List {
-            if recents.isEmpty {
+            if recents.isEmpty, unused.isEmpty {
                 ContentUnavailableView(
                     "No recent foods",
                     systemImage: "clock",
                     description: Text("Search to find a food. Foods you log appear here.")
                 )
                 .listRowSeparator(.hidden)
-            } else {
+            }
+            if !recents.isEmpty {
                 Section("Recent") {
-                    ForEach(recents) { food in
-                        if let choice = food.choice {
-                            Button {
-                                onSelect(choice)
-                            } label: {
-                                RecentRow(food: food)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
+                    rows(recents)
+                }
+            }
+            if !unused.isEmpty {
+                Section("Yours") {
+                    rows(unused)
                 }
             }
         }
         .listStyle(.plain)
     }
+
+    private func rows(_ choices: [FoodChoice]) -> some View {
+        ForEach(choices) { choice in
+            Button {
+                onSelect(choice)
+            } label: {
+                ChoiceRow(choice: choice)
+            }
+            .buttonStyle(.plain)
+        }
+    }
 }
 
-private struct RecentRow: View {
-    let food: Food
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(food.name)
-            HStack(spacing: 6) {
-                if let grams = food.lastGrams {
-                    Text("Last \(Formatters.grams(grams))")
-                }
-                Text(Formatters.amount(food.per100g.energy, unit: .kilocalorie) + " per 100 g")
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-    }
+/// One merged recent: what to reopen and when it was last logged.
+private nonisolated struct RecentItem: Hashable, Sendable {
+    let choice: FoodChoice
+    let lastUsed: Date
 }

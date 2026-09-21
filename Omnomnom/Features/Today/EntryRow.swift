@@ -1,7 +1,8 @@
 import Foundation
 import SwiftUI
 
-/// Name, grams and energy for one entry, plus a badge when Health does not hold it fully.
+/// Name, amount and energy for one entry, plus a badge when Health does not hold it fully.
+/// A recipe entry shows its servings next to the raw grams they weigh.
 /// Rows in the `partial` or `gone` state read as buttons: a tap opens the Health actions.
 struct EntryRow: View {
     let entry: LogEntry
@@ -17,7 +18,11 @@ struct EntryRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.foodName)
                 HStack(spacing: 6) {
-                    Text(Formatters.grams(entry.grams))
+                    if let servings = entry.servings {
+                        Text("\(Formatters.servings(servings)) · \(Formatters.grams(entry.grams))")
+                    } else {
+                        Text(Formatters.grams(entry.grams))
+                    }
                     Text(entry.timestamp, style: .time)
                     if let badge = entry.healthState.badge {
                         Text(badge)

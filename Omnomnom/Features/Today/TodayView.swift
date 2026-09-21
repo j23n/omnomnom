@@ -25,9 +25,9 @@ struct TodayView: View {
                 }
             }
             .sheet(isPresented: $model.isAddPresented) {
-                AddFoodSheet(day: model.selectedDay) { result in
+                AddFoodSheet(mode: .log(day: model.selectedDay, onLogged: { result in
                     model.handle(result)
-                }
+                }))
             }
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 8) {

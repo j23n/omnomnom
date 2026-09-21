@@ -1,16 +1,17 @@
 import Foundation
 import SwiftData
 
-/// Origin of a `Food` row. Only `bundled` is created in this version; the other
-/// cases are reserved so adding custom foods and products is additive.
+/// Origin of a `Food` row: a bundled database reference, a food the user created in
+/// the Library, or (reserved) a scanned product.
 nonisolated enum FoodKind: String, Codable, Sendable {
     case bundled
     case custom
     case product
 }
 
-/// A food the user has logged at least once: a reference into the bundled database
-/// plus the per-100 g values copied at that time and the usage data that drives recents.
+/// A food the user has logged or put in a recipe: a reference into the bundled database
+/// plus the per-100 g values copied at that time, or a custom food whose values live
+/// here alone, and the usage data that drives recents.
 ///
 /// Schema rules for a later CloudKit retrofit: no unique attributes, every attribute
 /// optional or defaulted, relationships optional with explicit inverses. The eight
@@ -35,6 +36,10 @@ final class Food {
 
     @Relationship(deleteRule: .nullify, inverse: \LogEntry.food)
     var entries: [LogEntry]?
+
+    /// Recipe rows that were added from this food; each keeps its own frozen copy.
+    @Relationship(deleteRule: .nullify, inverse: \RecipeIngredient.food)
+    var ingredientUses: [RecipeIngredient]?
 
     init(name: String, kind: FoodKind, bundledID: Int?, per100g: Nutrition) {
         self.id = UUID()
@@ -78,17 +83,17 @@ final class Food {
         useCount += 1
     }
 
-    /// The choice to reopen this food in the Quantity sheet; `nil` for a food without a bundled row.
+    /// The choice to reopen this food in the Quantity sheet; `nil` for a kind that cannot
+    /// be logged from here (a bundled reference without its id, or a product).
     var choice: FoodChoice? {
-        guard let bundledID else { return nil }
-        return FoodChoice(bundledID: bundledID, name: name, per100g: per100g, lastGrams: lastGrams)
-    }
-
-    /// The stored row for a bundled food, if it was ever logged. Shared by the Add sheet and the logger.
-    static func bundled(id: Int, in context: ModelContext) throws -> Food? {
-        let bundledID: Int? = id
-        var descriptor = FetchDescriptor<Food>(predicate: #Predicate<Food> { $0.bundledID == bundledID })
-        descriptor.fetchLimit = 1
-        return try context.fetch(descriptor).first
+        switch kind {
+        case .bundled:
+            guard let bundledID else { return nil }
+            return FoodChoice(source: .bundled(id: bundledID), name: name, perUnit: per100g, lastAmount: lastGrams)
+        case .custom:
+            return FoodChoice(source: .custom(foodID: id), name: name, perUnit: per100g, lastAmount: lastGrams)
+        case .product:
+            return nil
+        }
     }
 }

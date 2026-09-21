@@ -4,31 +4,35 @@ import SwiftData
 
 /// Creates the local entry, then mirrors it to Health; deletes mirror to Health first.
 /// Shared by the Quantity sheet and the swipe actions on Today. Main-actor because it
-/// drives a `ModelContext`.
+/// drives a `ModelContext`. Logging from an Add-sheet choice lives in `EntryLogger+Choice`.
 struct EntryLogger {
     let context: ModelContext
     let health: any HealthWriting
 
-    /// Logs a bundled food picked in the Add sheet. The snapshot comes from the live
-    /// choice; the stored `Food` copy is created on first use and refreshed if it drifted.
-    func log(choice: FoodChoice, grams: Double, mealSlot: MealSlot, at timestamp: Date) async throws -> LogResult {
-        let food: Food
-        if let existing = try Food.bundled(id: choice.bundledID, in: context) {
-            if existing.name != choice.name || existing.per100g != choice.per100g {
-                existing.name = choice.name
-                existing.per100g = choice.per100g
-            }
-            food = existing
-        } else {
-            food = Food(name: choice.name, kind: .bundled, bundledID: choice.bundledID, per100g: choice.per100g)
-            context.insert(food)
+    /// Re-logs an entry as the repeat action does: same amount at `timestamp`, meal slot
+    /// inferred from it. A custom food that still exists is recomputed from its current
+    /// values, since the user may have corrected them; a recipe and any entry without a
+    /// live food link are copied from the frozen snapshot. Links are copied for display.
+    func repeatEntry(_ entry: LogEntry, at timestamp: Date) async throws -> LogResult {
+        let live = entry.food.flatMap { $0.kind == .custom ? $0 : nil }
+        let copy = LogEntry(
+            timestamp: timestamp,
+            mealSlot: MealSlot.inferred(from: timestamp),
+            foodName: live?.name ?? entry.foodName,
+            grams: entry.grams,
+            snapshot: live.map { SnapshotMath.snapshot(per100g: $0.per100g, grams: entry.grams) } ?? entry.snapshot
+        )
+        context.insert(copy)
+        copy.servings = entry.servings
+        copy.food = entry.food
+        copy.recipe = entry.recipe
+        entry.food?.noteUsed(grams: entry.grams, at: Date.now)
+        if let servings = entry.servings {
+            entry.recipe?.noteUsed(servings: servings, at: Date.now)
         }
-        return try await insert(name: choice.name, per100g: choice.per100g, food: food, grams: grams, mealSlot: mealSlot, at: timestamp)
-    }
-
-    /// Re-logs a stored food, as the repeat action does.
-    func log(food: Food, grams: Double, mealSlot: MealSlot, at timestamp: Date) async throws -> LogResult {
-        try await insert(name: food.name, per100g: food.per100g, food: food, grams: grams, mealSlot: mealSlot, at: timestamp)
+        try context.save()
+        AppLog.store.info("logged \(copy.id.uuidString, privacy: .public) again from \(entry.id.uuidString, privacy: .public)")
+        return await mirror(copy)
     }
 
     /// Mirrors the delete to Health, then removes the entry locally. Never throws: the
@@ -67,24 +71,9 @@ struct EntryLogger {
         return await mirror(entry)
     }
 
-    /// The local save is the part that throws; Health and the follow-up save report through the result.
-    private func insert(name: String, per100g: Nutrition, food: Food, grams: Double, mealSlot: MealSlot, at timestamp: Date) async throws -> LogResult {
-        let entry = LogEntry(
-            timestamp: timestamp,
-            mealSlot: mealSlot,
-            foodName: name,
-            grams: grams,
-            snapshot: SnapshotMath.snapshot(per100g: per100g, grams: grams)
-        )
-        context.insert(entry)
-        entry.food = food
-        food.noteUsed(grams: grams, at: Date.now)
-        try context.save()
-        AppLog.store.info("logged \(entry.id.uuidString, privacy: .public)")
-        return await mirror(entry)
-    }
-
-    private func mirror(_ entry: LogEntry) async -> LogResult {
+    /// Writes the entry's snapshot to Health and records what went out. Health failures
+    /// and the follow-up save report through the result; the entry itself is already saved.
+    func mirror(_ entry: LogEntry) async -> LogResult {
         let request = HealthWriteRequest(
             entryID: entry.id,
             foodName: entry.foodName,

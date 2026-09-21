@@ -39,7 +39,7 @@ struct OmnomnomApp: App {
 
     /// The on-disk store, or an in-memory one when that fails. Never crashes on launch.
     private static func makeContainer() -> ModelContainer? {
-        let schema = Schema([Food.self, LogEntry.self])
+        let schema = Schema([Food.self, LogEntry.self, Recipe.self, RecipeIngredient.self])
         do {
             return try ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema)])
         } catch {

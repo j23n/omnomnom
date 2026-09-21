@@ -7,8 +7,8 @@ Status log for the build order in `PLAN.md`. Each milestone is planned, implemen
 | 1 | Data pipeline (FDC) | done | 2026-09-21 |
 | 2 | Log to Health end-to-end | done, awaiting first build | 2026-09-21 |
 | 3 | Reconciliation | done, awaiting first build | 2026-09-21 |
-| 4 | Recipes | in progress | |
-| 5 | Barcode | pending | |
+| 4 | Recipes | done, awaiting first build | 2026-09-21 |
+| 5 | Barcode | in progress | |
 | 6 | AI estimation | pending | |
 | 7 | Internationalization | pending | |
 
@@ -163,6 +163,37 @@ Deliverable: recipes as templates of raw ingredient weights, logged as frozen sn
 - Logging a recipe: serving count with fractions, snapshot equals per-serving times servings, `foodName` is the recipe name, the entry keeps an optional `recipe` relationship for display only. Repeat works from the snapshot.
 - Health write path unchanged: the entry's snapshot is what is written.
 - Tests: recipe maths, per-serving rounding, snapshot independence after editing, custom food search integration in the query builder.
+
+Sandbox constraint unchanged: reviewed, not compiled.
+
+### Review
+
+Every SwiftUI, SwiftData and Foundation form used was verified against Apple's documentation; the recipe maths test expectations were recomputed by hand. Verdict on first pass: ready to sign off with three hygiene items, applied:
+
+- A failed save on the shared main context could leave partial edits to be autosaved later; every catch now rolls the context back.
+- A predicate error can echo the search text; it is logged privately.
+- Repeat on a custom food that still exists recomputes from its current values, since the user may have corrected them; recipes and entries without a live food link repeat from the frozen snapshot.
+
+Confirmed by review: frozen ingredient copies are the only input to recipe maths, so editing or deleting a food never changes a recipe or a past entry; relationships are declared once each with cascade on ingredients and nullify elsewhere; the Health write path is unchanged.
+
+### Sign-off
+
+Signed off 2026-09-21 subject to the first build. Watch list additions: the automatic store migration on a device with entries from the previous build; the edit button inside a form section header enabling reorder; a ternary producing an optional double in the quantity prefill; sort descriptor overload on model name key paths; the enum-case-with-nil pattern in the recipe writer.
+
+## Milestone 5: Barcode
+
+### Plan
+
+Deliverable: opt-in barcode scanning with Open Food Facts lookup, permanent local cache, attribution, and a manual fallback. The app is complete without it.
+
+- Settings gains a "Barcode scanning" toggle, off by default, with one line of explanation and the network note. The scanner button appears in the add sheet only when the toggle is on.
+- `BarcodeScannerView`: a `UIViewControllerRepresentable` over `DataScannerViewController` recognising EAN-13, EAN-8, UPC-E and Code 128, confined to the module; availability gated on `isSupported` and `isAvailable`, camera authorization requested through `AVCaptureDevice`; every unavailable reason gets its own sentence.
+- `OpenFoodFactsClient` actor: `GET https://world.openfoodfacts.org/api/v2/product/{barcode}.json?fields=product_name,brands,nutriments` with a descriptive User-Agent carrying the app name, version and a contact URL, a 10 s timeout, decoding only the eight nutrients from `nutriments` (`energy-kcal_100g`, `proteins_100g`, `carbohydrates_100g`, `fat_100g`, `saturated-fat_100g`, `fiber_100g`, `sugars_100g`, `sodium_100g` else `salt_100g` divided by 2.5), `status == 1` else not found. Sodium arrives in grams and is stored in milligrams. No images ever.
+- Cache: a `Food` of kind `product` with `barcode`, `brand`, `source = "off"` and fetch date, kept permanently; a rescanned barcode hits the cache and never the network. Product foods are searchable and appear in recents like any food.
+- Flow: scan, cache hit or lookup, then the existing quantity sheet with the product name and brand. Not found, offline or an error opens the custom food editor prefilled with the barcode so the user can type the label; that food is kind `product` with source `manual`.
+- Attribution: product rows and the quantity sheet for a product show "Data from Open Food Facts" linking to the product page and the ODbL; the Sources screen adds Open Food Facts with licence and link.
+- Privacy manifest `PrivacyInfo.xcprivacy` declaring no tracking, no collected data, the user-defaults accessed-API reason, and the Open Food Facts domain is not a tracking domain. Camera usage description added.
+- Tests: nutriment decoding including salt fallback and unit conversion, missing fields, status handling, User-Agent composition, barcode validation (checksum for EAN-13 and EAN-8), cache-before-network via a fake transport.
 
 Sandbox constraint unchanged: reviewed, not compiled.
 

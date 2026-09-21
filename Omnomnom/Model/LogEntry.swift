@@ -28,9 +28,13 @@ final class LogEntry {
     var presentNutrients: [String] = []
     /// Set when a local delete could not be mirrored to Health.
     var orphaned: Bool = false
+    /// Servings logged, for a recipe entry; `nil` for a food. `grams` holds the raw weight either way.
+    var servings: Double?
     var food: Food?
+    /// The recipe this was logged from, for display only; the snapshot never recomputes.
+    var recipe: Recipe?
 
-    /// Relate to a `Food` after `context.insert(entry)`, not here.
+    /// Relate to a `Food` or `Recipe` after `context.insert(entry)`, not here.
     init(timestamp: Date, mealSlot: MealSlot, foodName: String, grams: Double, snapshot: Nutrition) {
         self.id = UUID()
         self.timestamp = timestamp

@@ -3,7 +3,8 @@ import os
 import SwiftData
 import SwiftUI
 
-/// Grams, portion chips, live preview, meal slot and time, then Confirm.
+/// Grams (or servings for a recipe), shortcut chips, live preview, meal slot and time,
+/// then Log. The entry always stores raw grams; a recipe entry stores servings too.
 struct QuantitySheet: View {
     let choice: FoodChoice
     let onLogged: (LogResult) -> Void
@@ -13,13 +14,13 @@ struct QuantitySheet: View {
     @Environment(\.health) private var health
     @Environment(\.foodRepository) private var foodRepository
 
-    @State private var gramsText: String
+    @State private var amountText: String
     @State private var mealSlot: MealSlot
     @State private var timestamp: Date
-    @State private var portions: [Portion] = []
+    @State private var chips: [AmountChip]
     @State private var isSaving = false
     @State private var saveError: String?
-    @FocusState private var gramsFocused: Bool
+    @FocusState private var amountFocused: Bool
 
     /// - Parameter day: the day shown on Today; the entry defaults to that day at the current time.
     init(choice: FoodChoice, day: Date, onLogged: @escaping (LogResult) -> Void) {
@@ -28,33 +29,28 @@ struct QuantitySheet: View {
         let timestamp = Self.defaultTimestamp(on: day)
         _timestamp = State(initialValue: timestamp)
         _mealSlot = State(initialValue: MealSlot.inferred(from: timestamp))
-        _gramsText = State(initialValue: choice.lastGrams.map(Formatters.gramsFieldText) ?? "")
+        _chips = State(initialValue: choice.isRecipe ? AmountChip.servings : [])
+        let prefill = choice.lastAmount ?? (choice.isRecipe ? 1 : nil)
+        _amountText = State(initialValue: prefill.map(Formatters.fieldText) ?? "")
     }
 
-    private var grams: Double? { Formatters.parseGrams(gramsText) }
+    private var amount: Double? {
+        (choice.isRecipe ? AmountUnit.servings : AmountUnit.grams).parse(amountText)
+    }
 
     private var preview: Nutrition {
-        SnapshotMath.snapshot(per100g: choice.per100g, grams: grams ?? 0)
+        choice.snapshot(for: amount ?? 0)
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    Text(choice.name)
-                        .font(.headline)
-                    GramField(text: $gramsText, isFocused: $gramsFocused)
-                    if !gramsText.isEmpty, grams == nil {
-                        Text("Enter between \(Formatters.gramsRangeText)")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                    PortionChips(portions: portions) { portion in
-                        gramsText = Formatters.gramsFieldText(portion.grams)
-                    }
-                }
+                AmountSection(choice: choice, chips: chips, text: $amountText, isFocused: $amountFocused)
                 Section("Nutrition") {
                     NutritionPreview(nutrition: preview)
+                    if choice.isRecipe {
+                        LabeledContent("Raw weight", value: Formatters.grams(choice.grams(for: amount ?? 0)))
+                    }
                 }
                 Section {
                     Picker("Meal", selection: $mealSlot) {
@@ -81,31 +77,35 @@ struct QuantitySheet: View {
                     Button("Log") {
                         Task { await confirm() }
                     }
-                    .disabled(grams == nil || isSaving)
+                    .disabled(amount == nil || isSaving)
                 }
             }
             .task { await prepare() }
         }
     }
 
+    /// Loads the portion chips of a bundled food and, absent a last amount, prefills the first.
     private func prepare() async {
-        do {
-            portions = try await foodRepository.portions(for: choice.bundledID)
-        } catch {
-            AppLog.foodDB.error("portions failed: \(error.localizedDescription, privacy: .private)")
+        if let bundledID = choice.bundledID {
+            do {
+                let portions = try await foodRepository.portions(for: bundledID)
+                chips = AmountChip.portions(portions)
+                if amountText.isEmpty, let first = portions.first {
+                    amountText = Formatters.fieldText(first.grams)
+                }
+            } catch {
+                AppLog.foodDB.error("portions failed: \(error.localizedDescription, privacy: .private)")
+            }
         }
-        if gramsText.isEmpty, let first = portions.first {
-            gramsText = Formatters.gramsFieldText(first.grams)
-        }
-        gramsFocused = true
+        amountFocused = true
     }
 
     private func confirm() async {
-        guard let grams, !isSaving else { return }
+        guard let amount, !isSaving else { return }
         isSaving = true
         let logger = EntryLogger(context: context, health: health)
         do {
-            let result = try await logger.log(choice: choice, grams: grams, mealSlot: mealSlot, at: timestamp)
+            let result = try await logger.log(choice: choice, amount: amount, mealSlot: mealSlot, at: timestamp)
             onLogged(result)
         } catch {
             AppLog.store.error("local save failed: \(error.localizedDescription, privacy: .public)")
