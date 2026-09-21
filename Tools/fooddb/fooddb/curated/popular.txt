@@ -1,0 +1,51 @@
+# Common foods, one FDC description per line, most common first.
+# Matching is case-insensitive, whitespace-collapsed and ignores a trailing period.
+# Entries that match no food in the build are logged as warnings, not errors.
+Apples, raw, with skin
+Bananas, raw
+Egg, whole, raw, fresh
+Milk, whole, 3.25% milkfat, with added vitamin D
+Chicken, broilers or fryers, breast, meat only, cooked, roasted
+Rice, white, long-grain, regular, enriched, cooked
+Bread, whole-wheat, commercially prepared
+Bread, white, commercially prepared
+Oats, whole grain, rolled, old fashioned
+Milk, reduced fat, fluid, 2% milkfat, with added vitamin A and vitamin D
+Cheese, cheddar
+Yogurt, Greek, plain, nonfat
+Yogurt, plain, whole milk
+Butter, salted
+Oil, olive, salad or cooking
+Peanut butter, smooth style, with salt
+Potatoes, russet, flesh and skin, baked
+Broccoli, raw
+Carrots, raw
+Tomatoes, red, ripe, raw, year round average
+Onions, raw
+Spinach, raw
+Lettuce, cos or romaine, raw
+Avocados, raw, all commercial varieties
+Oranges, raw, all commercial varieties
+Strawberries, raw
+Blueberries, raw
+Grapes, red or green (European type, such as Thompson seedless), raw
+Beef, ground, 85% lean meat / 15% fat, patty, cooked, broiled
+Pork, cured, bacon, cooked, broiled, pan-fried, or roasted
+Fish, salmon, Atlantic, farmed, cooked, dry heat
+Fish, tuna, light, canned in water, drained solids
+Pasta, cooked, enriched, without added salt
+Beans, black, mature seeds, cooked, boiled, without salt
+Nuts, almonds
+Beverages, coffee, brewed, prepared with tap water
+Beverages, tea, black, brewed, prepared with tap water
+Sugars, granulated
+Honey
+Chocolate, dark, 70-85% cacao solids
+Hummus, commercial
+Cheese, mozzarella, whole milk
+Tortillas, ready-to-bake or -fry, flour, refrigerated
+Sweet potato, cooked, baked in skin, flesh, without salt
+Chicken, broilers or fryers, thigh, meat only, cooked, roasted
+Cream, fluid, heavy whipping
+Alcoholic beverage, wine, table, red
+Alcoholic beverage, beer, regular, all
