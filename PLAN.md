@@ -1,6 +1,6 @@
 # Offline iOS Nutrition Tracker — Technical Plan
 
-2026-09-21 · @Someone · revision 2
+2026-09-21 · @Someone · revision 3
 
 ## Scope
 
@@ -15,7 +15,7 @@ The motivating target is the redesigned Health app's Longevity tab, which scores
 | Storage | Local only, no CloudKit, no account; schema kept CloudKit-compatible |
 | Dependencies | None. No third-party packages in the app target |
 | Nutrients | Energy, protein, carbohydrates, total fat, saturated fat, fiber, sugar, sodium |
-| Food data | Bundled generic database, permissively licensed |
+| Food data | Bundled generic database from USDA FoodData Central; other sources when internationalizing |
 | Barcodes | Opt-in; Open Food Facts online lookup with local cache |
 | AI estimation | Opt-in; on-device Foundation Models |
 | Recipes | Raw ingredient weights, no yield factors |
@@ -99,15 +99,17 @@ On iOS 27 the user photographs a plate. On iOS 26 the user types a description (
 
 The app ships a read-only `foods.sqlite` built offline by a Python script in `Tools/fooddb/`. The app never generates or mutates it. The script is idempotent, takes the raw source downloads as input, and writes the database plus a `sources.json` attribution manifest that the Settings screen renders.
 
-Only permissively licensed sources go in the bundle. Open Food Facts stays out, which keeps the shipped artifact free of share-alike obligations entirely.
+v1 bundles one source: USDA FoodData Central, Foundation Foods plus SR Legacy. It is CC0, English, analytically grounded, and around 9,000 generic foods, which removes cross-source deduplication from milestone 1 entirely. The pipeline is still written per source, with one mapping table each, so adding a second source later is a table and a dedup rule rather than a rewrite.
 
-| Source | Foods | Licence | Notes |
+Only permissively licensed sources go in the bundle, now or later. Open Food Facts stays out, which keeps the shipped artifact free of share-alike obligations entirely.
+
+| Source | Foods | Licence | Status |
 | --- | --- | --- | --- |
-| [CIQUAL 2025](https://ciqual.anses.fr/) (ANSES, France) | 3,484 | Licence Ouverte / Etalab | 74 constituents; generic foods, French names with an English edition |
-| [FDC Foundation + SR Legacy](https://fdc.nal.usda.gov/) (USDA) | \~9,000 | CC0 1.0 | Analytically grounded; citation requested, not required |
-| [BLS 4.0](https://www.blsdb.de/) (MRI, Germany) | 7,140 | CC BY 4.0, attribution to Max Rubner-Institut | 138 nutrients; licence reported on GovData, confirm on the download page once |
+| [FDC Foundation + SR Legacy](https://fdc.nal.usda.gov/) (USDA) | \~9,000 | CC0 1.0 | v1. Citation requested, not required |
+| [CIQUAL 2025](https://ciqual.anses.fr/) (ANSES, France) | 3,484 | Licence Ouverte / Etalab | Internationalization. French names with an English edition |
+| [BLS 4.0](https://www.blsdb.de/) (MRI, Germany) | 7,140 | CC BY 4.0, attribution to Max Rubner-Institut | Internationalization. German names, strong on composite dishes. Licence reported on GovData, confirm on the download page once |
 
-After pruning to eight nutrients and deduplicating, expect roughly 10,000 to 15,000 rows, comfortably under 10 MB including an FTS5 index.
+After pruning to eight nutrients and removing the Foundation and SR Legacy overlap, expect roughly 8,000 rows, well under 5 MB including an FTS5 index.
 
 ### Schema
 
@@ -126,26 +128,28 @@ The `source` column exists for attribution, so the UI can name where a value cam
 
 The pipeline reads one column per nutrient per source. These are the decisions; the first run verifies the identifiers against the downloaded files and the script fails loudly on a missing one.
 
-| Nutrient | FDC nutrient id | CIQUAL constituent code | Unit at source |
-| --- | --- | --- | --- |
-| Energy | 1008 (kcal); fall back to 2047 Atwater General where 1008 is absent | 328, EU Regulation 1169/2011 kcal | kcal |
-| Protein | 1003 | 25000 | g |
-| Carbohydrates | 1005 | 31000 | g |
-| Total fat | 1004 | 40000 | g |
-| Saturated fat | 1258 | 40302 | g |
-| Fiber | 1079 | 34100 | g |
-| Sugar | 2000 | 32000 | g |
-| Sodium | 1093 | 10110 | mg |
+| Nutrient | FDC nutrient id | Unit at source |
+| --- | --- | --- |
+| Energy | 1008 (kcal); fall back to 2047 Atwater General where 1008 is absent | kcal |
+| Protein | 1003 | g |
+| Carbohydrates | 1005 | g |
+| Total fat | 1004 | g |
+| Saturated fat | 1258 | g |
+| Fiber | 1079 | g |
+| Sugar | 2000 | g |
+| Sodium | 1093 | mg |
 
-FDC inputs are the Foundation Foods and SR Legacy CSV bundles. CIQUAL input is the constituent-value export. BLS is added once the download format is in hand; it uses the same mapping table with a third column.
+FDC inputs are the Foundation Foods and SR Legacy CSV bundles: `food.csv`, `food_nutrient.csv`, `food_portion.csv` and `measure_unit.csv`. Portions come from `food_portion.csv`, which gives the gram weight of household measures like "1 medium" or "1 cup".
 
 ### Build-pipeline traps
 
-CIQUAL publishes values as strings containing markers such as `<` and `traces`. Map both to zero and set `is_estimated`. A missing value is null, never zero, and a food with a null energy is dropped.
+A missing FDC value is null, never zero, and a food with a null energy is dropped. `is_estimated` exists for sources that publish markers such as `<` or `traces`; it stays false for every FDC row.
 
-Units diverge across sources and against Open Food Facts. CIQUAL reports sodium in mg, OFF in grams. Normalise at build time, never at read time.
+Units diverge against Open Food Facts: FDC and HealthKit report sodium in mg, OFF in grams. Normalise at build time, never at read time.
 
-Overlap is the real annoyance, and it starts inside FDC: Foundation and SR Legacy describe many of the same foods. Prefer Foundation over SR Legacy on an identical description. Across sources, CIQUAL's "Pomme, pulpe, crue" and FDC's "Apples, raw, with skin" are the same apple, and a naive query shows both. For a minimal app, pick one primary source per food group at build time rather than attempting runtime deduplication.
+Overlap starts inside FDC: Foundation and SR Legacy describe many of the same foods. Prefer Foundation over SR Legacy on an identical description and drop the SR Legacy row. SR Legacy also carries a few hundred branded and restaurant items under generic descriptions; keep them, they are what people eat.
+
+FDC descriptions are comma-inverted catalogue names, "Apples, raw, with skin", which search handles but which read badly in a list. Store the description as published and let ranking do the work rather than rewriting names by hand in v1.
 
 Search ranking deserves more effort than raw FTS5 matching, since a paid app is judged on whether a normal day's eating can be logged without ever opening the scanner. First pass: FTS5 `bm25` weighted by a hand-curated frequency column for the few hundred most common foods, recents above everything.
 
@@ -412,13 +416,13 @@ Not legal advice; this is a map of what to verify.
 
 The [ODbL](https://opendatacommons.org/licenses/odbl/summary/) imposes attribution, share-alike and keep-open, with no non-commercial restriction, so selling an app built on Open Food Facts is explicitly permitted. Share-alike attaches to a derivative database that is made available to others, and keep-open means a DRM-restricted copy must be matched by an unrestricted one. Bundling an Open Food Facts subset would trigger both; querying it online and caching privately triggers neither, because a private cache is not publicly used.
 
-With the bundle limited to Licence Ouverte, CC0 and CC BY data, nothing shipped carries share-alike. Obligations reduce to attribution.
+With the v1 bundle limited to CC0 data, nothing shipped carries any obligation at all. The later sources add attribution and nothing more.
 
 Keep the bundled tables physically separate from anything Open Food Facts derived. Merging ODbL data into the generic table would spread share-alike across the merged whole.
 
 ### Attribution
 
-A Sources screen naming every database, its licence and a link, rendered from the `sources.json` the pipeline emits so the two never drift. Open Food Facts additionally asks for attribution on product screens sourced from them, with clickable links to the site and the licence, and maintains a public non-compliance list worth checking against. BLS requires naming the Max Rubner-Institut as publisher.
+A Sources screen naming every database, its licence and a link, rendered from the `sources.json` the pipeline emits so the two never drift. USDA asks for a citation; give it even though CC0 does not require it. Open Food Facts additionally asks for attribution on product screens sourced from them, with clickable links to the site and the licence, and maintains a public non-compliance list worth checking against. BLS, when added, requires naming the Max Rubner-Institut as publisher.
 
 Skip Open Food Facts product images entirely: they are CC BY-SA and may carry packaging artwork and trademark rights beyond the photo itself.
 
@@ -436,14 +440,25 @@ Review will open the app on a device that may have no network and no Apple Intel
 
 Ordered by dependency, not by visibility. The first two milestones carry the most risk.
 
-1. **Data pipeline.** A standalone script producing `foods.sqlite` and `sources.json` from CIQUAL and FDC. No app code. This is the part most likely to consume a weekend, and everything else assumes it works.
+1. **Data pipeline.** A standalone script producing `foods.sqlite` and `sources.json` from FDC. No app code. Single source, so the risk is the FDC file format and the Foundation versus SR Legacy overlap, not cross-source deduplication.
 2. **Log to Health end-to-end.** Search a bundled food, enter grams, write the food correlation, see it in the Health app. Proves the write path and the correlation grouping. Ends with the device checks below.
 3. **Reconciliation.** Observer queries, anchored queries, per-sample deletion handling, restore affordance. Tedious to retrofit once entries exist, so it comes before features.
 4. **Recipes.** Ingredient rows, servings, snapshot on log.
 5. **Barcode.** Scanner, lookup, cache, attribution, manual fallback.
 6. **AI estimation.** Availability gate, image prompt, generable struct, editable draft.
+7. **Internationalization.** Localised UI, then CIQUAL and BLS as second and third bundled sources with the user's language ranked first in search, and cross-source deduplication by one primary source per food group.
 
-Steps 1 to 4 are the shippable app. Steps 5 and 6 are additive and can slip without blocking a release.
+Steps 1 to 4 are the shippable app. Steps 5 to 7 are additive and can slip without blocking a release.
+
+### Internationalization notes
+
+Kept here so the v1 pipeline does not paint itself into a corner.
+
+- `name_locale` is populated from day one, `en` for every FDC row, so search can filter or rank by language later without a schema change.
+- `source` and `source_ref` stay per row, so a later source never overwrites an FDC row's provenance.
+- CIQUAL publishes values as strings with markers such as `<` and `traces`; map both to zero and set `is_estimated`. CIQUAL reports sodium in mg.
+- CIQUAL constituent codes for the eight nutrients: energy 328 (EU Regulation 1169/2011 kcal), protein 25000, carbohydrates 31000, fat 40000, saturated fat 40302, fiber 34100, sugar 32000, sodium 10110. Verify against the 2025 file on first use.
+- Cross-source overlap, CIQUAL's "Pomme, pulpe, crue" against FDC's "Apples, raw, with skin", is handled at build time by picking one primary source per food group, never at runtime.
 
 ### Milestone 2 device checks
 
@@ -464,9 +479,11 @@ Each is a behaviour this plan assumes but Apple does not document. Run them on a
 
 **Apple Intelligence availability varies.** Region, device and OS gating means the photo tier will be unavailable for a large share of a worldwide audience: everyone on iOS 26, everyone without a supported device, and everyone in a region or language Apple Intelligence does not yet cover. The text tier narrows this but does not close it. The module must read as optional rather than broken, and the UI should name the actual reason rather than hiding the feature.
 
-**Source overlap is unresolved until the pipeline runs.** The size of the CIQUAL and FDC duplicate set is not knowable in advance. If the primary-source-per-group rule produces poor coverage, the fallback is manual curation of the top few hundred foods, which is a day of work rather than a redesign.
+**The v1 bundle is English only and US-shaped.** FDC covers generic foods well but is thin on European composite dishes, and a German or French user searching in their own language finds nothing in the bundle until milestone 7. Acceptable for an English-first launch; it is the reason the app should not be marketed outside English-speaking storefronts before then.
 
-**Nutrient identifiers are unverified against the 2025 files.** The column mapping table is from the published FDC and CIQUAL identifier lists; the pipeline's first run confirms them and fails loudly otherwise.
+**Nutrient identifiers are unverified against the current FDC files.** The column mapping table is from the published FDC identifier list; the pipeline's first run confirms it and fails loudly otherwise.
+
+**Cross-source overlap is deferred with milestone 7.** The size of the CIQUAL and FDC duplicate set is not knowable in advance. If the primary-source-per-group rule produces poor coverage, the fallback is manual curation of the top few hundred foods, which is a day of work rather than a redesign.
 
 **Open Food Facts data quality is uneven.** Crowdsourced records vary by market and completeness. The manual-entry fallback is what keeps that from becoming a user-facing failure.
 
