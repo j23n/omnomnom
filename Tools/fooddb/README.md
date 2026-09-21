@@ -56,7 +56,7 @@ Build summary
   unmatched popular entries: U
 ```
 
-Any validation failure (missing bundle, missing nutrient id, unexpected unit, malformed CSV value, negative or non-finite amount, duplicate `fdc_id`, a bundle with no usable foods, unwritable output, bad zip) logs an error with file and line where known and exits 1. Implausible values (over 900 kcal, over 100 g of a macronutrient, or over 100 g of sodium per 100 g), duplicate nutrient rows and unexpected `data_type` values are warnings.
+Any validation failure (missing bundle, missing nutrient id, unexpected unit, malformed CSV value, non-finite amount, duplicate `fdc_id`, a bundle with no usable foods, unwritable output, bad zip) logs an error with file and line where known and exits 1. Implausible values (over 900 kcal, over 100 g of a macronutrient, or over 100 g of sodium per 100 g), duplicate nutrient rows, negative amounts (clamped to zero, as FDC publishes a few for values computed by difference) and unexpected `data_type` values are warnings.
 
 ## Test
 

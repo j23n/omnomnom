@@ -67,11 +67,16 @@ class ReaderErrorTests(FixtureCopyTests):
         with self.assertRaisesRegex(InputError, r"food_nutrient\.csv:4: amount: 'abc'"):
             fdc.read_food_nutrients(self.sr_legacy)
 
-    def test_negative_and_non_finite_amounts_rejected(self) -> None:
-        self.set_rice_energy("-1")
-        with self.assertRaisesRegex(InputError, "negative"):
-            fdc.read_food_nutrients(self.sr_legacy)
-        self.set_rice_energy("inf", previous="-1")
+    def test_negative_amount_clamped_to_zero_and_warned(self) -> None:
+        self.set_rice_energy("-0.47505")
+        with self.assertLogs("fooddb.fdc", level="WARNING") as logs:
+            amounts = fdc.read_food_nutrients(self.sr_legacy)
+        self.assertEqual(amounts[2002][1008], 0.0)
+        self.assertEqual(len(logs.output), 1)
+        self.assertIn("1 negative amounts clamped to 0", logs.output[0])
+
+    def test_non_finite_amount_rejected(self) -> None:
+        self.set_rice_energy("inf")
         with self.assertRaisesRegex(InputError, "not finite"):
             fdc.read_food_nutrients(self.sr_legacy)
 
