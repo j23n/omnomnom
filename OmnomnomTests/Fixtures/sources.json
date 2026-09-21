@@ -1,0 +1,23 @@
+[
+  {
+    "id": "fdc",
+    "name": "USDA FoodData Central",
+    "publisher": "U.S. Department of Agriculture, Agricultural Research Service",
+    "datasets": [
+      {
+        "id": "fdc_foundation",
+        "name": "Foundation Foods",
+        "version": "unknown"
+      },
+      {
+        "id": "fdc_sr_legacy",
+        "name": "SR Legacy",
+        "version": "unknown"
+      }
+    ],
+    "licence": "CC0 1.0",
+    "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "url": "https://fdc.nal.usda.gov/",
+    "citation": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, 2026. fdc.nal.usda.gov."
+  }
+]

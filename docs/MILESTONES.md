@@ -5,8 +5,8 @@ Status log for the build order in `PLAN.md`. Each milestone is planned, implemen
 | # | Milestone | Status | Sign-off |
 | --- | --- | --- | --- |
 | 1 | Data pipeline (FDC) | done | 2026-09-21 |
-| 2 | Log to Health end-to-end | in progress | |
-| 3 | Reconciliation | pending | |
+| 2 | Log to Health end-to-end | done, awaiting first build | 2026-09-21 |
+| 3 | Reconciliation | in progress | |
 | 4 | Recipes | pending | |
 | 5 | Barcode | pending | |
 | 6 | AI estimation | pending | |
@@ -86,6 +86,45 @@ Tests (Swift Testing, no HealthKit)
 Bundle identifier `com.johanneswindelen.omnomnom`, no signing team set. Both outputs of the data pipeline must exist in `Omnomnom/Resources/` before building.
 
 Sandbox constraint: no Swift toolchain here, so the code is reviewed but not compiled. First Xcode build on a Mac is the gate, and the device checks in PLAN.md close the milestone.
+
+### Review
+
+Uncompiled code, so the reviewer acted as the compiler: every file read line by line for Swift 6.2 syntax, isolation under default MainActor, member import visibility, and iOS 26 API signatures verified against Apple's documentation. Eleven flagged API assumptions checked; all held except one. Findings resolved:
+
+- Three files used a Foundation member without importing Foundation, which member import visibility rejects.
+- Deleting an entry left all nine Health objects behind. Delete now queries by sync identifier and removes them in one batch; a revoked permission flags the entry as orphaned, and a second delete removes it locally.
+- The snapshot was taken from the stored copy of a food rather than the live database row; prefill of the last amount worked only from recents; a relationship was set before insert; a local save failure after a successful Health write was blamed on Health.
+- Nutrient columns are stored flat as eight optional doubles on each model rather than a composite Codable attribute, so every column stays a plain scalar for a CloudKit retrofit.
+- Added a test pinning the eight HealthKit identifier strings, a grams range of 0.1 to 5000, midnight rollover of the Today view, and a shared Xcode scheme.
+
+### Sign-off
+
+Signed off 2026-09-21 subject to the first build. Nothing in this sandbox can compile Swift; the reviewer's first-build watch list is:
+
+1. A diagnostic on the `@Entry` environment keys under default MainActor isolation. Fallback: hand-written nonisolated keys.
+2. The date binding in the Today header may warn.
+3. Both `foods.sqlite` copies must land in their bundles from the synchronized folders; a failing fixture test or a missing-database log line says otherwise.
+4. The model initialisers assign through a computed setter as their last statement; if the macro objects, assign the eight scalars directly.
+5. With all eight write permissions revoked, confirm Health reports `errorAuthorizationDenied` on delete so the orphaned path triggers.
+6. Entries logged with a nil food relationship would mean insert-then-relate still misbehaves.
+
+The device checks listed in PLAN.md close this milestone.
+
+## Milestone 3: Reconciliation
+
+### Plan
+
+Deliverable: the local store and Health agree after edits and deletions made in the Health app, and foreign nutrition samples appear in daily totals.
+
+- `HealthObserving` protocol extension of the Health surface: `startObserving(onChange:)` registers one `HKObserverQuery` per quantity type with background delivery at `.immediate`; `changes(since:)` runs one `HKAnchoredObjectQuery` per quantity type plus the food correlation type and returns added and deleted sync identifiers with new anchors; `daySamples(in:)` returns own and foreign nutrition samples for a day window as value types with source name and food type metadata.
+- Anchors persisted per type as secure-coded data in the app's storage, missing anchor means full history.
+- `Reconciler`, pure and tested: applies deleted identifiers to `presentNutrients`, applies added own identifiers back (a restore, or a re-save), ignores identifiers it did not write, parses `<uuid>.<nutrient>` and `<uuid>.meal`.
+- Launch renders local state, then reconciles; observer wake reconciles and calls the completion handler last.
+- Entry states `partial` and `gone` get a tappable badge with two actions: restore (re-save the whole entry with a bumped sync version, then mark present) or remove here (existing delete path). `unauthorized` shows once with a link to app settings.
+- Foreign samples: totals row shows the combined day figure with the foreign share visually distinct; a section "Also in Health" lists foreign food correlations by name and source, not editable.
+- Tests: reconciler tables, identifier parsing, anchor round trip, own versus foreign classification, restore bumps the version.
+
+Sandbox constraint unchanged: reviewed, not compiled.
 
 ### Review
 
