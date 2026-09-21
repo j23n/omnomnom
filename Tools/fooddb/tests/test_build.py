@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import json
 import os
@@ -124,6 +126,15 @@ class OutputTests(unittest.TestCase):
             self.assertEqual(output.citation_year({FOUNDATION: "unknown"}), 2023)
         manifest = output.sources_manifest({SR_LEGACY: "2018-04"})
         self.assertIn("FoodData Central, 2018.", str(manifest[0]["citation"]))
+
+
+class PopularKeyTests(unittest.TestCase):
+    def test_parenthetical_suffix_is_ignored(self) -> None:
+        fdc_name = "Apples, raw, with skin (Includes foods for USDA's Food Distribution Program)"
+        self.assertEqual(b.popular_key(fdc_name), b.popular_key("Apples, raw, with skin"))
+        self.assertEqual(b.popular_key("  Cheese,  cheddar. "), "cheese, cheddar")
+        plain = b.normalise_description("Apples, raw, with skin")
+        self.assertNotEqual(b.normalise_description(fdc_name), plain)
 
 
 class EndToEndTests(unittest.TestCase):

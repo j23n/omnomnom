@@ -38,9 +38,9 @@ def build_time() -> dt.datetime:
     """Now in UTC, or SOURCE_DATE_EPOCH when set (reproducible builds)."""
     epoch = os.environ.get("SOURCE_DATE_EPOCH")
     if epoch is None:
-        return dt.datetime.now(dt.UTC)
+        return dt.datetime.now(dt.timezone.utc)
     try:
-        return dt.datetime.fromtimestamp(int(epoch), dt.UTC)
+        return dt.datetime.fromtimestamp(int(epoch), dt.timezone.utc)
     except (ValueError, OverflowError, OSError) as error:
         raise InputError(f"SOURCE_DATE_EPOCH={epoch!r} is not a valid epoch: {error}") from error
 
