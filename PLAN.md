@@ -114,15 +114,16 @@ After pruning to eight nutrients and removing the Foundation and SR Legacy overl
 ### Schema
 
 ```
-foods(id, name, name_locale, source, source_ref,
+meta(key, value)                   -- schema_version, built_at, source versions, counts
+foods(id, name, name_locale, source, source_ref, category,
       kcal_100g, protein_100g, carb_100g, fat_100g,
       satfat_100g, fiber_100g, sugar_100g, sodium_mg_100g,
-      is_estimated)
-foods_fts(name)                    -- FTS5, external content
-portions(food_id, label, grams)    -- "1 medium", "1 slice"
+      is_estimated, popularity)
+foods_fts(name)                    -- FTS5 external content, unicode61, diacritics removed
+portions(id, food_id, label, grams, seq)   -- "1 medium", "1 slice"
 ```
 
-The `source` column exists for attribution, so the UI can name where a value came from.
+`id` is assigned by the build, never the source's own identifier; `source_ref` carries that. `kcal_100g` is the only nutrient that must be present, the rest are null when the source lacks them, never zero. `popularity` is the curated ranking boost. The `source` column exists for attribution, so the UI can name where a value came from. The full DDL lives in `Tools/fooddb/fooddb/schema.sql` and is the reference; this block is a summary.
 
 ### Column mapping
 
