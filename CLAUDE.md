@@ -8,7 +8,7 @@ Commit messages describe the change on its own terms. Never reference milestones
 
 - No third-party dependencies in the app target or in `Tools/fooddb`.
 - Swift: Swift 6 language mode, strict concurrency, default actor isolation `MainActor`. No `HK` type leaves the HealthKit actor.
-- Python: 3.11, standard library only, type hints, `python3 -m unittest` from `Tools/fooddb`.
+- Python: 3.9 or newer (Xcode's bundled `python3` is 3.9), standard library only, type hints, `python3 -m unittest` from `Tools/fooddb`.
 
 ## Documents
 

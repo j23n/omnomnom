@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -70,8 +71,17 @@ def collapse_whitespace(text: str) -> str:
 
 
 def normalise_description(text: str) -> str:
-    """Key for dedup and popularity: casefolded, whitespace-collapsed, no trailing period."""
+    """Key for dedup: casefolded, whitespace-collapsed, no trailing period."""
     return collapse_whitespace(text).casefold().rstrip(".").strip()
+
+
+_PARENTHETICAL = re.compile(r"\s*\([^)]*\)")
+
+
+def popular_key(text: str) -> str:
+    """Key for the popular list: the dedup key with parenthetical notes removed, so FDC's
+    "(Includes foods for USDA's Food Distribution Program)" suffixes need not be spelled out."""
+    return normalise_description(_PARENTHETICAL.sub("", text))
 
 
 def read_popular(path: Path) -> list[str]:
@@ -85,7 +95,7 @@ def read_popular(path: Path) -> list[str]:
         text = line.split("#", 1)[0].strip()
         if not text:
             continue
-        entry = normalise_description(text)
+        entry = popular_key(text)
         if entry in entries:
             log.warning("%s:%d: duplicate popular entry %r ignored", path, number, entry)
             continue
@@ -177,9 +187,9 @@ def apply_popularity(
     matched: set[str] = set()
     result: list[FoodRow] = []
     for row in rows:
-        score = scores.get(row.key, 0)
+        score = scores.get(popular_key(row.name), 0)
         if score:
-            matched.add(row.key)
+            matched.add(popular_key(row.name))
         result.append(dataclasses.replace(row, popularity=score))
     summary.unmatched_popular = [entry for entry in entries if entry not in matched]
     for entry in summary.unmatched_popular:

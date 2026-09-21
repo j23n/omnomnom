@@ -85,7 +85,14 @@ def run_build(args: argparse.Namespace) -> int:
     return 0
 
 
+MINIMUM_PYTHON = (3, 9)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
+    if sys.version_info < MINIMUM_PYTHON:
+        wanted = ".".join(str(part) for part in MINIMUM_PYTHON)
+        print(f"fooddb needs Python {wanted} or newer", file=sys.stderr)
+        return 1
     args = build_parser().parse_args(argv)
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,

@@ -1,6 +1,6 @@
 # fooddb
 
-Builds the bundled food database that the app ships read-only: `Omnomnom/Resources/foods.sqlite` and the attribution manifest `Omnomnom/Resources/sources.json`. Python 3.11, standard library only.
+Builds the bundled food database that the app ships read-only: `Omnomnom/Resources/foods.sqlite` and the attribution manifest `Omnomnom/Resources/sources.json`. Python 3.9 or newer, standard library only.
 
 The v1 source is USDA FoodData Central (FDC), Foundation Foods plus SR Legacy, licensed CC0 1.0. The pipeline is written per source so a second source later is a mapping table and a dedup rule, not a rewrite.
 
