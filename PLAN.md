@@ -242,6 +242,11 @@ True two-way sync is not available. HealthKit only permits an app to delete or m
 | Delete of all nutrients in Health app | Same path, entry state is `gone` |
 | Edit in Health app | Does not exist; Health offers only delete on third-party data |
 | Foreign samples | Read-only. Shown in daily totals, visually distinct, not editable |
+| Samples from this app on another device | Foreign. Same bundle identifier, no local row, so they count once as foreign and are labelled as coming from this app on another device |
+
+"Own" means mirrored by a local entry: a sample counts as this app's only when its sync identifier parses and the entry exists locally. Bundle identifier alone is neither necessary nor sufficient, since Health syncs this app's samples from other devices and a removed orphaned entry leaves samples behind. Anything not mirrored is foreign, which keeps every sample counted exactly once.
+
+A read from a missing anchor returns only objects that still exist, so deletions older than the first anchor are never reported. Reconciliation treats a complete read from no anchor as authoritative: every written nutrient not seen in that read is marked absent.
 
 Deleting a correlation is not documented to delete its contained samples, and in practice it does not. Always delete the samples explicitly alongside the correlation. This is one of the milestone 2 device checks.
 
