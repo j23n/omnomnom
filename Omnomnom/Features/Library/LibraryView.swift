@@ -3,9 +3,9 @@ import os
 import SwiftData
 import SwiftUI
 
-/// Recipes and custom foods, with the bundled database line that says the app works
-/// offline out of the box. Rows open their editor; swiping deletes. A deleted recipe
-/// takes its ingredient rows along; entries logged from it keep their snapshots.
+/// Recipes, custom foods and scanned products, with the bundled database line that
+/// says the app works offline out of the box. Rows open their editor; swiping deletes.
+/// A deleted recipe takes its ingredient rows along; entries keep their snapshots.
 struct LibraryView: View {
     @Environment(\.foodRepository) private var foodRepository
     @Environment(\.modelContext) private var context
@@ -17,8 +17,9 @@ struct LibraryView: View {
     @State private var editor: LibraryEditor?
 
     init() {
-        let kind = FoodKind.custom.rawValue
-        _customFoods = Query(filter: #Predicate<Food> { $0.kindRaw == kind }, sort: \Food.name)
+        let custom = FoodKind.custom.rawValue
+        let product = FoodKind.product.rawValue
+        _customFoods = Query(filter: #Predicate<Food> { $0.kindRaw == custom || $0.kindRaw == product }, sort: \Food.name)
     }
 
     var body: some View {
@@ -39,9 +40,9 @@ struct LibraryView: View {
                     }
                     .onDelete { offsets in delete(offsets.map { recipes[$0] }, what: "recipe") }
                 }
-                Section("Custom foods") {
+                Section("Custom foods and products") {
                     if customFoods.isEmpty {
-                        Text("No custom foods yet. Add one with +.")
+                        Text("No custom foods yet. Add one with +, or scan a product.")
                             .foregroundStyle(.secondary)
                     }
                     ForEach(customFoods) { food in

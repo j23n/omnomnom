@@ -8,8 +8,8 @@ Status log for the build order in `PLAN.md`. Each milestone is planned, implemen
 | 2 | Log to Health end-to-end | done, awaiting first build | 2026-09-21 |
 | 3 | Reconciliation | done, awaiting first build | 2026-09-21 |
 | 4 | Recipes | done, awaiting first build | 2026-09-21 |
-| 5 | Barcode | in progress | |
-| 6 | AI estimation | pending | |
+| 5 | Barcode | done, awaiting first build | 2026-09-21 |
+| 6 | AI estimation | in progress | |
 | 7 | Internationalization | pending | |
 
 ## Milestone 1: Data pipeline
@@ -196,6 +196,38 @@ Deliverable: opt-in barcode scanning with Open Food Facts lookup, permanent loca
 - Tests: nutriment decoding including salt fallback and unit conversion, missing fields, status handling, User-Agent composition, barcode validation (checksum for EAN-13 and EAN-8), cache-before-network via a fake transport.
 
 Sandbox constraint unchanged: reviewed, not compiled.
+
+### Review
+
+Security and privacy weighted highest, since this is the first code touching the network and the camera. Verified: the barcode is validated to digits before it reaches a URL; the endpoint is https with a fixed field list and no App Transport Security exceptions, so a redirect to plain http is refused by the system; an ephemeral session with no cache, no cookies and a 10 second timeout, created per lookup; only the code leaves the device, only when the toggle is on, and only on a cache miss; camera access requested once, the scanner stopped after the first read and on dismissal, no frames stored; the privacy manifest declares no tracking and no collected data, which is defensible because the barcode services one request in real time and never reaches the developer. The GS1 check-digit and UPC-E expansion logic was cross-checked with an independent implementation. Findings resolved:
+
+- Fetched nutrient values now carry the same plausibility bounds as manual entry, so a wrong or hostile record cannot reach Health unbounded.
+- Response bodies are capped at one megabyte before decoding.
+- The barcode and any error text that could echo it are logged privately.
+- The camera area and the manual field have VoiceOver labels.
+- Product names are capped, cookies are refused explicitly, and editing a fetched product marks it manual so the attribution stays honest.
+
+### Sign-off
+
+Signed off 2026-09-21 subject to the first build. Keep the App Store privacy label at "Data Not Collected" and name Open Food Facts in the privacy policy as the recipient of barcodes and the device's address for lookups.
+
+Watch list: if the scanner shows nothing when started from the representable update, start it from the view controller's appearance instead; the scanner is simulator-unsupported, so the availability sentences, a real EAN-13, EAN-8 and UPC-E scan, airplane-mode fallback to the editor within the timeout, a cached rescan with no network activity, and the privacy manifest landing at the bundle root are device checks; a typed 12-digit UPC-A is sent in its 13-digit form and may need the 12-digit form as a fallback request if a real product misses.
+
+## Milestone 6: AI estimation
+
+### Plan
+
+Deliverable: opt-in on-device estimation of a meal from a typed description on iOS 26 and from a photo on iOS 27, through one prompt and one draft-and-confirm screen. Never written to Health without confirmation. The app is complete without it.
+
+- Settings toggle "Meal estimation", off by default, with the availability reason shown in words when the model is unavailable: device not eligible, Apple Intelligence off, model not ready. Gate order: `SystemLanguageModel.default.availability` first, then `#available(iOS 27, *)` for the photo path.
+- `MealEstimate` as a `@Generable` structure: a list of items with name, estimated grams, and estimated energy, protein, carbohydrates, fat, saturated fat, fiber, sugar and sodium for that portion, plus a one-line note. `@Guide` descriptions and ranges keep the model inside plausible bounds.
+- One instruction text and one prompt scaffold in a pure, tested builder; the text tier passes the description, the photo tier attaches the image with the same text. The session is created per request and discarded.
+- `EstimationSheet`: description field always; on iOS 27 with the model available, a photo picker and a camera capture. Runs the request with a cancel button, then shows the draft: editable rows with name and grams and the eight values, per-row delete, totals, and a Log button that creates one entry per item with a frozen snapshot, no food link, and an `isEstimate` flag shown as an "Estimated" badge on Today. The photo never leaves memory and is not stored.
+- Entry point: the add sheet gains an "Estimate" button when the toggle is on and the model is available.
+- The Sources screen notes that estimates are produced on this device and are not from any database.
+- Tests: prompt builder text, generable-to-snapshot conversion with bounds and unit handling, draft editing maths, availability reason wording.
+
+Sandbox constraint unchanged: reviewed, not compiled. The image-attachment API is iOS 27 and must be verified against Apple's documentation by the implementer; if it cannot be verified, the photo tier ships behind its availability check with the best-documented form and is first on the watch list.
 
 ### Review
 

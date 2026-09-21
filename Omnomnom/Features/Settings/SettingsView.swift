@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Health status, the (not yet existing) opt-in modules, and data sources.
+/// Health status, the opt-in modules, and data sources.
 struct SettingsView: View {
+    @AppStorage(BarcodeModule.enabledKey) private var barcodeScanningEnabled = false
     @Environment(\.health) private var health
     @Environment(\.scenePhase) private var scenePhase
     @State private var authorization = HealthAuthorization.unavailable
@@ -21,8 +22,15 @@ struct SettingsView: View {
                         }
                     }
                 }
-                Section("Optional features") {
-                    Text("Barcode scanning and photo estimation arrive in a later version.")
+                Section {
+                    Toggle("Barcode scanning", isOn: $barcodeScanningEnabled)
+                } header: {
+                    Text("Modules")
+                } footer: {
+                    Text("Scans run on this device. Looking up a product sends its barcode to Open Food Facts; results are kept on this device.")
+                }
+                Section {
+                    Text("Photo estimation arrives in a later version.")
                         .foregroundStyle(.secondary)
                 }
                 Section("Data") {

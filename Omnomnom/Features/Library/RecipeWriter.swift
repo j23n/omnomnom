@@ -67,6 +67,8 @@ struct RecipeWriter {
             return try Food.storeBundled(choice, refresh: false, in: context)
         case .custom(let foodID):
             return try Food.custom(id: foodID, in: context)
+        case .product(let foodID):
+            return try Food.product(id: foodID, in: context)
         case .recipe, nil:
             return nil
         }

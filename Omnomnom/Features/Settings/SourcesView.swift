@@ -2,7 +2,8 @@ import Foundation
 import os
 import SwiftUI
 
-/// Every bundled database, its licence and links, rendered from `sources.json`.
+/// Every bundled database, its licence and links, rendered from `sources.json`, then
+/// Open Food Facts, which is never bundled and so is not in the manifest.
 struct SourcesView: View {
     @Environment(\.foodRepository) private var foodRepository
     @State private var sources: [SourceManifest] = []
@@ -34,6 +35,20 @@ struct SourcesView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
+            }
+            Section(OpenFoodFactsSource.name) {
+                LabeledContent("Publisher", value: OpenFoodFactsSource.publisher)
+                if let licenceURL = URL(string: OpenFoodFactsSource.licenceURL) {
+                    Link(destination: licenceURL) {
+                        LabeledContent("Licence", value: OpenFoodFactsSource.licence)
+                    }
+                }
+                if let url = URL(string: OpenFoodFactsSource.websiteURL) {
+                    Link("Website", destination: url)
+                }
+                Text(OpenFoodFactsSource.note)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
         .navigationTitle("Sources")

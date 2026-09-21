@@ -14,6 +14,11 @@ struct AmountSection: View {
         Section {
             Text(choice.name)
                 .font(.headline)
+            if let brand = choice.attribution?.brand {
+                Text(brand)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
             AmountField(text: $text, unit: unit, isFocused: isFocused)
             if !text.isEmpty, unit.parse(text) == nil {
                 Text("Enter between \(unit.rangeText)")

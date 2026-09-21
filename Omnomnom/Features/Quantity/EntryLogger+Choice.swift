@@ -20,8 +20,8 @@ nonisolated enum EntryLoggerError: Error, Equatable, Sendable, LocalizedError {
 extension EntryLogger {
     /// Logs what was picked in the Add sheet. `amount` is grams for a food and servings
     /// for a recipe. A bundled food's snapshot comes from the live choice and refreshes
-    /// the stored copy; a custom food and a recipe are read from their stored rows, so
-    /// the entry reflects what the Library holds at this moment.
+    /// the stored copy; a custom food, a product and a recipe are read from their stored
+    /// rows, so the entry reflects what the Library holds at this moment.
     func log(choice: FoodChoice, amount: Double, mealSlot: MealSlot, at timestamp: Date) async throws -> LogResult {
         switch choice.source {
         case .bundled:
@@ -31,6 +31,9 @@ extension EntryLogger {
             return try await insert(food: food, per100g: choice.perUnit, grams: amount, mealSlot: mealSlot, at: timestamp)
         case .custom(let foodID):
             guard let food = try Food.custom(id: foodID, in: context) else { throw EntryLoggerError.sourceMissing }
+            return try await insert(food: food, per100g: food.per100g, grams: amount, mealSlot: mealSlot, at: timestamp)
+        case .product(let foodID):
+            guard let food = try Food.product(id: foodID, in: context) else { throw EntryLoggerError.sourceMissing }
             return try await insert(food: food, per100g: food.per100g, grams: amount, mealSlot: mealSlot, at: timestamp)
         case .recipe(let id):
             guard let recipe = try Recipe.find(id: id, in: context) else { throw EntryLoggerError.sourceMissing }

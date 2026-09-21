@@ -33,16 +33,21 @@ struct RecipeRow: View {
     }
 }
 
-/// Name and energy per 100 g of one custom food.
+/// Name and energy per 100 g of one custom food or product, with the brand of a product.
 struct CustomFoodRow: View {
     let food: Food
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(food.name)
-            Text("\(Formatters.amount(food.per100g.energy, unit: .kilocalorie)) per 100 g")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 6) {
+                if let brand = food.brand {
+                    Text(brand)
+                }
+                Text("\(Formatters.amount(food.per100g.energy, unit: .kilocalorie)) per 100 g")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)

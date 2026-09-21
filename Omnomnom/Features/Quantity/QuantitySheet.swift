@@ -5,6 +5,7 @@ import SwiftUI
 
 /// Grams (or servings for a recipe), shortcut chips, live preview, meal slot and time,
 /// then Log. The entry always stores raw grams; a recipe entry stores servings too.
+/// A product fetched from Open Food Facts carries its attribution under the preview.
 struct QuantitySheet: View {
     let choice: FoodChoice
     let onLogged: (LogResult) -> Void
@@ -46,11 +47,15 @@ struct QuantitySheet: View {
         NavigationStack {
             Form {
                 AmountSection(choice: choice, chips: chips, text: $amountText, isFocused: $amountFocused)
-                Section("Nutrition") {
+                Section {
                     NutritionPreview(nutrition: preview)
                     if choice.isRecipe {
                         LabeledContent("Raw weight", value: Formatters.grams(choice.grams(for: amount ?? 0)))
                     }
+                } header: {
+                    Text("Nutrition")
+                } footer: {
+                    OpenFoodFactsAttribution(attribution: choice.attribution)
                 }
                 Section {
                     Picker("Meal", selection: $mealSlot) {

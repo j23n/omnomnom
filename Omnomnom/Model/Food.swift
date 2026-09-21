@@ -2,16 +2,23 @@ import Foundation
 import SwiftData
 
 /// Origin of a `Food` row: a bundled database reference, a food the user created in
-/// the Library, or (reserved) a scanned product.
+/// the Library, or a packaged product identified by its barcode.
 nonisolated enum FoodKind: String, Codable, Sendable {
     case bundled
     case custom
     case product
 }
 
+/// Where a product row's values came from: fetched from Open Food Facts, or typed
+/// from the label after a miss. Bundled and custom foods carry no source.
+nonisolated enum FoodSource: String, Codable, Sendable {
+    case openFoodFacts = "off"
+    case manual
+}
+
 /// A food the user has logged or put in a recipe: a reference into the bundled database
-/// plus the per-100 g values copied at that time, or a custom food whose values live
-/// here alone, and the usage data that drives recents.
+/// plus the per-100 g values copied at that time, a custom food whose values live
+/// here alone, or a cached product, and the usage data that drives recents.
 ///
 /// Schema rules for a later CloudKit retrofit: no unique attributes, every attribute
 /// optional or defaulted, relationships optional with explicit inverses. The eight
@@ -33,6 +40,13 @@ final class Food {
     var lastGrams: Double?
     var lastUsed: Date?
     var useCount: Int = 0
+    /// The normalised barcode a product row caches; `nil` for the other kinds.
+    var barcode: String?
+    var brand: String?
+    /// Raw `FoodSource` of a product row.
+    var sourceRaw: String?
+    /// When the values were fetched from Open Food Facts; `nil` for typed values.
+    var fetchedAt: Date?
 
     @Relationship(deleteRule: .nullify, inverse: \LogEntry.food)
     var entries: [LogEntry]?
@@ -53,6 +67,11 @@ final class Food {
     var kind: FoodKind {
         get { FoodKind(rawValue: kindRaw) ?? .bundled }
         set { kindRaw = newValue.rawValue }
+    }
+
+    var source: FoodSource? {
+        get { sourceRaw.flatMap(FoodSource.init(rawValue:)) }
+        set { sourceRaw = newValue?.rawValue }
     }
 
     /// The eight per-100 g values as one value type.
@@ -83,8 +102,8 @@ final class Food {
         useCount += 1
     }
 
-    /// The choice to reopen this food in the Quantity sheet; `nil` for a kind that cannot
-    /// be logged from here (a bundled reference without its id, or a product).
+    /// The choice to reopen this food in the Quantity sheet; `nil` for a bundled
+    /// reference without its id or a product row without its barcode.
     var choice: FoodChoice? {
         switch kind {
         case .bundled:
@@ -93,7 +112,12 @@ final class Food {
         case .custom:
             return FoodChoice(source: .custom(foodID: id), name: name, perUnit: per100g, lastAmount: lastGrams)
         case .product:
-            return nil
+            guard let barcode else { return nil }
+            let attribution = ProductAttribution(barcode: barcode, brand: brand, source: source ?? .manual)
+            return FoodChoice(
+                source: .product(foodID: id), name: name, perUnit: per100g,
+                lastAmount: lastGrams, attribution: attribution
+            )
         }
     }
 }

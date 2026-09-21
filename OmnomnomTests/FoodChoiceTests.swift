@@ -51,8 +51,24 @@ struct FoodChoiceTests {
 
     @Test func sourcesAreDistinctAcrossKinds() {
         let id = UUID()
-        let sources: Set<FoodChoice.Source> = [.bundled(id: 1), .bundled(id: 2), .custom(foodID: id), .recipe(id: id)]
-        #expect(sources.count == 4)
+        let sources: Set<FoodChoice.Source> = [
+            .bundled(id: 1), .bundled(id: 2), .custom(foodID: id), .product(foodID: id), .recipe(id: id),
+        ]
+        #expect(sources.count == 5)
         #expect(FoodChoice.Source.custom(foodID: id) != .recipe(id: id))
+        #expect(FoodChoice.Source.custom(foodID: id) != .product(foodID: id))
+    }
+
+    @Test func productKeepsItsAttributionThroughPrefill() {
+        let attribution = ProductAttribution(barcode: "4006381333931", brand: "Ferrero", source: .openFoodFacts)
+        let choice = FoodChoice(source: .product(foodID: UUID()), name: "Nutella", perUnit: apple, attribution: attribution)
+        #expect(choice.attribution?.isFromOpenFoodFacts == true)
+        #expect(choice.isRecipe == false)
+        #expect(choice.bundledID == nil)
+        let prefilled = choice.with(lastAmount: 15)
+        #expect(prefilled.attribution == attribution)
+        #expect(prefilled.lastAmount == 15)
+        let typed = ProductAttribution(barcode: "96385074", brand: nil, source: .manual)
+        #expect(!typed.isFromOpenFoodFacts)
     }
 }

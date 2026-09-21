@@ -12,6 +12,7 @@ enum AddFoodMode {
 }
 
 /// Search over the Library and the bundled database, with recents before any typing.
+/// In log mode, and with the module on, a Scan button leads to the barcode flow.
 struct AddFoodSheet: View {
     let mode: AddFoodMode
 
@@ -63,6 +64,7 @@ struct AddFoodSheet: View {
                     .presentationDetents([.medium, .large])
                 }
             }
+            .modifier(BarcodeEntryPoint(isActive: includesRecipes) { present($0) })
         }
     }
 
@@ -115,7 +117,7 @@ struct AddFoodSheet: View {
 
     private func localMatches(for text: String) -> [FoodChoice] {
         do {
-            let foods = try Food.customMatching(text, in: context).compactMap(\.choice)
+            let foods = try Food.libraryMatching(text, in: context).compactMap(\.choice)
             let recipes = includesRecipes ? try Recipe.matching(text, in: context).map(\.choice) : []
             return recipes + foods
         } catch {

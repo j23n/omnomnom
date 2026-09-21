@@ -27,9 +27,9 @@ struct RecentsList: View {
         return items.sorted { $0.lastUsed > $1.lastUsed }.prefix(20).map(\.choice)
     }
 
-    /// Library items never logged, by name.
+    /// Library items never logged (custom foods, scanned products, recipes), by name.
     private var unused: [FoodChoice] {
-        let customFoods = foods.filter { $0.kind == .custom && $0.lastUsed == nil }.compactMap(\.choice)
+        let customFoods = foods.filter { $0.kind != .bundled && $0.lastUsed == nil }.compactMap(\.choice)
         let newRecipes = includesRecipes ? recipes.filter { $0.lastUsed == nil }.map(\.choice) : []
         return (customFoods + newRecipes).sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }

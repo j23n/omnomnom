@@ -3,25 +3,56 @@ import os
 import SwiftData
 import SwiftUI
 
-/// Creates or edits a custom food: a name and per-100 g values, energy required.
-/// Done stores the draft; Cancel discards it. Logged entries keep their snapshots.
+/// What the barcode flow hands the editor after a miss: the code to store on the new
+/// product, the name when Open Food Facts had one, and the sentence saying why.
+nonisolated struct ProductPrefill: Hashable, Sendable {
+    let barcode: String
+    let name: String?
+    let reason: String
+}
+
+/// Creates or edits a custom food, or creates a product typed from its label after a
+/// barcode miss: a name and per-100 g values, energy required. Done stores the draft;
+/// Cancel discards it. Logged entries keep their snapshots.
 struct CustomFoodEditorView: View {
     /// The food being edited, or `nil` to create one.
     let food: Food?
+    /// Set when creating a product from a barcode; the saved food is then kind `product`.
+    let product: ProductPrefill?
+    /// Receives the saved food before the sheet closes, so a flow can carry on with it.
+    let onSaved: ((Food) -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @State private var draft: CustomFoodDraft
     @State private var saveError: String?
 
-    init(food: Food?) {
+    init(food: Food?, product: ProductPrefill? = nil, onSaved: ((Food) -> Void)? = nil) {
         self.food = food
-        _draft = State(initialValue: food.map { CustomFoodDraft(name: $0.name, per100g: $0.per100g) } ?? CustomFoodDraft())
+        self.product = product
+        self.onSaved = onSaved
+        var draft = food.map { CustomFoodDraft(name: $0.name, per100g: $0.per100g) } ?? CustomFoodDraft()
+        if food == nil, let name = product?.name {
+            draft.name = name
+        }
+        _draft = State(initialValue: draft)
+    }
+
+    private var title: String {
+        if product != nil { return "New product" }
+        if let food { return food.kind == .product ? "Edit product" : "Edit custom food" }
+        return "New custom food"
     }
 
     var body: some View {
         NavigationStack {
             Form {
+                if let product {
+                    Section {
+                        Text(product.reason)
+                        LabeledContent("Barcode", value: product.barcode)
+                    }
+                }
                 Section {
                     TextField("Name", text: $draft.name)
                         .textInputAutocapitalization(.words)
@@ -31,7 +62,7 @@ struct CustomFoodEditorView: View {
                         NutrientField(nutrient: nutrient, draft: $draft)
                     }
                 } header: {
-                    Text("Per 100 g")
+                    Text(product == nil ? "Per 100 g" : "Type the values from the label, per 100 g")
                 } footer: {
                     Text("Energy is required. Leave a value blank when it is not known; it is then not written to Health.")
                 }
@@ -49,7 +80,7 @@ struct CustomFoodEditorView: View {
                     }
                 }
             }
-            .navigationTitle(food == nil ? "New custom food" : "Edit custom food")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -63,51 +94,37 @@ struct CustomFoodEditorView: View {
         }
     }
 
+    /// Updates the food in place or inserts a new one: a custom food, or a product with
+    /// its barcode and source `manual` when the editor was opened from the scanner.
+    /// Editing a product fetched from Open Food Facts also switches its source to
+    /// `manual`: the values are the user's now, so the badge and attribution go.
     private func save() {
         guard let per100g = draft.per100g else { return }
+        let saved: Food
         if let food {
             food.name = draft.trimmedName
             food.per100g = per100g
+            if food.kind == .product {
+                food.source = .manual
+                food.fetchedAt = nil
+            }
+            saved = food
         } else {
-            context.insert(Food(name: draft.trimmedName, kind: .custom, bundledID: nil, per100g: per100g))
+            saved = Food(name: draft.trimmedName, kind: product == nil ? .custom : .product, bundledID: nil, per100g: per100g)
+            if let product {
+                saved.barcode = product.barcode
+                saved.source = .manual
+            }
+            context.insert(saved)
         }
         do {
             try context.save()
+            onSaved?(saved)
             dismiss()
         } catch {
             context.rollback()
             AppLog.store.error("custom food save failed: \(error.localizedDescription, privacy: .public)")
             saveError = "Could not save: \(error.localizedDescription)"
-        }
-    }
-}
-
-/// One per-100 g field with its unit; energy is marked as required in the placeholder.
-private struct NutrientField: View {
-    let nutrient: Nutrient
-    @Binding var draft: CustomFoodDraft
-
-    private var text: Binding<String> {
-        Binding(
-            get: { draft.text(for: nutrient) },
-            set: { draft.setText($0, for: nutrient) }
-        )
-    }
-
-    var body: some View {
-        LabeledContent {
-            HStack(spacing: 4) {
-                TextField(nutrient == .energy ? "required" : "unknown", text: text)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-                    .foregroundStyle(draft.isInvalid(nutrient) ? Color.red : Color.primary)
-                    .accessibilityLabel("\(nutrient.displayName) per 100 grams, in \(nutrient.unit.symbol)")
-                Text(nutrient.unit.symbol)
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
-            }
-        } label: {
-            Text(nutrient.displayName)
         }
     }
 }

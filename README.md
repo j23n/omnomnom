@@ -37,6 +37,10 @@ Open `Omnomnom.xcodeproj` in Xcode 26 and run the shared `Omnomnom` scheme on an
 
 Swift 6 language mode, strict concurrency, default actor isolation `MainActor`. No third-party dependencies.
 
+## Modules
+
+Barcode scanning is off until the user turns it on in Settings › Modules. Detection runs on the device through VisionKit; only the lookup goes out, as one request per new barcode to `https://world.openfoodfacts.org/api/v2/product/{barcode}.json`, sent with the User-Agent `Omnomnom/<version> (https://github.com/j23n/omnomnom)` that Open Food Facts asks clients to carry (the URL is the contact address). Results are cached in the local store for good, so a rescanned barcode never hits the network again; a miss, an offline lookup or an error opens the food editor with the barcode prefilled. No Open Food Facts data is bundled with the app, which keeps the ODbL share-alike clause out of scope; the Quantity sheet and the Sources screen carry the attribution the licence asks for. `Omnomnom/PrivacyInfo.xcprivacy` declares no tracking and no collected data.
+
 ## Tests
 
 `OmnomnomTests` runs with Swift Testing against `OmnomnomTests/Fixtures/foods.sqlite`, built from the pipeline's synthetic fixtures. Regenerate it after a schema change:

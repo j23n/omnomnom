@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// One recipe or stored food in the Add sheet: name, the amount used last time and
-/// energy per unit ("per 100 g" for a food, "per serving" for a recipe).
+/// energy per unit ("per 100 g" for a food, "per serving" for a recipe). A product
+/// adds its brand and, when fetched from there, names Open Food Facts.
 struct ChoiceRow: View {
     let choice: FoodChoice
 
@@ -9,10 +10,16 @@ struct ChoiceRow: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(choice.name)
             HStack(spacing: 6) {
+                if let brand = choice.attribution?.brand {
+                    Text(brand)
+                }
                 if let last = choice.lastAmount {
                     Text("Last \(choice.amountText(last))")
                 }
                 Text("\(Formatters.amount(choice.perUnit.energy, unit: .kilocalorie)) per \(choice.unitText)")
+                if choice.attribution?.isFromOpenFoodFacts == true {
+                    Text("Open Food Facts")
+                }
             }
             .font(.caption)
             .foregroundStyle(.secondary)
