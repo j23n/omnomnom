@@ -159,7 +159,7 @@ def _required_int(row: Row, field: str) -> int:
     return value
 
 
-def _float(row: Row, field: str, nonnegative: bool = False) -> float | None:
+def _float(row: Row, field: str) -> float | None:
     value = _text(row, field)
     if not value:
         return None
@@ -169,8 +169,6 @@ def _float(row: Row, field: str, nonnegative: bool = False) -> float | None:
         raise ValueError(f"{field}: {value!r} is not a number") from None
     if not math.isfinite(number):
         raise ValueError(f"{field}: {value!r} is not finite")
-    if nonnegative and number < 0:
-        raise ValueError(f"{field}: {value!r} is negative")
     return number
 
 
@@ -209,7 +207,11 @@ def read_nutrient_units(root: Path) -> dict[int, str]:
 
 
 def read_food_nutrients(root: Path) -> dict[int, dict[int, float]]:
-    """fdc_id -> {nutrient_id: amount}. Empty amounts are omitted; duplicates keep the first."""
+    """fdc_id -> {nutrient_id: amount}. Empty amounts are omitted; duplicates keep the first.
+
+    FDC publishes a few slightly negative amounts for values computed "by difference";
+    those are clamped to zero and counted, since a negative nutrient has no meaning.
+    """
     path = root / "food_nutrient.csv"
     triples = _read(
         path,
@@ -217,14 +219,18 @@ def read_food_nutrients(root: Path) -> dict[int, dict[int, float]]:
         lambda row: (
             _required_int(row, "fdc_id"),
             _required_int(row, "nutrient_id"),
-            _float(row, "amount", nonnegative=True),
+            _float(row, "amount"),
         ),
     )
     result: dict[int, dict[int, float]] = {}
     duplicates = 0
+    negatives = 0
     for fdc_id, nutrient_id, amount in triples:
         if amount is None:
             continue
+        if amount < 0:
+            negatives += 1
+            amount = 0.0
         amounts = result.setdefault(fdc_id, {})
         if nutrient_id in amounts:
             duplicates += 1
@@ -232,6 +238,8 @@ def read_food_nutrients(root: Path) -> dict[int, dict[int, float]]:
         amounts[nutrient_id] = amount
     if duplicates:
         log.warning("%s: %d duplicate (fdc_id, nutrient_id) rows, kept the first", path, duplicates)
+    if negatives:
+        log.warning("%s: %d negative amounts clamped to 0", path, negatives)
     return result
 
 
