@@ -6,6 +6,12 @@ extension EnvironmentValues {
     /// Search and lookup over the bundled database.
     @Entry var foodRepository: FoodRepository = FoodRepository(database: nil)
 
-    /// The HealthKit surface behind `HealthWriting`.
+    /// The HealthKit write surface behind `HealthWriting`.
     @Entry var health: any HealthWriting = UnavailableHealth()
+
+    /// The HealthKit read surface behind `HealthObserving`; the same store as `health`.
+    @Entry var healthObserving: any HealthObserving = UnavailableHealth()
+
+    /// Launch-time services; the default has no store and never reconciles.
+    @Entry var appServices: AppServices = AppServices(container: nil, observing: UnavailableHealth())
 }

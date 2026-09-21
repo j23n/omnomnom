@@ -2,17 +2,24 @@ import Foundation
 import Observation
 import os
 
-/// Day selection, sheet state and the non-blocking banner for Today.
+/// Day selection, sheet state, the non-blocking banner and the Health actions for Today.
 @Observable
 final class TodayViewModel {
     var selectedDay: Date
     var isAddPresented = false
     var isDatePickerPresented = false
     var banner: String?
+    /// Entry whose Health actions dialog is up; `nil` when none.
+    var healthActionEntry: LogEntry?
+    /// Whether the once-per-launch notice about unauthorized entries is on screen.
+    var showsUnauthorizedNotice = false
+    /// Bumped whenever the day's Health samples should be read again.
+    private(set) var healthRefresh = 0
 
     private let calendar: Calendar
     /// Start of the day that was "today" when the scene last became active.
     private var lastActivatedDay: Date
+    private var unauthorizedNoticeShown = false
 
     init(calendar: Calendar = .current) {
         self.calendar = calendar
@@ -38,13 +45,15 @@ final class TodayViewModel {
     }
 
     /// Midnight rollover: when the scene comes back and the user was still looking at
-    /// what was "today" last time, follow the calendar to the new day.
+    /// what was "today" last time, follow the calendar to the new day. Health samples
+    /// are read again either way, since the user may have been in the Health app.
     func sceneBecameActive(now: Date = .now) {
         let today = calendar.startOfDay(for: now)
         if selectedDay == lastActivatedDay, today != lastActivatedDay {
             selectedDay = today
         }
         lastActivatedDay = today
+        healthRefresh += 1
     }
 
     /// Shows the banner for a completed log, if the result warrants one.
@@ -52,10 +61,34 @@ final class TodayViewModel {
         banner = result.bannerMessage
     }
 
+    /// Raises the unauthorized notice the first time a day shows such an entry.
+    func noteUnauthorizedEntries(_ hasAny: Bool) {
+        guard hasAny, !unauthorizedNoticeShown else { return }
+        unauthorizedNoticeShown = true
+        showsUnauthorizedNotice = true
+    }
+
+    func presentHealthActions(for entry: LogEntry) {
+        healthActionEntry = entry
+    }
+
     /// Mirrors the delete to Health first; the row only goes when Health agreed or held nothing.
     func delete(_ entry: LogEntry, using logger: EntryLogger) async {
         let outcome = await logger.delete(entry)
         banner = outcome.bannerMessage
+        healthRefresh += 1
+    }
+
+    /// Writes the entry to Health again under a bumped version.
+    func restore(_ entry: LogEntry, using logger: EntryLogger) async {
+        do {
+            let result = try await logger.restore(entry)
+            banner = result.bannerMessage ?? "Restored \(entry.foodName) to Health."
+        } catch {
+            AppLog.store.error("restore failed: \(error.localizedDescription, privacy: .public)")
+            banner = "Could not restore the entry."
+        }
+        healthRefresh += 1
     }
 
     /// Re-logs the same food and amount at the current time.

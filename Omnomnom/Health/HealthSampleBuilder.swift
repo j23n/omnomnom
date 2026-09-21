@@ -20,27 +20,18 @@ nonisolated struct CorrelationSpec: Hashable, Sendable {
 }
 
 /// Pure translation from a `HealthWriteRequest` to sample and correlation specs.
-/// Encodes the sync identifier scheme and the partial-authorization rule from PLAN.md.
+/// Applies the sync identifier scheme and the partial-authorization rule from PLAN.md.
 nonisolated enum HealthSampleBuilder {
     /// Custom metadata key on the correlation carrying the meal slot's raw value.
     static let mealSlotMetadataKey = "com.johanneswindelen.omnomnom.mealSlot"
 
-    /// `<entry uuid>.<nutrient>`; the correlation uses `.meal`.
-    static func syncIdentifier(entryID: UUID, nutrient: Nutrient) -> String {
-        "\(entryID.uuidString).\(nutrient.rawValue)"
-    }
-
-    static func correlationSyncIdentifier(entryID: UUID) -> String {
-        "\(entryID.uuidString).meal"
-    }
-
     /// Every sync identifier one entry may hold in Health: one per written nutrient, in
     /// `Nutrient` order, plus the correlation. Empty when nothing was written, since no
-    /// correlation exists without at least one sample.
+    /// correlation exists without at least one sample. The scheme lives in `SyncIdentifier`.
     static func syncIdentifiers(entryID: UUID, nutrients: Set<Nutrient>) -> [String] {
-        let samples = Nutrient.allCases.filter(nutrients.contains).map { syncIdentifier(entryID: entryID, nutrient: $0) }
+        let samples = Nutrient.allCases.filter(nutrients.contains).map { SyncIdentifier.make(entryID: entryID, nutrient: $0) }
         guard !samples.isEmpty else { return [] }
-        return samples + [correlationSyncIdentifier(entryID: entryID)]
+        return samples + [SyncIdentifier.make(mealFor: entryID)]
     }
 
     /// One spec per nutrient that has a value and is authorized, in `Nutrient` order.
@@ -51,7 +42,7 @@ nonisolated enum HealthSampleBuilder {
                 nutrient: nutrient,
                 value: value,
                 unit: nutrient.unit,
-                syncIdentifier: syncIdentifier(entryID: request.entryID, nutrient: nutrient),
+                syncIdentifier: SyncIdentifier.make(entryID: request.entryID, nutrient: nutrient),
                 syncVersion: request.syncVersion
             )
         }
@@ -62,7 +53,7 @@ nonisolated enum HealthSampleBuilder {
         let samples = samples(for: request, authorized: authorized)
         guard !samples.isEmpty else { return nil }
         return CorrelationSpec(
-            syncIdentifier: correlationSyncIdentifier(entryID: request.entryID),
+            syncIdentifier: SyncIdentifier.make(mealFor: request.entryID),
             syncVersion: request.syncVersion,
             foodType: request.foodName,
             mealSlot: request.mealSlot,

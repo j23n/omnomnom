@@ -7,12 +7,19 @@ import SwiftUI
 struct OmnomnomApp: App {
     private let container: ModelContainer?
     private let foodRepository: FoodRepository
-    private let health: any HealthWriting
+    /// One store serves both the write and the read surface.
+    private let healthStore: HealthStore
+    private let services: AppServices
 
+    /// Runs on the main actor during launch (`App` is main-actor isolated). Reconciliation
+    /// starts here, before any scene exists, so a background Health launch registers its
+    /// observer queries too; the work itself runs in a task and never blocks first paint.
     init() {
         container = Self.makeContainer()
         foodRepository = FoodRepository.bundled()
-        health = HealthStore()
+        healthStore = HealthStore()
+        services = AppServices(container: container, observing: healthStore)
+        services.startReconciliationIfNeeded()
     }
 
     var body: some Scene {
@@ -25,7 +32,9 @@ struct OmnomnomApp: App {
             }
         }
         .environment(\.foodRepository, foodRepository)
-        .environment(\.health, health)
+        .environment(\.health, healthStore)
+        .environment(\.healthObserving, healthStore)
+        .environment(\.appServices, services)
     }
 
     /// The on-disk store, or an in-memory one when that fails. Never crashes on launch.

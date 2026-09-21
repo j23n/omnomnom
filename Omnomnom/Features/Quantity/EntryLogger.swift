@@ -57,6 +57,16 @@ struct EntryLogger {
         return .deleted
     }
 
+    /// Re-saves the entry's whole set to Health under a bumped version, which replaces
+    /// whatever is still there, then records what went out as both written and present.
+    /// The bump is saved first, and throws if it cannot be, so no version is ever reused.
+    func restore(_ entry: LogEntry) async throws -> LogResult {
+        entry.syncVersion += 1
+        try context.save()
+        AppLog.store.info("restoring \(entry.id.uuidString, privacy: .public) as version \(entry.syncVersion)")
+        return await mirror(entry)
+    }
+
     /// The local save is the part that throws; Health and the follow-up save report through the result.
     private func insert(name: String, per100g: Nutrition, food: Food, grams: Double, mealSlot: MealSlot, at timestamp: Date) async throws -> LogResult {
         let entry = LogEntry(

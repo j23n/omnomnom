@@ -1,14 +1,24 @@
 import SwiftUI
 
-/// Onboarding gate, then the three tabs.
+/// Onboarding gate, then the three tabs. Reconciliation itself starts in `AppServices`
+/// at launch; this view only asks for a re-run whenever the scene comes to the foreground.
 struct RootView: View {
-    @AppStorage("onboardingComplete") private var onboardingComplete = false
+    @AppStorage(AppServices.onboardingKey) private var onboardingComplete = false
+    @Environment(\.appServices) private var services
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        if onboardingComplete {
-            MainTabView()
-        } else {
-            OnboardingView()
+        Group {
+            if onboardingComplete {
+                MainTabView()
+            } else {
+                OnboardingView()
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                services.sceneBecameActive()
+            }
         }
     }
 }

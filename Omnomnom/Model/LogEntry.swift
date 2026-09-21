@@ -83,4 +83,11 @@ final class LogEntry {
     var healthState: HealthState {
         HealthState.derive(written: written, present: present, orphaned: orphaned)
     }
+
+    /// Nutrients this app wrote that Health no longer holds, in display order.
+    var missingFromHealth: [Nutrient] {
+        let written = self.written
+        let present = self.present
+        return Nutrient.allCases.filter { written.contains($0) && !present.contains($0) }
+    }
 }

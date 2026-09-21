@@ -27,6 +27,14 @@ nonisolated enum HealthState: String, Sendable {
         return .synced
     }
 
+    /// States the user can act on from Today: restore the samples or remove the entry here.
+    var needsAttention: Bool {
+        switch self {
+        case .partial, .gone: true
+        case .synced, .unauthorized, .orphaned: false
+        }
+    }
+
     /// Short badge text for states worth showing on Today; `nil` for `synced`.
     var badge: String? {
         switch self {

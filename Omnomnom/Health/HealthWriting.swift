@@ -42,16 +42,3 @@ nonisolated enum HealthWriteError: Error, Equatable, Sendable, LocalizedError {
         }
     }
 }
-
-/// Stand-in used as the environment default and in previews: Health is absent and nothing is written.
-nonisolated struct UnavailableHealth: HealthWriting {
-    let isAvailable = false
-
-    func requestAuthorization() async throws {}
-
-    func authorizedNutrients() async -> Set<Nutrient> { [] }
-
-    func write(_ request: HealthWriteRequest) async throws -> Set<Nutrient> { [] }
-
-    func delete(entryID: UUID, nutrients: Set<Nutrient>) async throws {}
-}

@@ -5,8 +5,9 @@ import SwiftUI
 /// Two pages: what the app does, then the permission primer that precedes the
 /// one-time Health sheet. Finishing marks onboarding complete whatever the outcome.
 struct OnboardingView: View {
-    @AppStorage("onboardingComplete") private var onboardingComplete = false
+    @AppStorage(AppServices.onboardingKey) private var onboardingComplete = false
     @Environment(\.health) private var health
+    @Environment(\.appServices) private var services
     @State private var page = 0
     @State private var isRequesting = false
 
@@ -34,6 +35,7 @@ struct OnboardingView: View {
         }
         isRequesting = false
         onboardingComplete = true
+        services.startReconciliationIfNeeded()
     }
 }
 

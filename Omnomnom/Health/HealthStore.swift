@@ -5,7 +5,10 @@ import os
 /// The only place HealthKit types exist. Every method takes and returns the app's
 /// own value types; `HKHealthStore` and the objects built for it never leave the actor.
 actor HealthStore: HealthWriting {
-    private let store = HKHealthStore()
+    /// Internal rather than private so `HealthStore+Observing` can use it; still actor-isolated.
+    let store = HKHealthStore()
+    /// Observer queries registered by `startObserving`, kept so HealthKit keeps them running.
+    var observerQueries: [HKObserverQuery] = []
 
     nonisolated let isAvailable: Bool = HKHealthStore.isHealthDataAvailable()
 
@@ -55,7 +58,7 @@ actor HealthStore: HealthWriting {
         guard isAvailable else { return }
         let identifiers = HealthSampleBuilder.syncIdentifiers(entryID: entryID, nutrients: nutrients)
         guard !identifiers.isEmpty else { return }
-        let descriptor = HealthObjects.lookupDescriptor(nutrients: nutrients, syncIdentifiers: identifiers)
+        let descriptor = HealthQueries.lookupDescriptor(nutrients: nutrients, syncIdentifiers: identifiers)
         do {
             let objects = try await descriptor.result(for: store)
             guard !objects.isEmpty else {

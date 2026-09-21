@@ -50,18 +50,4 @@ nonisolated enum HealthObjects {
             metadata: metadata
         )
     }
-
-    /// One query over the given nutrient types plus the food correlation type, matching
-    /// any object whose sync identifier is in `syncIdentifiers`.
-    static func lookupDescriptor(nutrients: Set<Nutrient>, syncIdentifiers: [String]) -> HKSampleQueryDescriptor<HKSample> {
-        let bySyncIdentifier = HKQuery.predicateForObjects(
-            withMetadataKey: HKMetadataKeySyncIdentifier,
-            allowedValues: syncIdentifiers
-        )
-        var predicates: [HKSamplePredicate<HKSample>] = Nutrient.allCases
-            .filter(nutrients.contains)
-            .map { HKSamplePredicate.sample(type: quantityType(for: $0), predicate: bySyncIdentifier) }
-        predicates.append(HKSamplePredicate.sample(type: HKCorrelationType(.food), predicate: bySyncIdentifier))
-        return HKSampleQueryDescriptor(predicates: predicates, sortDescriptors: [])
-    }
 }

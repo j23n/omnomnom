@@ -30,7 +30,7 @@ Paid upfront removes StoreKit entirely: no receipt validation, no entitlement ga
 
 Pure SwiftUI, Swift 6 language mode with strict concurrency on from the first commit. Deployment target iOS 26, which covers iPhone 11 and newer.
 
-Nothing in this plan needs iOS 27 except the image-prompt call. HealthKit correlations, sync identifiers, VisionKit scanning, SwiftData, Observation and text-only Foundation Models all exist on iOS 26, so the availability check appears in exactly one place.
+Nothing in this plan needs iOS 27 except the image-prompt call and the query for a time-limited Health authorization window, which is itself an iOS 27 feature. HealthKit correlations, sync identifiers, VisionKit scanning, SwiftData, Observation and text-only Foundation Models all exist on iOS 26, so availability checks appear in exactly two places.
 
 ### Project layout
 

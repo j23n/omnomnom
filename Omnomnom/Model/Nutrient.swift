@@ -28,6 +28,12 @@ nonisolated enum Nutrient: String, CaseIterable, Codable, Sendable {
         }
     }
 
+    /// The nutrient for a raw `HKQuantityTypeIdentifier`, or `nil` for a type this app does not record.
+    init?(healthIdentifier: String) {
+        guard let match = Nutrient.allCases.first(where: { $0.healthIdentifier == healthIdentifier }) else { return nil }
+        self = match
+    }
+
     var unit: NutrientUnit {
         switch self {
         case .energy: .kilocalorie

@@ -30,8 +30,13 @@ struct TodayView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                if let banner = model.banner {
-                    BannerView(message: banner) { model.banner = nil }
+                VStack(spacing: 8) {
+                    if model.showsUnauthorizedNotice {
+                        UnauthorizedNoticeView { model.showsUnauthorizedNotice = false }
+                    }
+                    if let banner = model.banner {
+                        BannerView(message: banner) { model.banner = nil }
+                    }
                 }
             }
             .onChange(of: scenePhase) { _, phase in
@@ -83,29 +88,5 @@ private struct DayHeader: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
-    }
-}
-
-/// Non-blocking notice at the bottom of Today, dismissed by tap.
-private struct BannerView: View {
-    let message: String
-    let dismiss: () -> Void
-
-    var body: some View {
-        Button(action: dismiss) {
-            HStack {
-                Text(message)
-                    .font(.footnote)
-                    .multilineTextAlignment(.leading)
-                Spacer()
-                Image(systemName: "xmark")
-                    .font(.footnote)
-            }
-            .padding()
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-            .padding(.horizontal)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Notice: \(message). Double tap to dismiss.")
     }
 }

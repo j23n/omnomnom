@@ -6,8 +6,8 @@ Status log for the build order in `PLAN.md`. Each milestone is planned, implemen
 | --- | --- | --- | --- |
 | 1 | Data pipeline (FDC) | done | 2026-09-21 |
 | 2 | Log to Health end-to-end | done, awaiting first build | 2026-09-21 |
-| 3 | Reconciliation | in progress | |
-| 4 | Recipes | pending | |
+| 3 | Reconciliation | done, awaiting first build | 2026-09-21 |
+| 4 | Recipes | in progress | |
 | 5 | Barcode | pending | |
 | 6 | AI estimation | pending | |
 | 7 | Internationalization | pending | |
@@ -123,6 +123,46 @@ Deliverable: the local store and Health agree after edits and deletions made in 
 - Entry states `partial` and `gone` get a tappable badge with two actions: restore (re-save the whole entry with a bumped sync version, then mark present) or remove here (existing delete path). `unauthorized` shows once with a link to app settings.
 - Foreign samples: totals row shows the combined day figure with the foreign share visually distinct; a section "Also in Health" lists foreign food correlations by name and source, not editable.
 - Tests: reconciler tables, identifier parsing, anchor round trip, own versus foreign classification, restore bumps the version.
+
+Sandbox constraint unchanged: reviewed, not compiled.
+
+### Review
+
+Every HealthKit signature used (observer queries, background delivery, anchored and sample query descriptors, deleted-object metadata, anchor archiving, earliest authorized sample date) was verified against Apple's documentation. Three rounds of findings, all resolved:
+
+- Observer queries were registered from a view task, which a background HealthKit launch does not run. They are now registered from the app initializer, before the first read, so the wake's completion always fires after the change was handled.
+- "Own" samples were classified by bundle identifier, so entries logged with this app on another device and leftovers of removed entries were counted nowhere. Own now means mirrored by a local entry; everything else is foreign, counted once, and labelled "Omnomnom, not in this log" when it came from this app.
+- A read from no anchor never reports earlier deletions, so old entries read as synced forever. A complete read from no anchor is now authoritative for absence, guarded three ways: only for types with write permission, only for entries inside the user's readable window on iOS 27 where Health can limit history, and never when the read returned nothing for that nutrient while local entries wrote it.
+- A stored anchor rejected after an iCloud restore stalled reconciliation for good; it is dropped and the type re-read from the start.
+- Coalesced wakes called their HealthKit completion before anything was applied; every caller now awaits the in-flight run.
+- Day reads failed silently; they log and keep the previous summary.
+
+### Sign-off
+
+Signed off 2026-09-21 subject to the first build and device checks. Residual by design: a type Health lists as limited without a specific earliest date reads as unlimited and could be pruned beyond its real window; the zero-seen guard catches the all-or-nothing case only.
+
+First-build watch list additions:
+
+1. The `@Entry` default that constructs the app services class; fallback is an optional entry.
+2. The sort descriptor on the day read may need its root type spelled out.
+3. The predicate `ids.contains` on entry identifiers; fallback is fetching the day and filtering in memory.
+
+Device checks: background wakes are simulator-unsupported. On a device, a deletion of one nutrient in Health must surface one deleted identifier and flip the badge to partial without a re-push; a rejected foreign anchor must throw `errorInvalidArgument`; on iOS 27 a limited window for one type must not flip older entries; on iOS 26 pruning must still run for authorized types; the log order after a wake should show observers registered before the first read.
+
+## Milestone 4: Recipes
+
+### Plan
+
+Deliverable: recipes as templates of raw ingredient weights, logged as frozen snapshots.
+
+- Models: `Recipe` (name, servings, `ingredients: [RecipeIngredient]?`, timestamps) and `RecipeIngredient` (grams, `sortIndex`, `food: Food?` with a second inverse on `Food`, plus a frozen copy of the ingredient's name and per-100 g values so a deleted or refreshed food never changes the recipe). CloudKit rules unchanged.
+- Maths in a pure, tested function: total raw weight, total nutrition, per serving; fractional servings on log.
+- `Food.kind` gains a custom case now: custom foods are created in the Library with name and per-100 g values, since a recipe builder without them cannot express home ingredients. Custom foods are searchable in the add sheet alongside bundled results.
+- Library tab: sections for recipes and custom foods, create and edit. Recipe builder: ingredient rows with inline gram fields, add ingredient via the existing search sheet, running raw total, servings stepper with the raw-weight caveat inline, live per-serving nutrition. Editing shows one line that logged servings stay unchanged.
+- Add sheet: recipes and custom foods appear before typing (recents already do) and in search results by name match.
+- Logging a recipe: serving count with fractions, snapshot equals per-serving times servings, `foodName` is the recipe name, the entry keeps an optional `recipe` relationship for display only. Repeat works from the snapshot.
+- Health write path unchanged: the entry's snapshot is what is written.
+- Tests: recipe maths, per-serving rounding, snapshot independence after editing, custom food search integration in the query builder.
 
 Sandbox constraint unchanged: reviewed, not compiled.
 
