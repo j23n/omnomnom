@@ -25,9 +25,11 @@ struct TodayView: View {
                 }
             }
             .sheet(isPresented: $model.isAddPresented) {
-                AddFoodSheet(mode: .log(day: model.selectedDay, onLogged: { result in
-                    model.handle(result)
-                }))
+                AddFoodSheet(mode: .log(
+                    day: model.selectedDay,
+                    onLogged: { model.handle($0) },
+                    onMessage: { model.banner = $0 }
+                ))
             }
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 8) {

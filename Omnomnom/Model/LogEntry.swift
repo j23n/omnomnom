@@ -28,6 +28,8 @@ final class LogEntry {
     var presentNutrients: [String] = []
     /// Set when a local delete could not be mirrored to Health.
     var orphaned: Bool = false
+    /// True for an entry the user confirmed from an on-device estimate rather than a food.
+    var isEstimate: Bool = false
     /// Servings logged, for a recipe entry; `nil` for a food. `grams` holds the raw weight either way.
     var servings: Double?
     var food: Food?
@@ -45,6 +47,7 @@ final class LogEntry {
         self.writtenNutrients = []
         self.presentNutrients = []
         self.orphaned = false
+        self.isEstimate = false
         self.snapshot = snapshot
     }
 

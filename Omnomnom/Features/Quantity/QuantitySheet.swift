@@ -120,7 +120,8 @@ struct QuantitySheet: View {
     }
 
     /// `day` at the current wall-clock time, so logging into the past keeps a sensible time.
-    private static func defaultTimestamp(on day: Date, calendar: Calendar = .current) -> Date {
+    /// Shared with the estimation draft, which defaults its entries the same way.
+    static func defaultTimestamp(on day: Date, calendar: Calendar = .current) -> Date {
         let now = Date.now
         if calendar.isDate(day, inSameDayAs: now) { return now }
         let time = calendar.dateComponents([.hour, .minute], from: now)

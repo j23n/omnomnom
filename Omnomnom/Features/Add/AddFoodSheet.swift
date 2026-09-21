@@ -5,14 +5,16 @@ import SwiftUI
 
 /// What the Add sheet does with a tapped row.
 enum AddFoodMode {
-    /// Open the Quantity sheet for `day`; a completed log dismisses both sheets.
-    case log(day: Date, onLogged: (LogResult) -> Void)
+    /// Open the Quantity sheet for `day`; a completed log dismisses both sheets. An
+    /// estimate logs several entries at once and reports through `onMessage` instead.
+    case log(day: Date, onLogged: (LogResult) -> Void, onMessage: (String) -> Void)
     /// Hand the choice back at once, as the recipe builder needs. Recipes are hidden.
     case pick(onPick: (FoodChoice) -> Void)
 }
 
 /// Search over the Library and the bundled database, with recents before any typing.
-/// In log mode, and with the module on, a Scan button leads to the barcode flow.
+/// In log mode, and with the module on, a Scan button leads to the barcode flow and an
+/// Estimate button to the on-device estimation sheet.
 struct AddFoodSheet: View {
     let mode: AddFoodMode
 
@@ -36,6 +38,12 @@ struct AddFoodSheet: View {
         return false
     }
 
+    /// The day being logged into; `nil` in pick mode, which has no estimation.
+    private var logDay: Date? {
+        if case .log(let day, _, _) = mode { return day }
+        return nil
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -55,7 +63,7 @@ struct AddFoodSheet: View {
                 }
             }
             .sheet(item: $choice) { choice in
-                if case .log(let day, let onLogged) = mode {
+                if case .log(let day, let onLogged, _) = mode {
                     QuantitySheet(choice: choice, day: day) { result in
                         self.choice = nil
                         onLogged(result)
@@ -65,6 +73,7 @@ struct AddFoodSheet: View {
                 }
             }
             .modifier(BarcodeEntryPoint(isActive: includesRecipes) { present($0) })
+            .modifier(EstimationEntryPoint(day: logDay) { estimated($0) })
         }
     }
 
@@ -87,6 +96,14 @@ struct AddFoodSheet: View {
             }
         }
         self.choice = prepared
+    }
+
+    /// An estimate was logged: Today gets the banner text and both sheets close.
+    private func estimated(_ message: String) {
+        if case .log(_, _, let onMessage) = mode {
+            onMessage(message)
+        }
+        dismiss()
     }
 
     /// Debounced 150 ms; `.task(id:)` cancels the previous run on every keystroke. The

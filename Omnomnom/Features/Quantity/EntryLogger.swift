@@ -12,7 +12,8 @@ struct EntryLogger {
     /// Re-logs an entry as the repeat action does: same amount at `timestamp`, meal slot
     /// inferred from it. A custom food or product that still exists is recomputed from
     /// its current values, since the user may have corrected them; a recipe and any entry
-    /// without a live food link are copied from the frozen snapshot. Links are copied for display.
+    /// without a live food link are copied from the frozen snapshot. Links and the
+    /// estimate flag are copied for display.
     func repeatEntry(_ entry: LogEntry, at timestamp: Date) async throws -> LogResult {
         let live = entry.food.flatMap { $0.kind == .custom || $0.kind == .product ? $0 : nil }
         let copy = LogEntry(
@@ -24,6 +25,7 @@ struct EntryLogger {
         )
         context.insert(copy)
         copy.servings = entry.servings
+        copy.isEstimate = entry.isEstimate
         copy.food = entry.food
         copy.recipe = entry.recipe
         entry.food?.noteUsed(grams: entry.grams, at: Date.now)

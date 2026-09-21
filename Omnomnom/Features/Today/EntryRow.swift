@@ -1,7 +1,8 @@
 import Foundation
 import SwiftUI
 
-/// Name, amount and energy for one entry, plus a badge when Health does not hold it fully.
+/// Name, amount and energy for one entry, plus a badge when Health does not hold it fully
+/// and an "Estimated" badge when the values came from the on-device model.
 /// A recipe entry shows its servings next to the raw grams they weigh.
 /// Rows in the `partial` or `gone` state read as buttons: a tap opens the Health actions.
 struct EntryRow: View {
@@ -24,11 +25,11 @@ struct EntryRow: View {
                         Text(Formatters.grams(entry.grams))
                     }
                     Text(entry.timestamp, style: .time)
+                    if entry.isEstimate {
+                        EntryBadge(text: "Estimated")
+                    }
                     if let badge = entry.healthState.badge {
-                        Text(badge)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 1)
-                            .background(.quaternary, in: Capsule())
+                        EntryBadge(text: badge)
                     }
                 }
                 .font(.caption)
@@ -41,5 +42,17 @@ struct EntryRow: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isActionable ? .isButton : [])
         .accessibilityHint(hint)
+    }
+}
+
+/// A small capsule caption next to the amount.
+private struct EntryBadge: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(.quaternary, in: Capsule())
     }
 }

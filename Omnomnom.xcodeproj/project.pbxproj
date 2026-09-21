@@ -342,7 +342,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "The camera reads barcodes on packaged food so you can look them up. Nothing is recorded.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "The camera reads barcodes on packaged food and photographs a meal to estimate it on this device. Nothing is recorded or sent anywhere.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Omnomnom reads the nutrition samples it wrote so it can show your daily totals.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Omnomnom writes the eight dietary nutrients you log (energy, protein, carbohydrates, total fat, saturated fat, fiber, sugar and sodium) to Health.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -372,7 +372,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "The camera reads barcodes on packaged food so you can look them up. Nothing is recorded.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "The camera reads barcodes on packaged food and photographs a meal to estimate it on this device. Nothing is recorded or sent anywhere.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Omnomnom reads the nutrition samples it wrote so it can show your daily totals.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Omnomnom writes the eight dietary nutrients you log (energy, protein, carbohydrates, total fat, saturated fat, fiber, sugar and sodium) to Health.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

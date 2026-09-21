@@ -3,7 +3,8 @@ import os
 import SwiftUI
 
 /// Every bundled database, its licence and links, rendered from `sources.json`, then
-/// Open Food Facts, which is never bundled and so is not in the manifest.
+/// Open Food Facts, which is never bundled and so is not in the manifest, then the
+/// on-device model, which is not a database at all.
 struct SourcesView: View {
     @Environment(\.foodRepository) private var foodRepository
     @State private var sources: [SourceManifest] = []
@@ -47,6 +48,12 @@ struct SourcesView: View {
                     Link("Website", destination: url)
                 }
                 Text(OpenFoodFactsSource.note)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            Section(EstimationSource.name) {
+                LabeledContent("Publisher", value: EstimationSource.publisher)
+                Text(EstimationSource.note)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

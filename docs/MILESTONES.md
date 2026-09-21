@@ -9,7 +9,7 @@ Status log for the build order in `PLAN.md`. Each milestone is planned, implemen
 | 3 | Reconciliation | done, awaiting first build | 2026-09-21 |
 | 4 | Recipes | done, awaiting first build | 2026-09-21 |
 | 5 | Barcode | done, awaiting first build | 2026-09-21 |
-| 6 | AI estimation | in progress | |
+| 6 | AI estimation | done, awaiting first build | 2026-09-21 |
 | 7 | Internationalization | pending | |
 
 ## Milestone 1: Data pipeline
@@ -231,8 +231,8 @@ Sandbox constraint unchanged: reviewed, not compiled. The image-attachment API i
 
 ### Review
 
-Pending.
+Every Foundation Models, PhotosUI and ImageIO signature was verified against Apple's documentation, including the iOS 27 image attachment inside a prompt builder, which follows Apple's own multimodal prompting article. Ready to sign off on the first pass with no findings beyond nits. Confirmed: gate order is model availability then OS version; instructions carry the no-advice, no-scoring boundary and user text appears only in the prompt, quoted and capped; every generated value is bounded twice, by guided-generation ranges and by the conversion clamps, and must pass an editable draft before logging; the photo lives in memory only and nothing leaves the device; one estimated entry per item, single save with rollback, then the unchanged Health mirror.
 
 ### Sign-off
 
-Pending.
+Signed off 2026-09-21 subject to the first build. Watch list: a deprecation warning on the iOS 26 generation error type when building with the iOS 27 SDK, kept for iOS 26 devices; attachment initializer overload resolution on the iOS 27.2 SDK; text tier on an iOS 26 device and photo tier on iOS 27, each unavailable reason's alert text, cancelling mid-estimate leaving no draft or entries, camera capture orientation, and peak memory when decoding a large library photo.
