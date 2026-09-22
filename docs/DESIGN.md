@@ -52,8 +52,9 @@ Filled in as the screen-by-screen pass settles each one.
 
 - Copy yesterday re-logs each entry at the same time of day, never in the future, keeping its meal slot; each copy is mirrored to Health like a repeat.
 - One accent colour, tangerine, in a light and a dark value, both passing 3:1 for white text on a glass-prominent button; the asset catalog is the only place the values live.
-- The mark appears on the app icon, on the onboarding intro, on the empty day and in Settings › About. Nowhere else without a decision here.
+- The mark appears on the app icon, on the onboarding intro, on the empty day, in Settings › About and on the thumbnail placeholder. Nowhere else without a decision here.
 - The rounded system design at bold weight is used for the wordmark and the energy total, and for nothing else.
 - Photos are the user's own: taken or picked on the device, downscaled to 1024 px JPEG, kept with an estimate's entries, a recipe or a custom food, shown as a 44 pt thumbnail on Today, in the Library and in the Add sheet, and opened full size from Today. Never fetched from a database or from Open Food Facts, never written to Health, never sent anywhere. An entry logged from a recipe or food shows that photo.
+- Every food, recipe and entry shows a thumbnail; without a photo it is the mark on a tinted square, decorative only, so lists keep one left edge. At accessibility type sizes the placeholder gives way, since the name needs the width more than the list needs its edge; a real photo always stays.
 - Scan and Estimate live in the Add sheet's content, not its toolbar, because the navigation bar is hidden while search is active. Log on the Quantity sheet and Continue in onboarding use the same bottom glass capsule as Add food on Today.
 - An estimate never carries invented nutrition: the model names the foods and the portions, every value comes from the bundled database, and the matched food is shown under each row and can be changed before logging. A row with no food cannot be logged.

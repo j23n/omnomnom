@@ -7,13 +7,15 @@ import SwiftUI
 /// and an "Estimated" badge when the values came from the on-device model.
 /// A recipe entry shows its servings next to the raw grams they weigh.
 /// Every row reads as a button, with a chevron after the energy: a tap opens the
-/// entry's editor. An entry with a photo, its own or its recipe's or food's, leads
-/// with a thumbnail that opens the photo; the thumbnail is a button of its own, so
-/// the row's tap still works everywhere else.
+/// entry's editor. Every row also leads with a square: an entry with a photo, its own
+/// or its recipe's or food's, shows it, and the thumbnail is a button of its own that
+/// opens the photo, so the row's tap still works everywhere else. Without a photo the
+/// square is the placeholder, which is decorative and has no tap of its own, so the
+/// row opens the editor there like anywhere else.
 struct EntryRow: View {
     let entry: LogEntry
-    /// Opens the entry, for VoiceOver. The list handles the sighted tap, which cannot
-    /// be a `Button` here because the photo thumbnail inside the row already is one.
+    /// Opens the entry, for VoiceOver. The list handles the sighted tap, which cannot be
+    /// a `Button` here because a row with a photo already holds one around its thumbnail.
     var onOpen: () -> Void = {}
 
     @State private var isShowingPhoto = false
@@ -31,19 +33,28 @@ struct EntryRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            if let photo = entry.displayPhoto?.data {
-                Button {
-                    isShowingPhoto = true
-                } label: {
-                    PhotoThumbnail(data: photo, size: 44)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Photo")
-                .sheet(isPresented: $isShowingPhoto) {
-                    PhotoViewer(data: photo, title: entry.foodName, subtitle: Self.photoSubtitle(for: entry.timestamp))
-                }
-            }
+            thumbnail
             summary
+        }
+    }
+
+    /// The photo as a button that opens it full size, or the placeholder, which is only
+    /// there to hold the row's left edge and carries no action of its own.
+    @ViewBuilder
+    private var thumbnail: some View {
+        if let photo = entry.displayPhoto?.data {
+            Button {
+                isShowingPhoto = true
+            } label: {
+                PhotoThumbnail(data: photo, size: 44)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Photo")
+            .sheet(isPresented: $isShowingPhoto) {
+                PhotoViewer(data: photo, title: entry.foodName, subtitle: Self.photoSubtitle(for: entry.timestamp))
+            }
+        } else {
+            PhotoThumbnail(data: nil, size: 44)
         }
     }
 
