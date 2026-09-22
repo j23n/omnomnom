@@ -61,3 +61,22 @@ private struct IntroPage: View {
         .padding(32)
     }
 }
+
+#if DEBUG
+#Preview("Page 1") {
+    OnboardingView()
+        .previewEnvironment(seed: .empty, defaults: PreviewDefaults.onboardingPending)
+}
+
+#Preview("Page 1, Health unavailable, dark") {
+    OnboardingView()
+        .previewEnvironment(seed: .empty, health: .unavailable, defaults: PreviewDefaults.onboardingPending)
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Page 1, accessibility 5") {
+    OnboardingView()
+        .previewEnvironment(seed: .empty, defaults: PreviewDefaults.onboardingPending)
+        .environment(\.dynamicTypeSize, .accessibility5)
+}
+#endif

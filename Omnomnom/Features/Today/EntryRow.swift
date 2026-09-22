@@ -1,3 +1,4 @@
+import DeveloperToolsSupport
 import Foundation
 import SwiftUI
 
@@ -56,3 +57,40 @@ private struct EntryBadge: View {
             .background(.quaternary, in: Capsule())
     }
 }
+
+#if DEBUG
+#Preview("Health states", traits: .sizeThatFitsLayout) {
+    // Synced, partial, gone, orphaned, unauthorized, an estimate and a product, in seed order.
+    let container = PreviewStore.container(seed: .healthStates)
+    return VStack(alignment: .leading, spacing: 16) {
+        ForEach(PreviewStore.entries(in: container)) { entry in
+            EntryRow(entry: entry)
+        }
+    }
+    .padding()
+    .modelContainer(container)
+}
+
+#Preview("Typical day with a recipe entry", traits: .sizeThatFitsLayout) {
+    let container = PreviewStore.container(seed: .typicalDay)
+    return VStack(alignment: .leading, spacing: 16) {
+        ForEach(PreviewStore.entries(in: container)) { entry in
+            EntryRow(entry: entry)
+        }
+    }
+    .padding()
+    .modelContainer(container)
+}
+
+#Preview("Accessibility 5", traits: .sizeThatFitsLayout) {
+    let container = PreviewStore.container(seed: .healthStates)
+    return VStack(alignment: .leading, spacing: 16) {
+        ForEach(PreviewStore.entries(in: container)) { entry in
+            EntryRow(entry: entry)
+        }
+    }
+    .padding()
+    .modelContainer(container)
+    .environment(\.dynamicTypeSize, .accessibility5)
+}
+#endif

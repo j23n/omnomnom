@@ -66,3 +66,33 @@ struct HealthStatusView: View {
         isRequesting = false
     }
 }
+
+#if DEBUG
+#Preview("All authorized") {
+    NavigationStack {
+        HealthStatusView()
+    }
+    .previewEnvironment(seed: .empty, health: .quiet)
+}
+
+#Preview("Partial authorization") {
+    NavigationStack {
+        HealthStatusView()
+    }
+    .previewEnvironment(seed: .empty, health: .partial)
+}
+
+#Preview("Nothing authorized") {
+    NavigationStack {
+        HealthStatusView()
+    }
+    .previewEnvironment(seed: .empty, health: .denied)
+}
+
+#Preview("Health unavailable") {
+    NavigationStack {
+        HealthStatusView()
+    }
+    .previewEnvironment(seed: .empty, health: .unavailable)
+}
+#endif

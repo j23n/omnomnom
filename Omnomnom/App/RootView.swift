@@ -39,3 +39,15 @@ struct MainTabView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Onboarding pending") {
+    RootView()
+        .previewEnvironment(seed: .empty, defaults: PreviewDefaults.onboardingPending)
+}
+
+#Preview("Main tabs") {
+    RootView()
+        .previewEnvironment(seed: .typicalDay)
+}
+#endif

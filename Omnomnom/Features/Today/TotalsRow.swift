@@ -1,3 +1,4 @@
+import DeveloperToolsSupport
 import SwiftUI
 
 /// All eight totals, always visible: four primary large, four secondary small.
@@ -73,3 +74,26 @@ private struct TotalCell: View {
         .accessibilityLabel("\(nutrient.displayName) \(Formatters.amount(value, unit: nutrient.unit))")
     }
 }
+
+#if DEBUG
+#Preview("Typical", traits: .sizeThatFitsLayout) {
+    TotalsRow(totals: PreviewFoods.dayTotals)
+        .padding()
+}
+
+#Preview("With foreign", traits: .sizeThatFitsLayout) {
+    TotalsRow(totals: PreviewFoods.dayTotals, foreign: PreviewFoods.foreignTotals)
+        .padding()
+}
+
+#Preview("Empty day", traits: .sizeThatFitsLayout) {
+    TotalsRow(totals: .zero)
+        .padding()
+}
+
+#Preview("Accessibility 5", traits: .sizeThatFitsLayout) {
+    TotalsRow(totals: PreviewFoods.dayTotals, foreign: PreviewFoods.foreignTotals)
+        .padding()
+        .environment(\.dynamicTypeSize, .accessibility5)
+}
+#endif

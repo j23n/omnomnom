@@ -1,3 +1,4 @@
+import DeveloperToolsSupport
 import Foundation
 import SwiftUI
 import UIKit
@@ -52,3 +53,29 @@ struct UnauthorizedNoticeView: View {
         .padding(.horizontal)
     }
 }
+
+#if DEBUG
+#Preview("Banner", traits: .sizeThatFitsLayout) {
+    BannerView(message: "Logged locally. Nothing reached Health; check Settings.") {}
+        .padding(.vertical)
+}
+
+#Preview("Banner, long message", traits: .sizeThatFitsLayout) {
+    BannerView(message: DeleteOutcome.orphaned.bannerMessage ?? "") {}
+        .padding(.vertical)
+}
+
+#Preview("Unauthorized notice", traits: .sizeThatFitsLayout) {
+    UnauthorizedNoticeView {}
+        .padding(.vertical)
+}
+
+#Preview("Both, accessibility 5", traits: .sizeThatFitsLayout) {
+    VStack(spacing: 8) {
+        UnauthorizedNoticeView {}
+        BannerView(message: "Logged locally. Nothing reached Health; check Settings.") {}
+    }
+    .padding(.vertical)
+    .environment(\.dynamicTypeSize, .accessibility5)
+}
+#endif

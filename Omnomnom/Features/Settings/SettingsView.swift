@@ -8,6 +8,12 @@ struct SettingsView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var authorization = HealthAuthorization.unavailable
     @State private var estimation: EstimationAvailability?
+    /// A fixed model state for previews; `nil` reads the model.
+    private let fixedEstimation: EstimationAvailability?
+
+    init(estimationAvailability: EstimationAvailability? = nil) {
+        fixedEstimation = estimationAvailability
+    }
 
     var body: some View {
         NavigationStack {
@@ -45,7 +51,7 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .task(id: scenePhase) {
-                estimation = EstimationAvailability.current()
+                estimation = fixedEstimation ?? EstimationAvailability.current()
                 authorization = await HealthAuthorization.current(from: health)
             }
         }
@@ -59,3 +65,36 @@ struct SettingsView: View {
         Estimates are produced on this device by Apple Intelligence. Nothing is sent anywhere. They are rough and you confirm every value before it is logged.
         """
 }
+
+#if DEBUG
+#Preview("Health, all authorized") {
+    SettingsView(estimationAvailability: .available(photo: false))
+        .previewEnvironment(seed: .empty, health: .quiet)
+}
+
+#Preview("Health, partial authorization") {
+    SettingsView(estimationAvailability: .available(photo: false))
+        .previewEnvironment(seed: .empty, health: .partial)
+}
+
+#Preview("Health unavailable") {
+    SettingsView(estimationAvailability: .deviceNotEligible)
+        .previewEnvironment(seed: .empty, health: .unavailable)
+}
+
+#Preview("Modules on, model not ready") {
+    SettingsView(estimationAvailability: .modelNotReady)
+        .previewEnvironment(seed: .empty, health: .quiet, defaults: PreviewDefaults.modulesOn)
+}
+
+#Preview("Modules on, accessibility 5") {
+    SettingsView(estimationAvailability: .appleIntelligenceNotEnabled)
+        .previewEnvironment(seed: .empty, health: .quiet, defaults: PreviewDefaults.modulesOn)
+        .environment(\.dynamicTypeSize, .accessibility5)
+}
+
+#Preview("Health, none authorized") {
+    SettingsView(estimationAvailability: .available(photo: false))
+        .previewEnvironment(seed: .empty, health: .denied)
+}
+#endif

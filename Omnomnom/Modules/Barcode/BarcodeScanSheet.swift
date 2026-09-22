@@ -8,6 +8,13 @@ import UIKit
 /// worn label or a declined camera must not block logging.
 struct BarcodeScanSheet: View {
     let onOutcome: (BarcodeLookupOutcome) -> Void
+    /// A fixed scanner state for previews; `nil` reads the device and asks for the camera.
+    private let fixedAvailability: BarcodeAvailability?
+
+    init(availability: BarcodeAvailability? = nil, onOutcome: @escaping (BarcodeLookupOutcome) -> Void) {
+        fixedAvailability = availability
+        self.onOutcome = onOutcome
+    }
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
@@ -70,6 +77,10 @@ struct BarcodeScanSheet: View {
 
     /// Reads the availability, asking for the camera first if it was never asked.
     private func load() async {
+        if let fixedAvailability {
+            availability = fixedAvailability
+            return
+        }
         var state = BarcodeAvailability.current()
         if state == .cameraNotDetermined {
             state = await BarcodeAvailability.requestingCamera()
@@ -96,3 +107,34 @@ struct BarcodeScanSheet: View {
         }
     }
 }
+
+// `.available` is not previewed: it would put a `DataScannerViewController` on screen,
+// which previews must never do. The four states without a camera are here.
+
+#if DEBUG
+#Preview("Unsupported device") {
+    BarcodeScanSheet(availability: .unsupportedDevice) { _ in }
+        .previewEnvironment(seed: .empty)
+}
+
+#Preview("Camera unavailable") {
+    BarcodeScanSheet(availability: .unavailable) { _ in }
+        .previewEnvironment(seed: .empty)
+}
+
+#Preview("Camera denied") {
+    BarcodeScanSheet(availability: .cameraDenied) { _ in }
+        .previewEnvironment(seed: .empty)
+}
+
+#Preview("Camera not determined") {
+    BarcodeScanSheet(availability: .cameraNotDetermined) { _ in }
+        .previewEnvironment(seed: .empty)
+}
+
+#Preview("Camera denied, accessibility 5") {
+    BarcodeScanSheet(availability: .cameraDenied) { _ in }
+        .previewEnvironment(seed: .empty)
+        .environment(\.dynamicTypeSize, .accessibility5)
+}
+#endif

@@ -1,3 +1,4 @@
+import DeveloperToolsSupport
 import Foundation
 import SwiftUI
 
@@ -46,3 +47,25 @@ struct AmountChips: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Portions", traits: .sizeThatFitsLayout) {
+    AmountChips(chips: AmountChip.portions([
+        Portion(label: "1 medium (3\" dia)", grams: 182),
+        Portion(label: "1 cup, chopped", grams: 125),
+        Portion(label: "0.5 cup", grams: 62.5),
+    ])) { _ in }
+    .padding()
+}
+
+#Preview("Servings", traits: .sizeThatFitsLayout) {
+    AmountChips(chips: AmountChip.servings) { _ in }
+        .padding()
+}
+
+#Preview("Servings, accessibility 5", traits: .sizeThatFitsLayout) {
+    AmountChips(chips: AmountChip.servings) { _ in }
+        .padding()
+        .environment(\.dynamicTypeSize, .accessibility5)
+}
+#endif

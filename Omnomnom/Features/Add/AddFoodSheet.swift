@@ -143,3 +143,31 @@ struct AddFoodSheet: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Log mode, recents") {
+    AddFoodSheet(mode: .log(day: .now, onLogged: { _ in }, onMessage: { _ in }))
+        .previewEnvironment(seed: .typicalDay)
+}
+
+#Preview("Log mode, nothing logged yet") {
+    AddFoodSheet(mode: .log(day: .now, onLogged: { _ in }, onMessage: { _ in }))
+        .previewEnvironment(seed: .empty)
+}
+
+#Preview("Log mode, modules on") {
+    AddFoodSheet(mode: .log(day: .now, onLogged: { _ in }, onMessage: { _ in }))
+        .previewEnvironment(seed: .library, defaults: PreviewDefaults.modulesOn)
+}
+
+#Preview("Pick mode") {
+    AddFoodSheet(mode: .pick(onPick: { _ in }))
+        .previewEnvironment(seed: .library)
+}
+
+#Preview("Log mode, accessibility 5") {
+    AddFoodSheet(mode: .log(day: .now, onLogged: { _ in }, onMessage: { _ in }))
+        .previewEnvironment(seed: .typicalDay)
+        .environment(\.dynamicTypeSize, .accessibility5)
+}
+#endif

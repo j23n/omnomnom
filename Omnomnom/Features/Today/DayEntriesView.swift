@@ -113,3 +113,42 @@ private nonisolated struct HealthReadKey: Hashable, Sendable {
     let interval: DateInterval
     let generation: Int
 }
+
+#if DEBUG
+#Preview("Typical day") {
+    NavigationStack {
+        DayEntriesView(day: .now, model: TodayViewModel())
+    }
+    .previewEnvironment(seed: .typicalDay)
+}
+
+#Preview("Empty day") {
+    NavigationStack {
+        DayEntriesView(day: .now, model: TodayViewModel())
+    }
+    .previewEnvironment(seed: .empty)
+}
+
+#Preview("Health states") {
+    NavigationStack {
+        DayEntriesView(day: .now, model: TodayViewModel())
+    }
+    .previewEnvironment(seed: .healthStates)
+}
+
+#Preview("With foreign samples") {
+    NavigationStack {
+        DayEntriesView(day: .now, model: TodayViewModel())
+    }
+    .previewEnvironment(seed: .typicalDay, health: PreviewHealth())
+}
+
+#Preview("Accessibility 5, dark") {
+    NavigationStack {
+        DayEntriesView(day: .now, model: TodayViewModel())
+    }
+    .previewEnvironment(seed: .typicalDay, health: PreviewHealth())
+    .environment(\.dynamicTypeSize, .accessibility5)
+    .preferredColorScheme(.dark)
+}
+#endif

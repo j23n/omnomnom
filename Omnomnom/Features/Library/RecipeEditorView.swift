@@ -101,3 +101,26 @@ struct RecipeEditorView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("New recipe") {
+    RecipeEditorView(recipe: nil)
+        .previewEnvironment(seed: .library)
+}
+
+#Preview("Editing a logged recipe") {
+    // The lentil soup has been logged once, so the "previously logged" footnote shows.
+    let container = PreviewStore.container(seed: .library)
+    let recipe = PreviewStore.recipes(in: container).first { !($0.entries ?? []).isEmpty }
+    return RecipeEditorView(recipe: recipe)
+        .previewEnvironment(container: container)
+}
+
+#Preview("Editing, accessibility 5") {
+    let container = PreviewStore.container(seed: .library)
+    let recipe = PreviewStore.recipes(in: container).first
+    return RecipeEditorView(recipe: recipe)
+        .previewEnvironment(container: container)
+        .environment(\.dynamicTypeSize, .accessibility5)
+}
+#endif
