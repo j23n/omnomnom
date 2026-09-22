@@ -71,3 +71,29 @@ private struct ResultRow: View {
         .accessibilityElement(children: .combine)
     }
 }
+
+#if DEBUG
+#Preview("Yours and database") {
+    SearchResultsList(local: PreviewStore.localResults, results: PreviewStore.bundledResults, errorMessage: nil) { _ in }
+}
+
+#Preview("Database only") {
+    SearchResultsList(local: [], results: PreviewStore.bundledResults, errorMessage: nil) { _ in }
+}
+
+#Preview("No matches") {
+    SearchResultsList(local: [], results: [], errorMessage: nil) { _ in }
+}
+
+#Preview("Database missing") {
+    SearchResultsList(
+        local: PreviewStore.localResults, results: [],
+        errorMessage: FoodRepositoryError.databaseMissing.errorDescription
+    ) { _ in }
+}
+
+#Preview("Accessibility 5") {
+    SearchResultsList(local: PreviewStore.localResults, results: PreviewStore.bundledResults, errorMessage: nil) { _ in }
+        .environment(\.dynamicTypeSize, .accessibility5)
+}
+#endif

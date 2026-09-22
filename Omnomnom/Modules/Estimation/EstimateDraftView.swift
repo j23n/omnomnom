@@ -100,3 +100,37 @@ struct EstimateDraftView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Three items, one warning") {
+    NavigationStack {
+        EstimateDraftView(draft: PreviewEstimates.draft, day: .now) { _ in }
+    }
+    .previewEnvironment(seed: .empty)
+}
+
+#Preview("Dark") {
+    NavigationStack {
+        EstimateDraftView(draft: PreviewEstimates.draft, day: .now) { _ in }
+    }
+    .previewEnvironment(seed: .empty)
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Accessibility 5") {
+    NavigationStack {
+        EstimateDraftView(draft: PreviewEstimates.draft, day: .now) { _ in }
+    }
+    .previewEnvironment(seed: .empty)
+    .environment(\.dynamicTypeSize, .accessibility5)
+}
+
+#Preview("Invalid row, Log disabled") {
+    var draft = PreviewEstimates.draft
+    draft.rows[1].gramsText = ""
+    return NavigationStack {
+        EstimateDraftView(draft: draft, day: .now) { _ in }
+    }
+    .previewEnvironment(seed: .empty)
+}
+#endif

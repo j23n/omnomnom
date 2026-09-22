@@ -9,6 +9,8 @@ struct EstimationSheet: View {
     let day: Date
     let onLogged: (String) -> Void
     private let estimator: any MealEstimating
+    /// A fixed model state for previews; `nil` reads the model.
+    private let fixedAvailability: EstimationAvailability?
 
     @Environment(\.dismiss) private var dismiss
     @State private var description = ""
@@ -19,9 +21,13 @@ struct EstimationSheet: View {
     @State private var draft: EstimateDraft?
     @State private var task: Task<Void, Never>?
 
-    init(day: Date, estimator: any MealEstimating = FoundationMealEstimator(), onLogged: @escaping (String) -> Void) {
+    init(
+        day: Date, estimator: any MealEstimating = FoundationMealEstimator(),
+        availability: EstimationAvailability? = nil, onLogged: @escaping (String) -> Void
+    ) {
         self.day = day
         self.estimator = estimator
+        self.fixedAvailability = availability
         self.onLogged = onLogged
     }
 
@@ -80,7 +86,7 @@ struct EstimationSheet: View {
             .navigationDestination(item: $draft) { draft in
                 EstimateDraftView(draft: draft, day: day, onLogged: onLogged)
             }
-            .task { availability = EstimationAvailability.current() }
+            .task { availability = fixedAvailability ?? EstimationAvailability.current() }
             .onDisappear { task?.cancel() }
         }
     }
@@ -125,3 +131,63 @@ struct EstimationSheet: View {
         isEstimating = false
     }
 }
+
+#if DEBUG
+extension EstimationSheet {
+    /// Preview-only: the sheet in a chosen state, with an estimator that never reaches the
+    /// model. `onLogged` is a no-op.
+    init(
+        previewDay day: Date,
+        availability: EstimationAvailability,
+        description: String = "",
+        isEstimating: Bool = false,
+        errorMessage: String? = nil
+    ) {
+        self.day = day
+        self.estimator = PreviewMealEstimator()
+        self.fixedAvailability = availability
+        self.onLogged = { _ in }
+        _description = State(initialValue: description)
+        _isEstimating = State(initialValue: isEstimating)
+        _errorMessage = State(initialValue: errorMessage)
+    }
+}
+
+#Preview("Idle, text only (iOS 26)") {
+    EstimationSheet(previewDay: .now, availability: .available(photo: false))
+        .previewEnvironment(seed: .empty)
+}
+
+#Preview("Idle, with photo (iOS 27)") {
+    EstimationSheet(previewDay: .now, availability: .available(photo: true))
+        .previewEnvironment(seed: .empty)
+}
+
+#Preview("Running") {
+    EstimationSheet(
+        previewDay: .now, availability: .available(photo: false),
+        description: "Two scrambled eggs and a slice of rye toast with butter", isEstimating: true
+    )
+    .previewEnvironment(seed: .empty)
+}
+
+#Preview("Error") {
+    EstimationSheet(
+        previewDay: .now, availability: .available(photo: false),
+        description: "Two scrambled eggs and a slice of rye toast with butter",
+        errorMessage: EstimationError.guardrail.errorDescription
+    )
+    .previewEnvironment(seed: .empty)
+}
+
+#Preview("Model not ready") {
+    EstimationSheet(previewDay: .now, availability: .modelNotReady)
+        .previewEnvironment(seed: .empty)
+}
+
+#Preview("Idle, accessibility 5") {
+    EstimationSheet(previewDay: .now, availability: .available(photo: false))
+        .previewEnvironment(seed: .empty)
+        .environment(\.dynamicTypeSize, .accessibility5)
+}
+#endif

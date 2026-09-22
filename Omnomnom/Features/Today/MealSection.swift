@@ -1,3 +1,4 @@
+import DeveloperToolsSupport
 import SwiftUI
 
 /// One meal slot's entries with delete and repeat swipe actions. Tapping an entry that
@@ -38,3 +39,47 @@ struct MealSection: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Health states", traits: .fixedLayout(width: 393, height: 700)) {
+    let container = PreviewStore.container(seed: .healthStates)
+    let entries = PreviewStore.entries(in: container)
+    return List {
+        ForEach(MealSlot.allCases, id: \.self) { slot in
+            let slotEntries = entries.filter { $0.mealSlot == slot }
+            if !slotEntries.isEmpty {
+                MealSection(
+                    slot: slot,
+                    entries: slotEntries,
+                    onDelete: { _ in },
+                    onRepeat: { _ in },
+                    onHealthAction: { _ in }
+                )
+            }
+        }
+    }
+    .listStyle(.insetGrouped)
+    .modelContainer(container)
+}
+
+#Preview("Typical day", traits: .fixedLayout(width: 393, height: 600)) {
+    let container = PreviewStore.container(seed: .typicalDay)
+    let entries = PreviewStore.entries(in: container)
+    return List {
+        ForEach(MealSlot.allCases, id: \.self) { slot in
+            let slotEntries = entries.filter { $0.mealSlot == slot }
+            if !slotEntries.isEmpty {
+                MealSection(
+                    slot: slot,
+                    entries: slotEntries,
+                    onDelete: { _ in },
+                    onRepeat: { _ in },
+                    onHealthAction: { _ in }
+                )
+            }
+        }
+    }
+    .listStyle(.insetGrouped)
+    .modelContainer(container)
+}
+#endif

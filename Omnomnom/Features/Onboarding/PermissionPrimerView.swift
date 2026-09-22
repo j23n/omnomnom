@@ -31,3 +31,22 @@ struct PermissionPrimerView: View {
         .padding(32)
     }
 }
+
+#if DEBUG
+#Preview("Page 2, Health available") {
+    PermissionPrimerView(isHealthAvailable: true, isRequesting: false) {}
+}
+
+#Preview("Page 2, requesting") {
+    PermissionPrimerView(isHealthAvailable: true, isRequesting: true) {}
+}
+
+#Preview("Page 2, Health unavailable") {
+    PermissionPrimerView(isHealthAvailable: false, isRequesting: false) {}
+}
+
+#Preview("Page 2, accessibility 5") {
+    PermissionPrimerView(isHealthAvailable: true, isRequesting: false) {}
+        .environment(\.dynamicTypeSize, .accessibility5)
+}
+#endif

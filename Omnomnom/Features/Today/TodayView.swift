@@ -5,7 +5,12 @@ import SwiftUI
 /// Date header, daily totals, entries grouped by meal slot, add button.
 struct TodayView: View {
     @Environment(\.scenePhase) private var scenePhase
-    @State private var model = TodayViewModel()
+    @State private var model: TodayViewModel
+
+    /// Starts from `model`; previews pass one with a banner or the unauthorized notice already up.
+    init(model: TodayViewModel = TodayViewModel()) {
+        _model = State(initialValue: model)
+    }
 
     var body: some View {
         NavigationStack {
@@ -92,3 +97,71 @@ private struct DayHeader: View {
         .padding(.vertical, 8)
     }
 }
+
+#if DEBUG
+#Preview("Empty day") {
+    TodayView()
+        .previewEnvironment(seed: .empty)
+}
+
+#Preview("First run") {
+    TodayView()
+        .previewEnvironment(seed: .firstRun)
+}
+
+#Preview("Typical day") {
+    TodayView()
+        .previewEnvironment(seed: .typicalDay)
+}
+
+#Preview("Health states") {
+    TodayView()
+        .previewEnvironment(seed: .healthStates)
+}
+
+#Preview("With foreign samples") {
+    TodayView()
+        .previewEnvironment(seed: .typicalDay, health: PreviewHealth())
+}
+
+#Preview("Accessibility 5") {
+    TodayView()
+        .previewEnvironment(seed: .typicalDay)
+        .environment(\.dynamicTypeSize, .accessibility5)
+}
+
+#Preview("Dark") {
+    TodayView()
+        .previewEnvironment(seed: .typicalDay)
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Banner") {
+    let model = TodayViewModel()
+    model.banner = LogResult(entryID: UUID(), written: [], healthError: nil, storeError: nil).bannerMessage
+    return TodayView(model: model)
+        .previewEnvironment(seed: .typicalDay)
+}
+
+#Preview("Unauthorized notice") {
+    let model = TodayViewModel()
+    model.showsUnauthorizedNotice = true
+    return TodayView(model: model)
+        .previewEnvironment(seed: .healthStates)
+}
+
+#Preview("Past day") {
+    let model = TodayViewModel()
+    model.selectedDay = Calendar.current.date(byAdding: .day, value: -1, to: .now) ?? .now
+    return TodayView(model: model)
+        .previewEnvironment(seed: .typicalDay)
+}
+
+#Preview("Banner and notice stacked") {
+    let model = TodayViewModel()
+    model.banner = LogResult(entryID: UUID(), written: [], healthError: nil, storeError: nil).bannerMessage
+    model.showsUnauthorizedNotice = true
+    return TodayView(model: model)
+        .previewEnvironment(seed: .healthStates)
+}
+#endif

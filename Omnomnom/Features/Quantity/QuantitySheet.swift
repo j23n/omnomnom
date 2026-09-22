@@ -128,3 +128,39 @@ struct QuantitySheet: View {
         return calendar.date(bySettingHour: time.hour ?? 12, minute: time.minute ?? 0, second: 0, of: day) ?? day
     }
 }
+
+// Portion chips come from the bundled database; when `foods.sqlite` is not in the bundle
+// (the pipeline has not run on this Mac) the bundled preview shows no chips.
+
+#if DEBUG
+#Preview("Bundled food with portions") {
+    QuantitySheet(choice: PreviewStore.bundledChoice, day: .now) { _ in }
+        .previewEnvironment(seed: .typicalDay)
+}
+
+#Preview("Custom food") {
+    QuantitySheet(choice: PreviewStore.customChoice, day: .now) { _ in }
+        .previewEnvironment(seed: .library)
+}
+
+#Preview("Recipe, servings") {
+    QuantitySheet(choice: PreviewStore.recipeChoice, day: .now) { _ in }
+        .previewEnvironment(seed: .library)
+}
+
+#Preview("Product with attribution") {
+    QuantitySheet(choice: PreviewStore.productChoice, day: .now) { _ in }
+        .previewEnvironment(seed: .library)
+}
+
+#Preview("Accessibility 5") {
+    QuantitySheet(choice: PreviewStore.recipeChoice, day: .now) { _ in }
+        .previewEnvironment(seed: .library)
+        .environment(\.dynamicTypeSize, .accessibility5)
+}
+
+#Preview("Bundled with last amount") {
+    QuantitySheet(choice: PreviewStore.bundledChoice.with(lastAmount: 182), day: .now) { _ in }
+        .previewEnvironment(seed: .typicalDay)
+}
+#endif

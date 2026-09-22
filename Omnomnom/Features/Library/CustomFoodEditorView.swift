@@ -128,3 +128,41 @@ struct CustomFoodEditorView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("New custom food") {
+    CustomFoodEditorView(food: nil)
+        .previewEnvironment(seed: .library)
+}
+
+#Preview("Editing a custom food") {
+    let container = PreviewStore.container(seed: .library)
+    let food = PreviewStore.food(in: container, kind: .custom)
+    return CustomFoodEditorView(food: food)
+        .previewEnvironment(container: container)
+}
+
+#Preview("Editing a product") {
+    let container = PreviewStore.container(seed: .library)
+    let food = PreviewStore.food(in: container, kind: .product)
+    return CustomFoodEditorView(food: food)
+        .previewEnvironment(container: container)
+}
+
+#Preview("Product from a barcode miss") {
+    CustomFoodEditorView(
+        food: nil,
+        product: ProductPrefill(barcode: "4006381333931", name: nil, reason: "Not on Open Food Facts")
+    )
+    .previewEnvironment(seed: .library)
+}
+
+#Preview("Product with a name but no values") {
+    CustomFoodEditorView(
+        food: nil,
+        product: ProductPrefill(barcode: "8710340000104", name: "Crunchy muesli", reason: "No nutrition values on Open Food Facts")
+    )
+    .previewEnvironment(seed: .library)
+    .environment(\.dynamicTypeSize, .accessibility5)
+}
+#endif

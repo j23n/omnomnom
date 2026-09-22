@@ -1,3 +1,4 @@
+import DeveloperToolsSupport
 import SwiftUI
 
 /// Live nutrition for the typed amount, eight cells, no judgment.
@@ -21,3 +22,21 @@ struct NutritionPreview: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Per serving", traits: .sizeThatFitsLayout) {
+    NutritionPreview(nutrition: PreviewStore.recipeChoice.perUnit)
+        .padding()
+}
+
+#Preview("Nothing typed yet", traits: .sizeThatFitsLayout) {
+    NutritionPreview(nutrition: .zero)
+        .padding()
+}
+
+#Preview("Accessibility 5", traits: .sizeThatFitsLayout) {
+    NutritionPreview(nutrition: PreviewStore.recipeChoice.perUnit)
+        .padding()
+        .environment(\.dynamicTypeSize, .accessibility5)
+}
+#endif

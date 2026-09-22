@@ -1,3 +1,4 @@
+import DeveloperToolsSupport
 import SwiftUI
 
 /// Foods other apps or the Health app wrote for the day: name, source, time and energy.
@@ -29,3 +30,24 @@ struct ForeignMealsSection: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Also in Health", traits: .fixedLayout(width: 393, height: 260)) {
+    List {
+        ForeignMealsSection(
+            meals: DayHealthSummary.make(from: PreviewHealth.defaultForeignSamples, localEntryIDs: []).meals
+        )
+    }
+    .listStyle(.insetGrouped)
+}
+
+#Preview("Accessibility 5", traits: .fixedLayout(width: 393, height: 420)) {
+    List {
+        ForeignMealsSection(
+            meals: DayHealthSummary.make(from: PreviewHealth.defaultForeignSamples, localEntryIDs: []).meals
+        )
+    }
+    .listStyle(.insetGrouped)
+    .environment(\.dynamicTypeSize, .accessibility5)
+}
+#endif

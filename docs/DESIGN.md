@@ -25,7 +25,7 @@ Every screen is held to the plan's targets rather than to taste:
 ## Process
 
 1. Code-side audit per screen against the yardstick, recorded in `design/audit.md`.
-2. A preview per screen and per notable state, using the fixture database and fake services.
+2. A preview per screen and per notable state, using an in-memory seeded store and fake Health, repository and estimator services. Static renders never reach HealthKit, the network, the camera or the language model; in a live canvas, tapping Scan or Estimate does run the real availability checks, and the scanner's camera state is deliberately not previewed. With the pipeline not yet run, the bundled-food preview shows no portion chips and the Sources screen shows the missing-manifest row.
 3. Screenshots from the simulator in light and dark mode and at the largest accessibility size, kept in `design/screenshots/`.
 4. Screen-by-screen pass in fast-path order: Today, Add, Quantity, then Library, Settings, onboarding, then the two module sheets. One commit per screen.
 5. The outcomes land here: type roles, spacing, how provenance and partial states look, and what stays deliberately plain.

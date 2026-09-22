@@ -116,3 +116,21 @@ struct LibraryView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Library") {
+    LibraryView()
+        .previewEnvironment(seed: .library)
+}
+
+#Preview("Empty") {
+    LibraryView()
+        .previewEnvironment(seed: .empty)
+}
+
+#Preview("Accessibility 5") {
+    LibraryView()
+        .previewEnvironment(seed: .library)
+        .environment(\.dynamicTypeSize, .accessibility5)
+}
+#endif

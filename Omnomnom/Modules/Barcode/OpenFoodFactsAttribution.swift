@@ -1,3 +1,4 @@
+import DeveloperToolsSupport
 import Foundation
 import SwiftUI
 
@@ -39,3 +40,16 @@ struct OpenFoodFactsAttribution: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Open Food Facts", traits: .sizeThatFitsLayout) {
+    OpenFoodFactsAttribution(attribution: PreviewStore.productChoice.attribution)
+        .padding()
+}
+
+#Preview("Accessibility 5", traits: .sizeThatFitsLayout) {
+    OpenFoodFactsAttribution(attribution: PreviewStore.productChoice.attribution)
+        .padding()
+        .environment(\.dynamicTypeSize, .accessibility5)
+}
+#endif

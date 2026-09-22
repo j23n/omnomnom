@@ -1,3 +1,4 @@
+import DeveloperToolsSupport
 import SwiftUI
 
 /// One recipe or stored food in the Add sheet: name, the amount used last time and
@@ -28,3 +29,16 @@ struct ChoiceRow: View {
         .accessibilityElement(children: .combine)
     }
 }
+
+#if DEBUG
+#Preview("Recipe, custom, products", traits: .sizeThatFitsLayout) {
+    VStack(alignment: .leading, spacing: 16) {
+        ChoiceRow(choice: PreviewStore.recipeChoice)
+        ChoiceRow(choice: PreviewStore.customChoice)
+        ChoiceRow(choice: PreviewStore.productChoice)
+        ChoiceRow(choice: PreviewStore.manualProductChoice)
+        ChoiceRow(choice: PreviewStore.bundledChoice)
+    }
+    .padding()
+}
+#endif
