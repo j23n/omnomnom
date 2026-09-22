@@ -43,9 +43,6 @@ struct TodayView: View {
                             Image(systemName: "calendar")
                         }
                         .accessibilityLabel("Choose a day")
-                        .popover(isPresented: $model.isDatePickerPresented) {
-                            DayPicker(model: model)
-                        }
                     }
                     ToolbarItem(placement: .primaryAction) {
                         Button {
@@ -64,6 +61,9 @@ struct TodayView: View {
                         onLogged: { model.handle($0) },
                         onMessage: { model.show(banner: $0) }
                     ))
+                }
+                .sheet(isPresented: $model.isDatePickerPresented) {
+                    DayPicker(model: model)
                 }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
