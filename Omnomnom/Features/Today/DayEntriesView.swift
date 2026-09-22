@@ -43,6 +43,16 @@ struct DayEntriesView: View {
         entries.contains { $0.healthState == .unauthorized }
     }
 
+    /// The editor's presentation, driven by the model's entry rather than by
+    /// `sheet(item:)`, which would ask a SwiftData model to be `Identifiable` across
+    /// a delete. Clearing the entry closes the sheet and closing it clears the entry.
+    private var isEditorPresented: Binding<Bool> {
+        Binding(
+            get: { model.editingEntry != nil },
+            set: { if !$0 { model.editingEntry = nil } }
+        )
+    }
+
     var body: some View {
         List {
             Section {
@@ -66,7 +76,7 @@ struct DayEntriesView: View {
                             entries: slotEntries,
                             onDelete: delete,
                             onRepeat: repeatEntry,
-                            onHealthAction: { model.presentHealthActions(for: $0) }
+                            onEdit: { model.edit($0) }
                         )
                     }
                 }
@@ -76,7 +86,13 @@ struct DayEntriesView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .modifier(EntryHealthActions(model: model, onRestore: restore, onRemove: delete))
+        .sheet(isPresented: isEditorPresented) {
+            if let entry = model.editingEntry {
+                EntryEditorView(entry: entry, onRestore: restore, onDelete: delete) { banner in
+                    model.finishedEdit(banner: banner)
+                }
+            }
+        }
         .task(id: HealthReadKey(interval: interval, generation: model.healthRefresh)) {
             await loadHealthSummary()
         }
@@ -101,11 +117,9 @@ struct DayEntriesView: View {
         }
     }
 
-    private func restore(_ entry: LogEntry) {
-        let logger = EntryLogger(context: context, health: health)
-        Task {
-            await model.restore(entry, using: logger)
-        }
+    /// Awaited by the editor, which shows the outcome in the sheet the user is looking at.
+    private func restore(_ entry: LogEntry) async -> String {
+        await model.restore(entry, using: EntryLogger(context: context, health: health))
     }
 
     private func repeatEntry(_ entry: LogEntry) {

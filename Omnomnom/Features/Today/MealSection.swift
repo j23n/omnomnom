@@ -2,26 +2,23 @@ import DeveloperToolsSupport
 import SwiftData
 import SwiftUI
 
-/// One meal slot's entries with delete and repeat swipe actions. Tapping an entry that
-/// Health no longer holds in full hands it to `onHealthAction`; other rows ignore taps.
-/// The header carries the slot's symbol in the tint; the name keeps the list's own
-/// header styling and is what VoiceOver reads.
+/// One meal slot's entries with delete and repeat swipe actions. Tapping any row hands
+/// its entry to `onEdit`, which opens the editor. The header carries the slot's symbol
+/// in the tint; the name keeps the list's own header styling and is what VoiceOver reads.
 struct MealSection: View {
     let slot: MealSlot
     let entries: [LogEntry]
     let onDelete: (LogEntry) -> Void
     let onRepeat: (LogEntry) -> Void
-    let onHealthAction: (LogEntry) -> Void
+    let onEdit: (LogEntry) -> Void
 
     var body: some View {
         Section {
             ForEach(entries) { entry in
-                EntryRow(entry: entry)
+                EntryRow(entry: entry) { onEdit(entry) }
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        if entry.healthState.needsAttention {
-                            onHealthAction(entry)
-                        }
+                        onEdit(entry)
                     }
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
@@ -64,7 +61,7 @@ struct MealSection: View {
                     entries: slotEntries,
                     onDelete: { _ in },
                     onRepeat: { _ in },
-                    onHealthAction: { _ in }
+                    onEdit: { _ in }
                 )
             }
         }
@@ -85,7 +82,7 @@ struct MealSection: View {
                     entries: slotEntries,
                     onDelete: { _ in },
                     onRepeat: { _ in },
-                    onHealthAction: { _ in }
+                    onEdit: { _ in }
                 )
             }
         }

@@ -3,7 +3,7 @@ import Foundation
 import Observation
 import os
 
-/// Day selection, sheet state, the non-blocking banner and the Health actions for Today.
+/// Day selection, sheet state, the non-blocking banner and the entry actions for Today.
 /// Copying yesterday into an empty day lives in `TodayViewModel+CopyYesterday`.
 @Observable
 final class TodayViewModel {
@@ -12,8 +12,8 @@ final class TodayViewModel {
     var isDatePickerPresented = false
     /// The transient notice at the bottom; `show(banner:)` also takes it down again.
     var banner: String?
-    /// Entry whose Health actions dialog is up; `nil` when none.
-    var healthActionEntry: LogEntry?
+    /// Entry whose editor is up; `nil` when none.
+    var editingEntry: LogEntry?
     /// Whether the once-per-launch notice about unauthorized entries is on screen.
     var showsUnauthorizedNotice = false
     /// Bumped whenever the day's Health samples should be read again.
@@ -102,8 +102,16 @@ final class TodayViewModel {
         showsUnauthorizedNotice = true
     }
 
-    func presentHealthActions(for entry: LogEntry) {
-        healthActionEntry = entry
+    /// Opens the editor for one entry; clearing `editingEntry` closes it again.
+    func edit(_ entry: LogEntry) {
+        editingEntry = entry
+    }
+
+    /// Takes an edit's outcome: its banner, if it warrants one, and a fresh read of the
+    /// day, whose samples in Health were just replaced.
+    func finishedEdit(banner message: String?) {
+        show(banner: message)
+        healthRefresh += 1
     }
 
     /// Mirrors the delete to Health first; the row only goes when Health agreed or held nothing.
@@ -113,16 +121,18 @@ final class TodayViewModel {
         healthRefresh += 1
     }
 
-    /// Writes the entry to Health again under a bumped version.
-    func restore(_ entry: LogEntry, using logger: EntryLogger) async {
+    /// Writes the entry to Health again under a bumped version and hands back what to
+    /// tell the user. The editor is the only caller and shows it inside the sheet: a
+    /// banner would go up on Today, underneath the sheet, where nobody would see it.
+    func restore(_ entry: LogEntry, using logger: EntryLogger) async -> String {
+        defer { healthRefresh += 1 }
         do {
             let result = try await logger.restore(entry)
-            show(banner: result.bannerMessage ?? "Restored \(entry.foodName) to Health.")
+            return result.bannerMessage ?? "Restored \(entry.foodName) to Health."
         } catch {
             AppLog.store.error("restore failed: \(error.localizedDescription, privacy: .public)")
-            show(banner: "Could not restore the entry.")
+            return "Could not restore the entry."
         }
-        healthRefresh += 1
     }
 
     /// Re-logs the same item and amount at the current time, from the entry's snapshot.
