@@ -56,7 +56,7 @@ extension View {
 /// so an onboarding preview and a main-tabs preview in the same canvas never share.
 nonisolated enum PreviewDefaults {
     static func make(onboardingComplete: Bool = true, barcode: Bool = false, estimation: Bool = false) -> UserDefaults {
-        let name = "com.johanneswindelen.omnomnom.preview.onboarding\(onboardingComplete).barcode\(barcode).estimation\(estimation)"
+        let name = "com.j23n.omnomnom.preview.onboarding\(onboardingComplete).barcode\(barcode).estimation\(estimation)"
         guard let defaults = UserDefaults(suiteName: name) else { return .standard }
         defaults.set(onboardingComplete, forKey: AppServices.onboardingKey)
         defaults.set(barcode, forKey: BarcodeModule.enabledKey)
