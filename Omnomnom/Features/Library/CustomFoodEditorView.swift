@@ -4,16 +4,20 @@ import SwiftData
 import SwiftUI
 
 /// What the barcode flow hands the editor after a miss: the code to store on the new
-/// product, the name when Open Food Facts had one, and the sentence saying why.
+/// product, the name when Open Food Facts had one, the unit its label counts in, and
+/// the sentence saying why. The unit is `mass` when nothing was found to say otherwise,
+/// which is where a food typed from scratch starts too.
 nonisolated struct ProductPrefill: Hashable, Sendable {
     let barcode: String
     let name: String?
+    let measure: FoodMeasure
     let reason: String
 }
 
 /// Creates or edits a custom food, or creates a product typed from its label after a
-/// barcode miss: a name and per-100 g values, energy required. Done stores the draft;
-/// Cancel discards it. Logged entries keep their snapshots.
+/// barcode miss: a name, the unit it is measured in, and per-100 values in that unit,
+/// energy required. Done stores the draft; Cancel discards it. Logged entries keep
+/// their snapshots, and the unit is fixed once there are any.
 struct CustomFoodEditorView: View {
     /// The food being edited, or `nil` to create one.
     let food: Food?
@@ -31,9 +35,14 @@ struct CustomFoodEditorView: View {
         self.food = food
         self.product = product
         self.onSaved = onSaved
-        var draft = food.map { CustomFoodDraft(name: $0.name, per100g: $0.per100g, photo: $0.photo?.data) } ?? CustomFoodDraft()
-        if food == nil, let name = product?.name {
-            draft.name = name
+        var draft = food.map {
+            CustomFoodDraft(name: $0.name, per100g: $0.per100g, measure: $0.measure, photo: $0.photo?.data)
+        } ?? CustomFoodDraft()
+        if food == nil, let product {
+            draft.measure = product.measure
+            if let name = product.name {
+                draft.name = name
+            }
         }
         _draft = State(initialValue: draft)
     }
@@ -42,6 +51,12 @@ struct CustomFoodEditorView: View {
         if product != nil { return "New product" }
         if let food { return food.kind == .product ? "Edit product" : "Edit custom food" }
         return "New custom food"
+    }
+
+    /// Whether the unit is fixed: changing it under logged entries would silently
+    /// reinterpret their amounts, and those entries are a record, not a reference.
+    private var isMeasureLocked: Bool {
+        !(food?.entries ?? []).isEmpty
     }
 
     var body: some View {
@@ -56,13 +71,27 @@ struct CustomFoodEditorView: View {
                 Section {
                     TextField("Name", text: $draft.name)
                         .textInputAutocapitalization(.words)
+                    Picker("Measured in", selection: $draft.measure) {
+                        ForEach(FoodMeasure.allCases, id: \.self) { measure in
+                            Text(measure.displayName).tag(measure)
+                        }
+                    }
+                    .disabled(isMeasureLocked)
+                } footer: {
+                    if isMeasureLocked {
+                        Text("The unit stays as it is: entries already logged are counted in it.")
+                    }
                 }
                 Section {
                     ForEach(Nutrient.allCases, id: \.self) { nutrient in
                         NutrientField(nutrient: nutrient, draft: $draft)
                     }
                 } header: {
-                    Text(product == nil ? "Per 100 g" : "Type the values from the label, per 100 g")
+                    Text(
+                        product == nil
+                            ? "Per \(draft.measure.referenceUnit)"
+                            : "Type the values from the label, \(draft.measure.referenceText)"
+                    )
                 } footer: {
                     Text("Energy is required. Leave a value blank when it is not known; it is then not written to Health.")
                 }
@@ -99,6 +128,7 @@ struct CustomFoodEditorView: View {
     /// its barcode and source `manual` when the editor was opened from the scanner.
     /// Editing a product fetched from Open Food Facts also switches its source to
     /// `manual`: the values are the user's now, so the badge and attribution go. The
+    /// unit follows the draft only while nothing has been logged from the food. The
     /// photo is created, replaced or deleted to match the draft.
     private func save() {
         guard let per100g = draft.per100g else { return }
@@ -106,13 +136,19 @@ struct CustomFoodEditorView: View {
         if let food {
             food.name = draft.trimmedName
             food.per100g = per100g
+            if !isMeasureLocked {
+                food.measure = draft.measure
+            }
             if food.kind == .product {
                 food.source = .manual
                 food.fetchedAt = nil
             }
             saved = food
         } else {
-            saved = Food(name: draft.trimmedName, kind: product == nil ? .custom : .product, bundledID: nil, per100g: per100g)
+            saved = Food(
+                name: draft.trimmedName, kind: product == nil ? .custom : .product,
+                bundledID: nil, per100g: per100g, measure: draft.measure
+            )
             if let product {
                 saved.barcode = product.barcode
                 saved.source = .manual
@@ -162,7 +198,7 @@ struct CustomFoodEditorView: View {
 #Preview("Product from a barcode miss") {
     CustomFoodEditorView(
         food: nil,
-        product: ProductPrefill(barcode: "4006381333931", name: nil, reason: "Not on Open Food Facts")
+        product: ProductPrefill(barcode: "4006381333931", name: nil, measure: .mass, reason: "Not on Open Food Facts")
     )
     .previewEnvironment(seed: .library)
 }
@@ -170,9 +206,23 @@ struct CustomFoodEditorView: View {
 #Preview("Product with a name but no values") {
     CustomFoodEditorView(
         food: nil,
-        product: ProductPrefill(barcode: "8710340000104", name: "Crunchy muesli", reason: "No nutrition values on Open Food Facts")
+        product: ProductPrefill(
+            barcode: "8710340000104", name: "Crunchy muesli", measure: .mass,
+            reason: "No nutrition values on Open Food Facts"
+        )
     )
     .previewEnvironment(seed: .library)
     .environment(\.dynamicTypeSize, .accessibility5)
+}
+
+#Preview("Drink from a barcode miss") {
+    CustomFoodEditorView(
+        food: nil,
+        product: ProductPrefill(
+            barcode: "7394376616105", name: "Oat drink", measure: .volume,
+            reason: "No nutrition values on Open Food Facts"
+        )
+    )
+    .previewEnvironment(seed: .library)
 }
 #endif

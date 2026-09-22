@@ -5,7 +5,7 @@ import SwiftUI
 
 /// Name, amount and energy for one entry, plus a badge when Health does not hold it fully
 /// and an "Estimated" badge when the values came from the on-device model.
-/// A recipe entry shows its servings next to the raw grams they weigh.
+/// A recipe entry shows its servings next to the raw amount they come to.
 /// Every row reads as a button, with a chevron after the energy: a tap opens the
 /// entry's editor. Every row also leads with a square: an entry with a photo, its own
 /// or its recipe's or food's, shows it, and the thumbnail is a button of its own that
@@ -20,13 +20,14 @@ struct EntryRow: View {
 
     @State private var isShowingPhoto = false
 
-    /// "1.5 servings · 351 g · 19:15": the amount, then the time it was logged.
+    /// "1.5 servings · 351 g · 19:15": the amount in the unit it was logged in, then the
+    /// time it was logged.
     private var details: String {
         var parts: [String] = []
         if let servings = entry.servings {
             parts.append(Formatters.servings(servings))
         }
-        parts.append(Formatters.wholeGrams(entry.grams))
+        parts.append(Formatters.wholeAmount(entry.grams, measure: entry.measure))
         parts.append(entry.timestamp.formatted(date: .omitted, time: .shortened))
         return parts.joined(separator: " · ")
     }

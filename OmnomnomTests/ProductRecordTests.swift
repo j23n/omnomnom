@@ -59,7 +59,7 @@ struct ProductRecordTests {
     }
 
     @Test func missingNutrimentsGiveAnUnusableRecord() throws {
-        let record = try product(#""product_name":"Mystery"#)
+        let record = try product(#""product_name":"Mystery""#)
         #expect(record.per100g == .empty)
         #expect(!record.isUsable)
         #expect(record.name == "Mystery")
@@ -91,6 +91,40 @@ struct ProductRecordTests {
         let record = try product(#""product_name":"\#(long)","brands":" \#(long) ,other""#)
         #expect(record.name?.count == 200)
         #expect(record.brand?.count == 200)
+    }
+
+    @Test func aDrinkIsMeasuredInMillilitres() throws {
+        let record = try product(#"""
+            "product_name":"Oat drink","quantity":"1 l","product_quantity_unit":"ml",
+            "nutriments":{"energy-kcal_100g":46}
+            """#)
+        #expect(record.measure == .volume)
+        #expect(record.per100g.energy == 46)
+        #expect(record.isUsable)
+    }
+
+    @Test func aSolidIsMeasuredInGrams() throws {
+        let record = try product(#""quantity":"400 g","product_quantity_unit":"g","nutriments":{"energy-kcal_100g":539}"#)
+        #expect(record.measure == .mass)
+    }
+
+    @Test func aMissingQuantityFallsBackToMass() throws {
+        #expect(try product(#""product_name":"Mystery""#).measure == .mass)
+        #expect(try product(#""quantity":500,"nutriments":{"energy-kcal_100g":1}"#).measure == .mass)
+    }
+
+    /// The free-text quantity is the field that is actually filled in upstream, so the
+    /// unit is read out of it as a word, never from a letter inside another word.
+    @Test func volumeIsReadAsAUnitWordOnly() {
+        #expect(ProductRecord.inferredMeasure(quantityUnit: nil, quantity: "330ml") == .volume)
+        #expect(ProductRecord.inferredMeasure(quantityUnit: nil, quantity: "6 x 25 cl") == .volume)
+        #expect(ProductRecord.inferredMeasure(quantityUnit: nil, quantity: "Flasche 0,5 L") == .volume)
+        #expect(ProductRecord.inferredMeasure(quantityUnit: "ml", quantity: nil) == .volume)
+        #expect(ProductRecord.inferredMeasure(quantityUnit: nil, quantity: "250 g") == .mass)
+        #expect(ProductRecord.inferredMeasure(quantityUnit: nil, quantity: "1 kg") == .mass)
+        #expect(ProductRecord.inferredMeasure(quantityUnit: nil, quantity: "Aloe vera gel") == .mass)
+        #expect(ProductRecord.inferredMeasure(quantityUnit: nil, quantity: "") == .mass)
+        #expect(ProductRecord.inferredMeasure(quantityUnit: nil, quantity: nil) == .mass)
     }
 
     @Test func nullAndBooleanNutrimentsAreIgnored() throws {

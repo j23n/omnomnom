@@ -15,10 +15,10 @@ nonisolated struct EntryAmountBasis: Hashable, Sendable {
     /// The source points at the linked recipe or food where there still is one and at
     /// the entry itself otherwise: it only has to be stable while the sheet is open.
     let choice: FoodChoice
-    /// The amount the entry holds now: its grams, or its servings.
+    /// The amount the entry holds now: its own grams or millilitres, or its servings.
     let amount: Double
 
-    /// Whether the amount is counted in servings rather than in grams.
+    /// Whether the amount is counted in servings rather than in the food's own unit.
     var isServings: Bool { choice.isRecipe }
 
     /// `nil` when there is nothing to scale: no grams, or a servings count of zero or
@@ -50,6 +50,7 @@ nonisolated struct EntryAmountBasis: Hashable, Sendable {
                 : .recipe(id: entry.recipe?.id ?? entry.id),
             name: entry.foodName,
             perUnit: perUnit,
+            measure: entry.measure,
             gramsPerServing: gramsPerServing,
             lastAmount: nil,
             attribution: attribution,

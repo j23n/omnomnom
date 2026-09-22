@@ -3,8 +3,9 @@ import os
 import SwiftData
 
 /// Moves a recipe between its model and its draft. Writing replaces the ingredient rows
-/// in draft order, freezing the draft's copy of each food, creates, replaces or deletes
-/// the photo, and saves once. Main-actor because it drives a `ModelContext`.
+/// in draft order, freezing the draft's copy of each food and the unit it is measured
+/// in, creates, replaces or deletes the photo, and saves once. Main-actor because it
+/// drives a `ModelContext`.
 struct RecipeWriter {
     let context: ModelContext
 
@@ -20,6 +21,7 @@ struct RecipeWriter {
                 source: row.food?.choice?.source,
                 name: row.name,
                 per100g: row.per100g,
+                measure: row.measure,
                 gramsText: Formatters.fieldText(row.grams)
             )
         }
@@ -47,7 +49,9 @@ struct RecipeWriter {
         do {
             for (index, row) in draft.ingredients.enumerated() {
                 guard let grams = row.grams else { throw RecipeWriteError.invalidDraft }
-                let ingredient = RecipeIngredient(sortIndex: index, grams: grams, name: row.name, per100g: row.per100g)
+                let ingredient = RecipeIngredient(
+                    sortIndex: index, grams: grams, name: row.name, per100g: row.per100g, measure: row.measure
+                )
                 context.insert(ingredient)
                 ingredient.recipe = recipe
                 ingredient.food = try food(for: row)
@@ -65,7 +69,9 @@ struct RecipeWriter {
     private func food(for row: IngredientDraft) throws -> Food? {
         switch row.source {
         case .bundled(let id):
-            let choice = FoodChoice(source: .bundled(id: id), name: row.name, perUnit: row.per100g)
+            // The bundled database is per 100 g throughout, so a row that came from it
+            // is a mass whatever the draft carries; the stored copy must say so.
+            let choice = FoodChoice(source: .bundled(id: id), name: row.name, perUnit: row.per100g, measure: .mass)
             return try Food.storeBundled(choice, refresh: false, in: context)
         case .custom(let foodID):
             return try Food.custom(id: foodID, in: context)
@@ -82,7 +88,7 @@ nonisolated enum RecipeWriteError: Error, Equatable, Sendable, LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidDraft: "The recipe needs a name, at least one ingredient, and a gram amount on every row."
+        case .invalidDraft: "The recipe needs a name, at least one ingredient, and an amount on every row."
         }
     }
 }

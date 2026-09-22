@@ -1,6 +1,7 @@
 import Foundation
 
-/// Nutrient amounts, either per 100 g (a food) or absolute (a logged entry or a total).
+/// Nutrient amounts, either per 100 units of a food — grams or millilitres, as the
+/// food's `FoodMeasure` says — or absolute (a logged entry or a total).
 ///
 /// A missing nutrient is `nil`, never 0, mirroring the bundled database where FDC
 /// simply has no value. Energy is always present for bundled foods but is optional
@@ -76,7 +77,9 @@ nonisolated struct Nutrition: Codable, Hashable, Sendable {
         Set(Nutrient.allCases.filter { self[$0] != nil })
     }
 
-    /// Treats `self` as per 100 g and returns the amounts in `grams` of the food.
+    /// Treats `self` as per 100 units of the food and returns the amounts in `grams` of
+    /// it. The unit is the food's own, so this scales millilitres exactly as it scales
+    /// grams; nothing here converts between the two.
     func scaled(toGrams grams: Double) -> Nutrition {
         map { $0 * grams / 100 }
     }

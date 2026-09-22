@@ -18,8 +18,9 @@ nonisolated enum EntryLoggerError: Error, Equatable, Sendable, LocalizedError {
 }
 
 extension EntryLogger {
-    /// Logs what was picked in the Add sheet. `amount` is grams for a food and servings
-    /// for a recipe. A bundled food's snapshot comes from the live choice and refreshes
+    /// Logs what was picked in the Add sheet. `amount` is the food's own unit, grams or
+    /// millilitres, and servings for a recipe. The unit is frozen onto the entry beside
+    /// the amount. A bundled food's snapshot comes from the live choice and refreshes
     /// the stored copy; a custom food, a product and a recipe are read from their stored
     /// rows, so the entry reflects what the Library holds at this moment. `isEstimate`
     /// marks an entry the user confirmed from an on-device estimate: same food, same
@@ -63,13 +64,14 @@ extension EntryLogger {
             mealSlot: mealSlot,
             foodName: food.name,
             grams: grams,
-            snapshot: SnapshotMath.snapshot(per100g: per100g, grams: grams)
+            snapshot: SnapshotMath.snapshot(per100g: per100g, grams: grams),
+            measure: food.measure
         )
         context.insert(entry)
         entry.isEstimate = isEstimate
         entry.food = food
         let lastAmount = food.lastGrams
-        food.noteUsed(grams: grams, at: Date.now)
+        food.noteUsed(amount: grams, at: Date.now)
         if isEstimate {
             // An estimated weight is the model's guess. It counts as a use, but it must
             // not come back as the amount the Quantity sheet prefills next time, which

@@ -18,14 +18,14 @@ nonisolated enum Formatters {
         }
     }
 
-    /// "182 g" or "62.5 g" for portion chips and amount fields.
-    static func grams(_ value: Double) -> String {
-        "\(number(value, unit: .gram)) g"
+    /// "182 g" or "62.5 ml" for portion chips and amount fields.
+    static func amount(_ value: Double, measure: FoodMeasure) -> String {
+        "\(value.formatted(.number.precision(.fractionLength(0...1)))) \(measure.unitSymbol)"
     }
 
-    /// "350 g": whole grams for entry captions, where a decimal adds nothing.
-    static func wholeGrams(_ value: Double) -> String {
-        "\(value.formatted(.number.precision(.fractionLength(0)))) g"
+    /// "350 g" or "250 ml": whole units for entry captions, where a decimal adds nothing.
+    static func wholeAmount(_ value: Double, measure: FoodMeasure) -> String {
+        "\(value.formatted(.number.precision(.fractionLength(0)))) \(measure.unitSymbol)"
     }
 
     /// The amount as VoiceOver should read it: "75.4 grams", "455 milligrams";
@@ -41,20 +41,21 @@ nonisolated enum Formatters {
         return value == 1 ? "1 serving" : "\(number) servings"
     }
 
-    /// Smallest and largest amount the gram field accepts, in grams.
-    static let minimumGrams = 0.1
-    static let maximumGrams = 5000.0
+    /// Smallest and largest amount the field accepts, counted in the food's own unit.
+    /// These are bounds on an amount, not on a mass: millilitres share them.
+    static let minimumAmount = 0.1
+    static let maximumAmount = 5000.0
 
     /// Smallest and largest number of servings the field accepts when logging a recipe.
     static let minimumServings = 0.1
     static let maximumServings = 50.0
 
-    /// Largest per-100 g value a custom food field accepts; sodium in milligrams sets the scale.
+    /// Largest per-100 value a custom food field accepts; sodium in milligrams sets the scale.
     static let maximumNutrientValue = 100_000.0
 
-    /// "0.1 and 5000 g", for the inline hint under the gram field.
-    static var gramsRangeText: String {
-        "\(rangeText(minimumGrams, maximumGrams)) g"
+    /// "0.1 and 5000 g", or "0.1 and 5000 ml", for the hint under the amount field.
+    static func amountRangeText(measure: FoodMeasure) -> String {
+        "\(rangeText(minimumAmount, maximumAmount)) \(measure.unitSymbol)"
     }
 
     /// "0.1 and 50 servings", for the inline hint under the servings field.
@@ -62,10 +63,11 @@ nonisolated enum Formatters {
         "\(rangeText(minimumServings, maximumServings)) servings"
     }
 
-    /// Parses user-typed grams, accepting a comma as decimal separator.
-    /// `nil` when the text is not a number or lies outside `minimumGrams...maximumGrams`.
-    static func parseGrams(_ text: String) -> Double? {
-        parse(text, in: minimumGrams...maximumGrams)
+    /// Parses a typed amount in the food's own unit, accepting a comma as decimal
+    /// separator. `nil` when the text is not a number or lies outside
+    /// `minimumAmount...maximumAmount`.
+    static func parseAmount(_ text: String) -> Double? {
+        parse(text, in: minimumAmount...maximumAmount)
     }
 
     /// Parses a typed servings count the same way, within `minimumServings...maximumServings`.
@@ -73,7 +75,7 @@ nonisolated enum Formatters {
         parse(text, in: minimumServings...maximumServings)
     }
 
-    /// Parses a per-100 g value typed for a custom food: 0 or more, up to `maximumNutrientValue`.
+    /// Parses a per-100 value typed for a custom food: 0 or more, up to `maximumNutrientValue`.
     static func parseNutrientValue(_ text: String) -> Double? {
         parse(text, in: 0...maximumNutrientValue)
     }

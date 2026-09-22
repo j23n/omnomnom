@@ -22,14 +22,15 @@ struct EntryLogger {
             mealSlot: mealSlot ?? MealSlot.inferred(from: timestamp),
             foodName: live?.name ?? entry.foodName,
             grams: entry.grams,
-            snapshot: live.map { SnapshotMath.snapshot(per100g: $0.per100g, grams: entry.grams) } ?? entry.snapshot
+            snapshot: live.map { SnapshotMath.snapshot(per100g: $0.per100g, grams: entry.grams) } ?? entry.snapshot,
+            measure: entry.measure
         )
         context.insert(copy)
         copy.servings = entry.servings
         copy.isEstimate = entry.isEstimate
         copy.food = entry.food
         copy.recipe = entry.recipe
-        entry.food?.noteUsed(grams: entry.grams, at: Date.now)
+        entry.food?.noteUsed(amount: entry.grams, at: Date.now)
         if let servings = entry.servings {
             entry.recipe?.noteUsed(servings: servings, at: Date.now)
         }

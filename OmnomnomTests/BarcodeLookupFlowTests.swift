@@ -26,30 +26,46 @@ struct BarcodeLookupFlowTests {
 
     @Test func missGoesManualWithoutAName() {
         let step = BarcodeLookupFlow.step(code: code, cached: nil, lookup: .success(nil))
-        #expect(step == .manual(barcode: code, prefillName: nil, reason: "Not on Open Food Facts"))
+        #expect(step == .manual(barcode: code, prefillName: nil, measure: .mass, reason: "Not on Open Food Facts"))
     }
 
     @Test func recordWithoutEnergyGoesManualWithTheName() {
         let bare = ProductRecord(code: code, name: "Nutella", brand: "Ferrero", per100g: Nutrition(protein: 6.3))
         let step = BarcodeLookupFlow.step(code: code, cached: nil, lookup: .success(bare))
-        #expect(step == .manual(barcode: code, prefillName: "Nutella", reason: "No nutrition values on Open Food Facts"))
+        #expect(step == .manual(
+            barcode: code, prefillName: "Nutella", measure: .mass,
+            reason: "No nutrition values on Open Food Facts"
+        ))
+    }
+
+    /// A drink the label describes but Open Food Facts has no values for still opens the
+    /// editor in millilitres: the unit was on the label, only the nutrition was missing.
+    @Test func recordWithoutEnergyKeepsTheUnitItWasMeasuredIn() {
+        let drink = ProductRecord(
+            code: code, name: "Oat drink", brand: "Oatly", per100g: .empty, measure: .volume
+        )
+        let step = BarcodeLookupFlow.step(code: code, cached: nil, lookup: .success(drink))
+        #expect(step == .manual(
+            barcode: code, prefillName: "Oat drink", measure: .volume,
+            reason: "No nutrition values on Open Food Facts"
+        ))
     }
 
     @Test func networkFailureSaysNoConnection() {
         let lookup = BarcodeLookupFlow.Lookup.failure(.network(URLError(.notConnectedToInternet)))
         let step = BarcodeLookupFlow.step(code: code, cached: nil, lookup: lookup)
-        #expect(step == .manual(barcode: code, prefillName: nil, reason: "No connection"))
+        #expect(step == .manual(barcode: code, prefillName: nil, measure: .mass, reason: "No connection"))
     }
 
     @Test func otherFailuresSayLookupFailed() {
         for failure in [OpenFoodFactsError.http(500), .decoding, .invalidBarcode] {
             let step = BarcodeLookupFlow.step(code: code, cached: nil, lookup: .failure(failure))
-            #expect(step == .manual(barcode: code, prefillName: nil, reason: "Lookup failed"))
+            #expect(step == .manual(barcode: code, prefillName: nil, measure: .mass, reason: "Lookup failed"))
         }
     }
 
     @Test func skippedLookupSaysTheModuleIsOff() {
         let step = BarcodeLookupFlow.step(code: code, cached: nil, lookup: nil)
-        #expect(step == .manual(barcode: code, prefillName: nil, reason: "Barcode lookup is off"))
+        #expect(step == .manual(barcode: code, prefillName: nil, measure: .mass, reason: "Barcode lookup is off"))
     }
 }

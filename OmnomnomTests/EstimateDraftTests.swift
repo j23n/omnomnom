@@ -25,7 +25,8 @@ struct EstimateDraftTests {
         let draft = draft(items)
         #expect(draft.rows.count == 2)
         #expect(draft.rows[0].name == "Scrambled eggs")
-        #expect(draft.rows[0].gramsText == "100")
+        #expect(draft.rows[0].amountText == "100")
+        #expect(draft.rows[0].measure == .mass)
         #expect(draft.rows[0].choice == eggs)
         #expect(draft.rows[0].nutrition == Nutrition(energy: 149, protein: 10, sodium: 145))
         #expect(draft.hasUnmatchedRows == false)
@@ -47,15 +48,29 @@ struct EstimateDraftTests {
         #expect(draft.totals.energy == 149 + 78)
     }
 
-    @Test func gramsMustParseAndStayInRange() {
+    @Test func theAmountMustParseAndStayInRange() {
         var draft = draft([item("Scrambled eggs", grams: 100, choice: eggs)])
-        draft.rows[0].gramsText = "0"
-        #expect(draft.rows[0].isGramsInvalid)
+        draft.rows[0].amountText = "0"
+        #expect(draft.rows[0].isAmountInvalid)
         #expect(draft.items == nil)
         #expect(draft.totals == Nutrition.zero)
-        draft.rows[0].gramsText = "62,5"
-        #expect(draft.rows[0].isGramsInvalid == false)
+        draft.rows[0].amountText = "62,5"
+        #expect(draft.rows[0].isAmountInvalid == false)
         #expect(draft.items?[0].grams == 62.5)
+    }
+
+    /// Picking a food measured by volume makes the row's number millilitres; the values
+    /// still come from that food, scaled by the number as typed.
+    @Test func aVolumeFoodMakesTheRowsNumberMillilitres() {
+        let oatDrink = FoodChoice(
+            source: .custom(foodID: UUID()), name: "Oat drink",
+            perUnit: Nutrition(energy: 46), measure: .volume
+        )
+        var draft = draft([item("Latte", grams: 250, choice: eggs)])
+        draft.rows[0].choice = oatDrink
+        #expect(draft.rows[0].measure == .volume)
+        #expect(draft.rows[0].amount == 250)
+        #expect(draft.totals.energy == 115)
     }
 
     @Test func removingRowsAndAnEmptyDraft() {

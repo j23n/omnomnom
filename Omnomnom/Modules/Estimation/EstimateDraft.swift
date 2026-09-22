@@ -1,19 +1,19 @@
 import Foundation
 
 /// Editable state of one draft row: the name the model gave, the food its values come
-/// from, and the grams as typed. No nutrient is ever typed here; the numbers are the
-/// database's, for the weight in the field.
+/// from, and the portion as typed, in that food's own unit. No nutrient is ever typed
+/// here; the numbers are the database's, for the portion in the field.
 nonisolated struct EstimateDraftRow: Identifiable, Hashable, Sendable {
     let id: UUID
     let name: String
-    var gramsText: String
+    var amountText: String
     /// The food every value on this row comes from; `nil` until one is chosen.
     var choice: FoodChoice?
 
     init(item: ResolvedEstimateItem) {
         id = item.id
         name = item.name
-        gramsText = Formatters.fieldText(item.grams)
+        amountText = Formatters.fieldText(item.grams)
         choice = item.choice
     }
 
@@ -21,26 +21,33 @@ nonisolated struct EstimateDraftRow: Identifiable, Hashable, Sendable {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// The typed grams within the amount field's bounds, or `nil`.
-    var grams: Double? {
-        Formatters.parseGrams(gramsText)
+    /// The typed portion within the amount field's bounds, or `nil`.
+    var amount: Double? {
+        Formatters.parseAmount(amountText)
     }
 
-    var isGramsInvalid: Bool {
-        grams == nil
+    /// The unit the portion is counted in: the matched food's own, grams until one is
+    /// matched. The model always estimates a weight and every first match is a bundled
+    /// food, which is per 100 g; only a food the user picks themselves can be a volume.
+    var measure: FoodMeasure {
+        choice?.measure ?? .mass
+    }
+
+    var isAmountInvalid: Bool {
+        amount == nil
     }
 
     /// What this portion holds, from the matched food; `nil` until a food is chosen and
-    /// the grams parse.
+    /// the portion parses.
     var nutrition: Nutrition? {
         item?.nutrition
     }
 
-    /// The row as an item to log, or `nil` when no food is matched or the grams are out
+    /// The row as an item to log, or `nil` when no food is matched or the portion is out
     /// of range. The values are derived from the food, never from what the model said.
     var item: ResolvedEstimateItem? {
-        guard let choice, let grams else { return nil }
-        return ResolvedEstimateItem(id: id, name: name, grams: grams, choice: choice)
+        guard let choice, let amount else { return nil }
+        return ResolvedEstimateItem(id: id, name: name, grams: amount, choice: choice)
     }
 }
 

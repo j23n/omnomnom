@@ -33,7 +33,7 @@ struct RecipeEditorView: View {
                     Stepper(value: $draft.servings, in: RecipeDraft.minimumServings...RecipeDraft.maximumServings, step: 0.5) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(Formatters.servings(draft.servings))
-                            Text("= \(Formatters.grams(draft.gramsPerServing)) raw per serving")
+                            Text("= \(Formatters.amount(draft.gramsPerServing, measure: .mass)) raw per serving")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -56,7 +56,7 @@ struct RecipeEditorView: View {
                         EditButton()
                     }
                 } footer: {
-                    Text("Raw total \(Formatters.grams(draft.totalWeight))")
+                    Text("Raw total \(Formatters.amount(draft.totalWeight, measure: .mass))")
                 }
                 Section("Per serving") {
                     NutritionPreview(nutrition: draft.perServing)

@@ -49,7 +49,10 @@ extension Food {
             }
             return existing
         }
-        let food = Food(name: choice.name, kind: .bundled, bundledID: bundledID, per100g: choice.perUnit)
+        let food = Food(
+            name: choice.name, kind: .bundled, bundledID: bundledID,
+            per100g: choice.perUnit, measure: choice.measure
+        )
         context.insert(food)
         return food
     }

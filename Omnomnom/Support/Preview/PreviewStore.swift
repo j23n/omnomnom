@@ -14,9 +14,10 @@ nonisolated enum PreviewSeed: Hashable, Sendable {
     case yesterdayOnly
     /// The first thing ever logged: one banana at breakfast, synced.
     case firstRun
-    /// Oats at breakfast plus two estimated items sharing a photo of the plate, chicken
-    /// and rice at lunch, an apple as a snack, and 1.5 servings of a lentil soup recipe
-    /// at dinner; everything synced to Health.
+    /// Oats and a glass of oat drink, measured in millilitres, at breakfast plus two
+    /// estimated items sharing a photo of the plate, chicken and rice at lunch, an apple
+    /// as a snack, and 1.5 servings of a lentil soup recipe at dinner; everything synced
+    /// to Health.
     case typicalDay
     /// One entry per `HealthState`, plus an estimated entry and a product fetched from
     /// Open Food Facts, so every badge Today can show is on screen at once.
@@ -147,11 +148,12 @@ enum PreviewStore {
         attribution: ProductAttribution(barcode: "5013665111818", brand: "Whole Earth", source: .openFoodFacts)
     )
 
-    /// A product typed from its label after a miss.
+    /// A product typed from its label after a miss, measured in millilitres.
     static let manualProductChoice = FoodChoice(
         source: .product(foodID: UUID()),
         name: "Oat drink",
         perUnit: PreviewFoods.oatDrink,
+        measure: .volume,
         lastAmount: 250,
         attribution: ProductAttribution(barcode: "7394376616105", brand: "Oatly", source: .manual)
     )
@@ -165,10 +167,11 @@ enum PreviewStore {
     ]
 
     /// Library matches for the "Yours" section of the results list.
-    static let localResults: [FoodChoice] = [recipeChoice, customChoice, productChoice]
+    static let localResults: [FoodChoice] = [recipeChoice, customChoice, productChoice, manualProductChoice]
 }
 
-/// Per-100 g values used across seeds and sample choices; USDA figures, rounded.
+/// Per-100 values used across seeds and sample choices; USDA figures, rounded. Each is
+/// per 100 g except `oatDrink`, whose food is measured in millilitres.
 nonisolated enum PreviewFoods {
     static let apple = BundledFood(
         id: 1, name: "Apples, raw, with skin", category: "Fruits and Fruit Juices",
@@ -239,8 +242,13 @@ private struct Seeder {
         let chicken = food("Chicken, broilers or fryers, breast, meat only, cooked, roasted", bundledID: 3, per100g: PreviewFoods.chicken)
         let rice = food("Rice, white, long-grain, regular, enriched, cooked", bundledID: 5, per100g: PreviewFoods.rice)
         let apple = food(PreviewFoods.apple.name, bundledID: 1, per100g: PreviewFoods.apple.per100g)
+        let oatDrink = product(
+            "Oat drink", brand: "Oatly", barcode: "7394376616105", source: .manual,
+            per100g: PreviewFoods.oatDrink, measure: .volume
+        )
         let soup = lentilSoup()
         entry(oats, grams: 40, at: time(8, 10), slot: .breakfast)
+        entry(oatDrink, grams: 200, at: time(8, 10), slot: .breakfast)
         let eggs = estimate("Scrambled eggs", grams: 120, nutrition: PreviewFoods.scrambledEggsEstimate, at: time(8, 10), slot: .breakfast)
         let toast = estimate("Rye toast", grams: 35, nutrition: PreviewFoods.ryeToastEstimate, at: time(8, 10), slot: .breakfast)
         photo(for: [eggs, toast])
@@ -287,7 +295,10 @@ private struct Seeder {
             "Smooth peanut butter", brand: "Whole Earth", barcode: "5013665111818",
             source: .openFoodFacts, per100g: PreviewFoods.peanutButter
         )
-        product("Oat drink", brand: "Oatly", barcode: "7394376616105", source: .manual, per100g: PreviewFoods.oatDrink)
+        product(
+            "Oat drink", brand: "Oatly", barcode: "7394376616105", source: .manual,
+            per100g: PreviewFoods.oatDrink, measure: .volume
+        )
         entry(soup, servings: 1, at: time(19, 15), slot: .dinner)
     }
 
@@ -314,8 +325,11 @@ private struct Seeder {
     }
 
     @discardableResult
-    private func product(_ name: String, brand: String, barcode: String, source: FoodSource, per100g: Nutrition) -> Food {
-        let food = Food(name: name, kind: .product, bundledID: nil, per100g: per100g)
+    private func product(
+        _ name: String, brand: String, barcode: String, source: FoodSource,
+        per100g: Nutrition, measure: FoodMeasure = .mass
+    ) -> Food {
+        let food = Food(name: name, kind: .product, bundledID: nil, per100g: per100g, measure: measure)
         context.insert(food)
         food.brand = brand
         food.barcode = barcode
@@ -331,7 +345,10 @@ private struct Seeder {
         let recipe = Recipe(name: name, servings: servings)
         context.insert(recipe)
         for (index, row) in ingredients.enumerated() {
-            let ingredient = RecipeIngredient(sortIndex: index, grams: row.grams, name: row.food.name, per100g: row.food.per100g)
+            let ingredient = RecipeIngredient(
+                sortIndex: index, grams: row.grams, name: row.food.name,
+                per100g: row.food.per100g, measure: row.food.measure
+            )
             context.insert(ingredient)
             ingredient.recipe = recipe
             ingredient.food = row.food
@@ -343,11 +360,12 @@ private struct Seeder {
     private func entry(_ food: Food, grams: Double, at timestamp: Date, slot: MealSlot, state: HealthState = .synced) -> LogEntry {
         let entry = LogEntry(
             timestamp: timestamp, mealSlot: slot, foodName: food.name, grams: grams,
-            snapshot: SnapshotMath.snapshot(per100g: food.per100g, grams: grams)
+            snapshot: SnapshotMath.snapshot(per100g: food.per100g, grams: grams),
+            measure: food.measure
         )
         context.insert(entry)
         entry.food = food
-        food.noteUsed(grams: grams, at: timestamp)
+        food.noteUsed(amount: grams, at: timestamp)
         apply(state, to: entry)
         return entry
     }

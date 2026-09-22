@@ -61,13 +61,14 @@ struct SearchResultsList: View {
 private struct ResultRow: View {
     let food: BundledFood
 
-    /// "Fruits and Fruit Juices · 52 kcal per 100 g", wrapping as one line of text.
+    /// "Fruits and Fruit Juices · 52 kcal per 100 g", wrapping as one line of text. The
+    /// bundled database is per 100 g throughout, so the unit is settled here.
     private var caption: String {
         var parts: [String] = []
         if let category = food.category {
             parts.append(category)
         }
-        parts.append("\(Formatters.amount(food.per100g.energy, unit: .kilocalorie)) per 100 g")
+        parts.append("\(Formatters.amount(food.per100g.energy, unit: .kilocalorie)) \(FoodMeasure.mass.referenceText)")
         return parts.joined(separator: " · ")
     }
 

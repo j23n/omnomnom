@@ -17,8 +17,13 @@ nonisolated enum FoodSource: String, Codable, Sendable {
 }
 
 /// A food the user has logged or put in a recipe: a reference into the bundled database
-/// plus the per-100 g values copied at that time, a custom food whose values live
+/// plus the per-100 values copied at that time, a custom food whose values live
 /// here alone, or a cached product, and the usage data that drives recents.
+///
+/// `measure` says whether those per-100 values, and every amount logged from the food,
+/// are counted in grams or in millilitres. The stored columns keep the names they were
+/// written under, so `per100gEnergy` and `lastGrams` hold millilitre figures for a food
+/// measured by volume; nothing is ever converted between the two.
 ///
 /// Schema rules for a later CloudKit retrofit: no unique attributes, every attribute
 /// optional or defaulted, relationships optional with explicit inverses. The eight
@@ -28,6 +33,8 @@ final class Food {
     var id: UUID = UUID()
     var name: String = ""
     var kindRaw: String = FoodKind.bundled.rawValue
+    /// Raw `FoodMeasure`; defaulted, so rows written before the app knew the difference read as mass.
+    var measureRaw: String = FoodMeasure.mass.rawValue
     var bundledID: Int?
     var per100gEnergy: Double?
     var per100gProtein: Double?
@@ -60,10 +67,11 @@ final class Food {
     @Relationship(deleteRule: .cascade, inverse: \Photo.food)
     var photo: Photo?
 
-    init(name: String, kind: FoodKind, bundledID: Int?, per100g: Nutrition) {
+    init(name: String, kind: FoodKind, bundledID: Int?, per100g: Nutrition, measure: FoodMeasure = .mass) {
         self.id = UUID()
         self.name = name
         self.kindRaw = kind.rawValue
+        self.measureRaw = measure.rawValue
         self.bundledID = bundledID
         self.useCount = 0
         self.per100g = per100g
@@ -74,12 +82,18 @@ final class Food {
         set { kindRaw = newValue.rawValue }
     }
 
+    /// Grams or millilitres: the unit both the per-100 values and every amount are in.
+    var measure: FoodMeasure {
+        get { FoodMeasure(rawValue: measureRaw) ?? .mass }
+        set { measureRaw = newValue.rawValue }
+    }
+
     var source: FoodSource? {
         get { sourceRaw.flatMap(FoodSource.init(rawValue:)) }
         set { sourceRaw = newValue?.rawValue }
     }
 
-    /// The eight per-100 g values as one value type.
+    /// The eight per-100 values as one value type, in `measure`'s unit.
     var per100g: Nutrition {
         get {
             Nutrition(
@@ -100,9 +114,9 @@ final class Food {
         }
     }
 
-    /// Records a use for recents and the prefilled gram amount.
-    func noteUsed(grams: Double, at date: Date) {
-        lastGrams = grams
+    /// Records a use for recents and the prefilled amount, which is in `measure`'s unit.
+    func noteUsed(amount: Double, at date: Date) {
+        lastGrams = amount
         lastUsed = date
         useCount += 1
     }
@@ -113,16 +127,20 @@ final class Food {
         switch kind {
         case .bundled:
             guard let bundledID else { return nil }
-            return FoodChoice(source: .bundled(id: bundledID), name: name, perUnit: per100g, lastAmount: lastGrams)
+            return FoodChoice(
+                source: .bundled(id: bundledID), name: name, perUnit: per100g,
+                measure: measure, lastAmount: lastGrams
+            )
         case .custom:
             return FoodChoice(
-                source: .custom(foodID: id), name: name, perUnit: per100g, lastAmount: lastGrams, photo: photo?.data
+                source: .custom(foodID: id), name: name, perUnit: per100g,
+                measure: measure, lastAmount: lastGrams, photo: photo?.data
             )
         case .product:
             guard let barcode else { return nil }
             let attribution = ProductAttribution(barcode: barcode, brand: brand, source: source ?? .manual)
             return FoodChoice(
-                source: .product(foodID: id), name: name, perUnit: per100g,
+                source: .product(foodID: id), name: name, perUnit: per100g, measure: measure,
                 lastAmount: lastGrams, attribution: attribution, photo: photo?.data
             )
         }

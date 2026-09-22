@@ -45,9 +45,9 @@ nonisolated enum OpenFoodFactsError: Error, Sendable {
 /// Looks products up on Open Food Facts. An actor so decoding runs off the main
 /// actor; one instance per lookup is fine, since the transport holds the session.
 actor OpenFoodFactsClient {
-    nonisolated static let fields = "code,product_name,brands,nutriments"
+    nonisolated static let fields = "code,product_name,brands,nutriments,quantity,product_quantity_unit"
     nonisolated static let endpoint = "https://world.openfoodfacts.org/api/v2/product/"
-    /// A product with the four requested fields is a few kilobytes; anything above this is not one.
+    /// A product with only the requested fields is a few kilobytes; anything above this is not one.
     nonisolated static let maximumBodySize = 1 << 20
 
     private let transport: any HTTPTransport
