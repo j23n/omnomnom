@@ -39,10 +39,6 @@ struct DayEntriesView: View {
         SnapshotMath.total(of: entries.map(\.snapshot))
     }
 
-    private var hasUnauthorizedEntries: Bool {
-        entries.contains { $0.healthState == .unauthorized }
-    }
-
     /// The editor's presentation, driven by the model's entry rather than by
     /// `sheet(item:)`, which would ask a SwiftData model to be `Identifiable` across
     /// a delete. Clearing the entry closes the sheet and closing it clears the entry.
@@ -94,11 +90,18 @@ struct DayEntriesView: View {
             }
         }
         .task(id: HealthReadKey(interval: interval, generation: model.healthRefresh)) {
-            await loadHealthSummary()
+            await readHealth()
         }
-        .onChange(of: hasUnauthorizedEntries, initial: true) { _, hasAny in
-            model.noteUnauthorizedEntries(hasAny)
-        }
+    }
+
+    /// The one visit to Health per day shown. The day's samples come first, since they
+    /// are what the screen is waiting on; the authorization behind the notice follows.
+    /// Both are actor hops, so they run off the day's task rather than off anything a
+    /// redraw evaluates.
+    private func readHealth() async {
+        await loadHealthSummary()
+        let authorization = await HealthAuthorization.current(from: health)
+        model.noteHealthAuthorization(authorization, hasEntries: !entries.isEmpty)
     }
 
     /// Reads the day from Health after the local rows are on screen; a failure leaves the

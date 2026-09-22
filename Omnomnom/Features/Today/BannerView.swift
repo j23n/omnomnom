@@ -28,8 +28,9 @@ struct BannerView: View {
     }
 }
 
-/// Shown once per launch when an entry never reached Health because no nutrient may be
-/// written. Opens the Health app, where sharing with this app is switched on.
+/// Shown once per launch when Health is on the device but currently accepts no nutrient
+/// from this app, so the sentence is true of the app right now rather than of one old
+/// entry. Opens the Health app, where sharing with this app is switched on.
 struct UnauthorizedNoticeView: View {
     let dismiss: () -> Void
 

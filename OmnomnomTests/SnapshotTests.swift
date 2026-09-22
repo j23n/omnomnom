@@ -35,7 +35,26 @@ struct SnapshotTests {
         #expect(HealthState.derive(written: written, present: [], orphaned: false) == .gone)
         #expect(HealthState.derive(written: [], present: [], orphaned: false) == .unauthorized)
         #expect(HealthState.derive(written: written, present: written, orphaned: true) == .orphaned)
+    }
+
+    /// Every state but `synced` is named on the row, and none of the texts claims more
+    /// than the state knows: an empty written set means the entry is not in Health,
+    /// whether the permission was missing or the write failed.
+    @Test func badgeTextNamesEveryStateButSynced() {
         #expect(HealthState.synced.badgeText == nil)
-        #expect(HealthState.gone.badgeText != nil)
+        #expect(HealthState.partial.badgeText == "Partly in Health")
+        #expect(HealthState.gone.badgeText == "No longer in Health")
+        #expect(HealthState.unauthorized.badgeText == "Not in Health")
+        #expect(HealthState.orphaned.badgeText == "Only in Health")
+    }
+
+    /// The editor offers to write the entry to Health for every state where Health is
+    /// short of it, including one that never got there, so a failed write is recoverable.
+    @Test func needsAttentionCoversEveryStateHealthIsShortOf() {
+        #expect(HealthState.partial.needsAttention)
+        #expect(HealthState.gone.needsAttention)
+        #expect(HealthState.unauthorized.needsAttention)
+        #expect(!HealthState.synced.needsAttention)
+        #expect(!HealthState.orphaned.needsAttention)
     }
 }

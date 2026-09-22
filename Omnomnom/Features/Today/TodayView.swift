@@ -124,6 +124,13 @@ struct TodayView: View {
         .previewEnvironment(seed: .typicalDay)
 }
 
+#Preview("Health accepting nothing") {
+    // The notice comes up on its own, off the day's Health read, rather than being set
+    // on the model as the preview below sets it.
+    TodayView()
+        .previewEnvironment(seed: .typicalDay, health: .denied)
+}
+
 #Preview("Unauthorized notice") {
     let model = TodayViewModel()
     model.showsUnauthorizedNotice = true

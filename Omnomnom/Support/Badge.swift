@@ -31,7 +31,7 @@ struct Badge: View {
 }
 
 #Preview("Accessibility 5", traits: .sizeThatFitsLayout) {
-    Badge("Missing from Health")
+    Badge("No longer in Health")
         .padding()
         .environment(\.dynamicTypeSize, .accessibility5)
 }
