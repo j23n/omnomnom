@@ -1,4 +1,5 @@
 #if DEBUG
+import CoreGraphics
 import Foundation
 import os
 import SwiftData
@@ -13,14 +14,16 @@ nonisolated enum PreviewSeed: Hashable, Sendable {
     case yesterdayOnly
     /// The first thing ever logged: one banana at breakfast, synced.
     case firstRun
-    /// Oats at breakfast, chicken and rice at lunch, an apple as a snack, and 1.5
-    /// servings of a lentil soup recipe at dinner; everything synced to Health.
+    /// Oats at breakfast plus two estimated items sharing a photo of the plate, chicken
+    /// and rice at lunch, an apple as a snack, and 1.5 servings of a lentil soup recipe
+    /// at dinner; everything synced to Health.
     case typicalDay
     /// One entry per `HealthState`, plus an estimated entry and a product fetched from
     /// Open Food Facts, so every badge Today can show is on screen at once.
     case healthStates
     /// Three recipes with ingredients, four custom foods and two products; the first
-    /// recipe has been logged once so its editor shows the "previously logged" footnote.
+    /// recipe has been logged once so its editor shows the "previously logged" footnote,
+    /// and the lentil soup and the Greek yogurt carry a photo.
     case library
 }
 
@@ -30,7 +33,7 @@ nonisolated enum PreviewSeed: Hashable, Sendable {
 @MainActor
 enum PreviewStore {
     /// The same schema the app opens.
-    static let schema = Schema([Food.self, LogEntry.self, Recipe.self, RecipeIngredient.self])
+    static let schema = Schema([Food.self, LogEntry.self, Recipe.self, RecipeIngredient.self, Photo.self])
 
     static func container(seed: PreviewSeed = .typicalDay) -> ModelContainer {
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
@@ -80,6 +83,27 @@ enum PreviewStore {
         foods(in: container).first { $0.kind == kind }
     }
 
+    // MARK: A photo, drawn rather than bundled
+
+    /// A 600 x 400 two-colour JPEG standing in for a photo of a plate: a warm
+    /// background with a pale disc, so thumbnails and the viewer have something to show.
+    static let samplePhoto: Data = drawSamplePhoto()
+
+    private nonisolated static func drawSamplePhoto() -> Data {
+        let width = 600
+        let height = 400
+        guard let context = CGContext(
+            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return Data() }
+        context.setFillColor(red: 0.78, green: 0.47, blue: 0.29, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        context.setFillColor(red: 0.96, green: 0.93, blue: 0.86, alpha: 1)
+        context.fillEllipse(in: CGRect(x: 140, y: 40, width: 320, height: 320))
+        guard let image = context.makeImage(), let data = PhotoData.jpegData(image, quality: 0.8) else { return Data() }
+        return data
+    }
+
     // MARK: Choices for the Quantity sheet and search results, no store needed
 
     /// A bundled apple, never logged before; portions come from the bundled database.
@@ -102,6 +126,16 @@ enum PreviewStore {
         ),
         gramsPerServing: 233.75,
         lastAmount: 1.5
+    )
+
+    /// The lentil soup with the sample photo, as its Add-sheet row shows it.
+    static let photoRecipeChoice = FoodChoice(
+        source: .recipe(id: UUID()),
+        name: "Lentil soup",
+        perUnit: recipeChoice.perUnit,
+        gramsPerServing: recipeChoice.gramsPerServing,
+        lastAmount: 1.5,
+        photo: samplePhoto
     )
 
     /// A product fetched from Open Food Facts, logged before at 30 g.
@@ -159,6 +193,9 @@ nonisolated enum PreviewFoods {
     static let oatDrink = Nutrition(energy: 46, protein: 1, carbohydrates: 6.6, fatTotal: 1.5, fatSaturated: 0.2, fiber: 0.8, sugar: 4, sodium: 40)
     /// A latte as the on-device model might estimate it: values for the portion, not per 100 g.
     static let latteEstimate = Nutrition(energy: 180, protein: 9.4, carbohydrates: 14.2, fatTotal: 9.6, fatSaturated: 5.5, fiber: 0, sugar: 14, sodium: 130)
+    /// Two scrambled eggs and a slice of rye toast as estimated from a photo, values for the portion.
+    static let scrambledEggsEstimate = Nutrition(energy: 200, protein: 13.5, carbohydrates: 2, fatTotal: 15, fatSaturated: 5.2, fiber: 0, sugar: 1.2, sodium: 320)
+    static let ryeToastEstimate = Nutrition(energy: 90, protein: 3, carbohydrates: 17, fatTotal: 1.2, fatSaturated: 0.2, fiber: 2.3, sugar: 1.5, sodium: 200)
     /// Totals of a full day, for the totals row on its own.
     static let dayTotals = Nutrition(energy: 1_648, protein: 92, carbohydrates: 181, fatTotal: 58, fatSaturated: 18, fiber: 27, sugar: 54, sodium: 2_130)
     /// What other apps wrote to Health for the day: the latte from the default foreign samples.
@@ -204,6 +241,9 @@ private struct Seeder {
         let apple = food(PreviewFoods.apple.name, bundledID: 1, per100g: PreviewFoods.apple.per100g)
         let soup = lentilSoup()
         entry(oats, grams: 40, at: time(8, 10), slot: .breakfast)
+        let eggs = estimate("Scrambled eggs", grams: 120, nutrition: PreviewFoods.scrambledEggsEstimate, at: time(8, 10), slot: .breakfast)
+        let toast = estimate("Rye toast", grams: 35, nutrition: PreviewFoods.ryeToastEstimate, at: time(8, 10), slot: .breakfast)
+        photo(for: [eggs, toast])
         entry(chicken, grams: 150, at: time(12, 40), slot: .lunch)
         entry(rice, grams: 180, at: time(12, 40), slot: .lunch)
         entry(apple, grams: 182, at: time(15, 30), slot: .snack)
@@ -225,12 +265,7 @@ private struct Seeder {
         entry(chicken, grams: 150, at: time(12, 40), slot: .lunch, state: .gone)
         entry(rice, grams: 180, at: time(12, 40), slot: .lunch, state: .orphaned)
         entry(apple, grams: 182, at: time(15, 30), slot: .snack, state: .unauthorized)
-        let latte = LogEntry(
-            timestamp: time(15, 30), mealSlot: .snack, foodName: "Latte", grams: 250, snapshot: PreviewFoods.latteEstimate
-        )
-        context.insert(latte)
-        latte.isEstimate = true
-        apply(.synced, to: latte)
+        estimate("Latte", grams: 250, nutrition: PreviewFoods.latteEstimate, at: time(15, 30), slot: .snack)
         entry(peanutButter, grams: 30, at: time(19, 15), slot: .dinner, state: .synced)
     }
 
@@ -242,6 +277,8 @@ private struct Seeder {
         let egg = food("Egg, whole, raw, fresh", bundledID: 6, per100g: PreviewFoods.egg)
         let oil = food("Oil, olive, salad or cooking", bundledID: 15, per100g: PreviewFoods.oliveOil)
         let yogurt = food("Greek yogurt", kind: .custom, per100g: PreviewFoods.greekYogurt)
+        yogurt.photo = photo()
+        soup.photo = photo()
         food("Sourdough bread", kind: .custom, per100g: PreviewFoods.sourdough)
         food("Homemade granola", kind: .custom, per100g: PreviewFoods.granola)
         recipe("Overnight oats", servings: 2, ingredients: [(oats, 80), (milk, 200), (yogurt, 100), (banana, 120)])
@@ -328,6 +365,33 @@ private struct Seeder {
         recipe.noteUsed(servings: servings, at: timestamp)
         apply(state, to: entry)
         return entry
+    }
+
+    /// An entry confirmed from an on-device estimate: no food link, values for the portion.
+    @discardableResult
+    private func estimate(
+        _ name: String, grams: Double, nutrition: Nutrition, at timestamp: Date, slot: MealSlot, state: HealthState = .synced
+    ) -> LogEntry {
+        let entry = LogEntry(timestamp: timestamp, mealSlot: slot, foodName: name, grams: grams, snapshot: nutrition)
+        context.insert(entry)
+        entry.isEstimate = true
+        apply(state, to: entry)
+        return entry
+    }
+
+    /// A fresh `Photo` row holding the sample picture, inserted and ready to relate.
+    private func photo() -> Photo {
+        let photo = Photo(data: PreviewStore.samplePhoto)
+        context.insert(photo)
+        return photo
+    }
+
+    /// One photo of the plate shared by the entries of an estimate.
+    private func photo(for entries: [LogEntry]) {
+        let shared = photo()
+        for entry in entries {
+            entry.photo = shared
+        }
     }
 
     /// Sets the written and present sets so `entry.healthState` derives to `state`.

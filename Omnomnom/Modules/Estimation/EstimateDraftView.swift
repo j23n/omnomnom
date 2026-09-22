@@ -5,9 +5,12 @@ import SwiftUI
 
 /// The estimate as editable rows, the totals, the meal slot and time, then Log. Nothing
 /// reaches the store or Health until the button is tapped; every value can be changed
-/// or the row removed first.
+/// or the row removed first. When the estimate came from a photo, a toggle decides
+/// whether the photo is kept with the entries; it is on by default.
 struct EstimateDraftView: View {
     let day: Date
+    /// The stored-size photo the estimate was made from; `nil` for a text estimate.
+    let photo: Data?
     let onLogged: (String) -> Void
 
     @Environment(\.modelContext) private var context
@@ -16,12 +19,14 @@ struct EstimateDraftView: View {
     @State private var draft: EstimateDraft
     @State private var mealSlot: MealSlot
     @State private var timestamp: Date
+    @State private var keepsPhoto = true
     @State private var isSaving = false
     @State private var saveError: String?
 
     /// - Parameter day: the day shown on Today; the entries default to that day at the current time.
-    init(draft: EstimateDraft, day: Date, onLogged: @escaping (String) -> Void) {
+    init(draft: EstimateDraft, day: Date, photo: Data? = nil, onLogged: @escaping (String) -> Void) {
         self.day = day
+        self.photo = photo
         self.onLogged = onLogged
         _draft = State(initialValue: draft)
         let timestamp = QuantitySheet.defaultTimestamp(on: day)
@@ -67,6 +72,18 @@ struct EstimateDraftView: View {
                     }
                 }
                 DatePicker("Time", selection: $timestamp, displayedComponents: [.date, .hourAndMinute])
+                if photo != nil {
+                    Toggle(isOn: $keepsPhoto) {
+                        HStack(spacing: 12) {
+                            PhotoThumbnail(data: photo, size: 44)
+                            Text("Keep photo")
+                        }
+                    }
+                }
+            } footer: {
+                if photo != nil {
+                    Text("Kept with these entries on this device. Never sent to Health.")
+                }
             }
             if let saveError {
                 Section {
@@ -92,7 +109,7 @@ struct EstimateDraftView: View {
         isSaving = true
         let logger = EstimateLogger(context: context, health: health)
         do {
-            let outcome = try await logger.log(items, mealSlot: mealSlot, at: timestamp)
+            let outcome = try await logger.log(items, mealSlot: mealSlot, at: timestamp, photo: keepsPhoto ? photo : nil)
             onLogged(outcome.bannerMessage)
         } catch {
             saveError = "Could not save: \(error.localizedDescription)"
@@ -105,6 +122,13 @@ struct EstimateDraftView: View {
 #Preview("Three items, one warning") {
     NavigationStack {
         EstimateDraftView(draft: PreviewEstimates.draft, day: .now) { _ in }
+    }
+    .previewEnvironment(seed: .empty)
+}
+
+#Preview("From a photo") {
+    NavigationStack {
+        EstimateDraftView(draft: PreviewEstimates.draft, day: .now, photo: PreviewStore.samplePhoto) { _ in }
     }
     .previewEnvironment(seed: .empty)
 }

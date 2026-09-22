@@ -6,9 +6,12 @@ import FoundationModels
 /// change on a first build stays contained here.
 @available(iOS 27, *)
 extension FoundationMealEstimator {
+    /// Longest side of the image handed to the model, in pixels.
+    nonisolated static let promptPixelSize = 1024
+
     /// Downscales the photo, attaches it after the text, and returns the model's estimate.
     func respond(session: LanguageModelSession, imageData: Data, text: String, options: GenerationOptions) async throws -> MealEstimate {
-        guard let image = EstimationImage.downscaled(imageData, maxPixelSize: EstimationImage.promptPixelSize) else {
+        guard let image = PhotoData.downscaled(imageData, maxPixelSize: Self.promptPixelSize) else {
             throw EstimationError.failed("the photo could not be read.")
         }
         let response = try await session.respond(generating: MealEstimate.self, options: options) {

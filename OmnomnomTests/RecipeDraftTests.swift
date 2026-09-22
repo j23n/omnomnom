@@ -39,6 +39,17 @@ struct RecipeDraftTests {
         #expect(draft.isValid)
     }
 
+    @Test func photoIsPartOfTheDraft() {
+        var draft = RecipeDraft()
+        #expect(draft.photo == nil)
+        let plain = draft
+        draft.photo = Data([0xFF, 0xD8, 0x01])
+        #expect(draft != plain)
+        #expect(draft.photo == Data([0xFF, 0xD8, 0x01]))
+        draft.photo = nil
+        #expect(draft == plain)
+    }
+
     @Test func totalsSkipRowsStillBeingTyped() {
         var draft = RecipeDraft()
         draft.add(oats)

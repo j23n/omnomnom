@@ -236,3 +236,16 @@ Every Foundation Models, PhotosUI and ImageIO signature was verified against App
 ### Sign-off
 
 Signed off 2026-09-21 subject to the first build. Watch list: a deprecation warning on the iOS 26 generation error type when building with the iOS 27 SDK, kept for iOS 26 devices; attachment initializer overload resolution on the iOS 27.2 SDK; text tier on an iOS 26 device and photo tier on iOS 27, each unavailable reason's alert text, cancelling mid-estimate leaving no draft or entries, camera capture orientation, and peak memory when decoding a large library photo.
+
+## Design pass and photos
+
+Status log for the work after milestone 6, all on the same review loop (implementer, independent reviewer, fixes, sign-off) and each screen its own commit.
+
+- Today: date as title with the full date as subtitle, day chevrons and a calendar popover in the toolbar, a bottom Add food glass capsule, energy as a hero line over the other seven totals, one notice slot, one badge style, integer captions, Copy yesterday on an empty day.
+- Brand kit: accent colour tangerine, the bite mark (one `Shape` defines it; icon script and SVG follow), rounded bold for the wordmark and the energy figure only, meal symbols, the About row. Recorded in `docs/DESIGN.md` under Brand.
+- Add sheet: Scan and Estimate as list content, single-text captions. Quantity sheet: bottom Log capsule, select-all on focus, accessibility layouts, whole-gram captions.
+- Photos: a `Photo` model with external-storage data, related to an estimate's entries, a recipe or a food; picker section shared by the estimation sheet and both editors; thumbnails and a viewer. This supersedes the milestone 6 note that the photo is never stored: it is stored only when the user keeps it, on the device, and never reaches Health.
+
+### Sign-off
+
+Signed off 2026-09-22 subject to the first build. Watch list: `nonisolated struct BiteMark: Shape` and `nonisolated struct FlowLayout: Layout` under default main-actor isolation; `TextField("0", text:selection:)` overload resolution and whether select-all survives programmatic focus; the bottom bar rising above the keyboard on the Quantity sheet at the medium detent; `Section` header `Label` styling; `ContentUnavailableView` honouring the 56 pt mark; the `Photo` schema validating at container creation (one-to-one cascade from recipe and food, inverse from `Photo.entries`); `PhotoData.stored(from:)` ImageIO bridging; the thumbnail button not swallowing the row tap; and the icon rendering with the system's glass treatment.

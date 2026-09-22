@@ -2,8 +2,9 @@ import DeveloperToolsSupport
 import SwiftUI
 
 /// One recipe or stored food in the Add sheet: name, the amount used last time and
-/// energy per unit ("per 100 g" for a food, "per serving" for a recipe). A product
-/// adds its brand and, when fetched from there, names Open Food Facts.
+/// energy per unit ("per 100 g" for a food, "per serving" for a recipe), with the
+/// user's photo when there is one. A product adds its brand and, when fetched from
+/// there, names Open Food Facts.
 struct ChoiceRow: View {
     let choice: FoodChoice
 
@@ -24,11 +25,14 @@ struct ChoiceRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(choice.name)
-            ValueText(caption)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        HStack(spacing: 12) {
+            PhotoThumbnail(data: choice.photo, size: 44)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(choice.name)
+                ValueText(caption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
@@ -39,6 +43,7 @@ struct ChoiceRow: View {
 #Preview("Recipe, custom, products", traits: .sizeThatFitsLayout) {
     VStack(alignment: .leading, spacing: 16) {
         ChoiceRow(choice: PreviewStore.recipeChoice)
+        ChoiceRow(choice: PreviewStore.photoRecipeChoice)
         ChoiceRow(choice: PreviewStore.customChoice)
         ChoiceRow(choice: PreviewStore.productChoice)
         ChoiceRow(choice: PreviewStore.manualProductChoice)

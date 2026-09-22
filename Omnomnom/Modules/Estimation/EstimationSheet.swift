@@ -3,8 +3,9 @@ import os
 import SwiftUI
 
 /// Describe a meal in words, add a photo on iOS 27, and get a draft to check. The
-/// request runs in a cancellable task; the draft screen is pushed on success and hands
-/// its banner message back through `onLogged` once the entries are saved.
+/// request runs in a cancellable task; the draft screen is pushed on success, offers to
+/// keep the photo with the entries, and hands its banner message back through
+/// `onLogged` once they are saved.
 struct EstimationSheet: View {
     let day: Date
     let onLogged: (String) -> Void
@@ -48,7 +49,10 @@ struct EstimationSheet: View {
                         .accessibilityLabel("Meal description")
                 }
                 if availability?.supportsPhoto == true {
-                    EstimationPhotoSection(photo: $photo, isBusy: isEstimating)
+                    PhotoPickerSection(
+                        photo: $photo, isBusy: isEstimating,
+                        footer: "Used on this device only. You choose whether to keep it when you log."
+                    )
                 }
                 if let availability, !availability.isAvailable {
                     Section {
@@ -84,7 +88,7 @@ struct EstimationSheet: View {
                 }
             }
             .navigationDestination(item: $draft) { draft in
-                EstimateDraftView(draft: draft, day: day, onLogged: onLogged)
+                EstimateDraftView(draft: draft, day: day, photo: photo, onLogged: onLogged)
             }
             .task { availability = fixedAvailability ?? EstimationAvailability.current() }
             .onDisappear { task?.cancel() }

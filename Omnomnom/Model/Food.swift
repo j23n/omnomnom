@@ -55,6 +55,11 @@ final class Food {
     @Relationship(deleteRule: .nullify, inverse: \RecipeIngredient.food)
     var ingredientUses: [RecipeIngredient]?
 
+    /// The user's own photo of a custom food or product, shown with the food and every
+    /// entry logged from it. Never a product image from Open Food Facts.
+    @Relationship(deleteRule: .cascade, inverse: \Photo.food)
+    var photo: Photo?
+
     init(name: String, kind: FoodKind, bundledID: Int?, per100g: Nutrition) {
         self.id = UUID()
         self.name = name
@@ -110,13 +115,15 @@ final class Food {
             guard let bundledID else { return nil }
             return FoodChoice(source: .bundled(id: bundledID), name: name, perUnit: per100g, lastAmount: lastGrams)
         case .custom:
-            return FoodChoice(source: .custom(foodID: id), name: name, perUnit: per100g, lastAmount: lastGrams)
+            return FoodChoice(
+                source: .custom(foodID: id), name: name, perUnit: per100g, lastAmount: lastGrams, photo: photo?.data
+            )
         case .product:
             guard let barcode else { return nil }
             let attribution = ProductAttribution(barcode: barcode, brand: brand, source: source ?? .manual)
             return FoodChoice(
                 source: .product(foodID: id), name: name, perUnit: per100g,
-                lastAmount: lastGrams, attribution: attribution
+                lastAmount: lastGrams, attribution: attribution, photo: photo?.data
             )
         }
     }

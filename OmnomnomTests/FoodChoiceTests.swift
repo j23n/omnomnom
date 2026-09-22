@@ -49,6 +49,15 @@ struct FoodChoiceTests {
         #expect(prefilled.perUnit == choice.perUnit)
     }
 
+    @Test func photoRidesAlongThroughPrefill() {
+        let photo = Data([0xFF, 0xD8, 0x03])
+        let choice = FoodChoice(source: .custom(foodID: UUID()), name: "Granola", perUnit: apple, photo: photo)
+        #expect(choice.photo == photo)
+        #expect(choice.with(lastAmount: 40).photo == photo)
+        #expect(FoodChoice(source: .bundled(id: 1), name: "Apple", perUnit: apple).photo == nil)
+        #expect(choice != FoodChoice(source: choice.source, name: "Granola", perUnit: apple))
+    }
+
     @Test func sourcesAreDistinctAcrossKinds() {
         let id = UUID()
         let sources: Set<FoodChoice.Source> = [

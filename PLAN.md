@@ -414,6 +414,8 @@ Gate on `SystemLanguageModel.default.availability` before `#available(iOS 27, *)
 
 The result lands in an editable draft the user confirms. An estimate is never written to HealthKit automatically.
 
+The photo is used for the request in memory; the draft screen offers to keep it, and a kept photo is stored with the entries of that estimate as a `Photo` row, on the device only. Recipes and custom foods take a photo the same way. Photos are never sent to Health and never fetched from Open Food Facts.
+
 ## Licensing and compliance
 
 Not legal advice; this is a map of what to verify.

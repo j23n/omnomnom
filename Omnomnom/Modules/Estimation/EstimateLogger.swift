@@ -20,15 +20,23 @@ nonisolated struct EstimationLogOutcome: Hashable, Sendable {
 }
 
 /// Logs the confirmed rows: one entry per item, flagged as an estimate, with the typed
-/// values as its frozen snapshot and no food link. All entries are saved in one go and
+/// values as its frozen snapshot and no food link. A kept photo becomes one `Photo`
+/// row that every entry of the estimate shares. All entries are saved in one go and
 /// then mirrored to Health one after another. Main-actor because it drives a `ModelContext`.
 struct EstimateLogger {
     let context: ModelContext
     let health: any HealthWriting
 
     /// Throws only when the local save fails, after rolling the context back; Health
-    /// outcomes are reported through the result, as everywhere else.
-    func log(_ items: [EstimatedDraftItem], mealSlot: MealSlot, at timestamp: Date) async throws -> EstimationLogOutcome {
+    /// outcomes are reported through the result, as everywhere else. `photo` is the
+    /// stored-size bytes to keep with the entries, or `nil` to keep nothing.
+    func log(
+        _ items: [EstimatedDraftItem], mealSlot: MealSlot, at timestamp: Date, photo: Data? = nil
+    ) async throws -> EstimationLogOutcome {
+        let sharedPhoto = photo.map { Photo(data: $0) }
+        if let sharedPhoto {
+            context.insert(sharedPhoto)
+        }
         var entries: [LogEntry] = []
         for item in items {
             let entry = LogEntry(
@@ -36,6 +44,7 @@ struct EstimateLogger {
             )
             entry.isEstimate = true
             context.insert(entry)
+            entry.photo = sharedPhoto
             entries.append(entry)
         }
         do {
@@ -45,7 +54,7 @@ struct EstimateLogger {
             AppLog.store.error("estimate save failed: \(error.localizedDescription, privacy: .public)")
             throw error
         }
-        AppLog.estimation.info("logged \(entries.count) estimated entries")
+        AppLog.estimation.info("logged \(entries.count) estimated entries, photo kept: \(sharedPhoto != nil)")
         let logger = EntryLogger(context: context, health: health)
         var results: [LogResult] = []
         for entry in entries {
