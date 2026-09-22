@@ -75,4 +75,15 @@ struct FormattersTests {
         #expect(Formatters.fieldText(1500) == "1500")
         #expect(Formatters.parseGrams(Formatters.fieldText(62.5)) == 62.5)
     }
+
+    /// Whole results only where the text is compared: the decimal separator is the host's.
+    @Test func prefillTextRoundsToOneDecimalAndKeepsWholeAmountsWhole() {
+        #expect(Formatters.prefillText(30) == "30")
+        #expect(Formatters.prefillText(30.0) == "30")
+        #expect(Formatters.prefillText(33.96) == "34")
+        #expect(Formatters.prefillText(1500) == "1500")
+        #expect(Formatters.parseGrams(Formatters.prefillText(33.94)) == 33.9)
+        #expect(Formatters.parseGrams(Formatters.prefillText(350.625)) == 350.6)
+        #expect(Formatters.parseServings(Formatters.prefillText(1.5)) == 1.5)
+    }
 }
