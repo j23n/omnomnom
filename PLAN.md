@@ -360,7 +360,7 @@ Optional user-set reference targets are a plausible later addition, off by defau
 
 Entries this app wrote are editable and swipeable. Samples read from HealthKit that another source wrote appear in totals but are visually distinct, labelled with their source, and carry no edit affordance, because HealthKit will not permit one.
 
-An entry in the `partial` or `gone` state needs its own visible treatment on Today, naming which nutrients Health no longer has, with one tap to restore them and one to remove the entry locally. An `unauthorized` entry shows once that nothing reached Health, with a link to Settings. Silent behaviour in any direction is wrong.
+Every entry opens an editor from Today, and any entry Health does not hold in full says so there, naming which nutrients are missing, with one action to write it to Health again and one to delete it. An entry that never reached Health is treated the same way, because the cause, a refused permission or a failed write, is not knowable from the entry. The standing notice about Health refusing nutrition is raised from what Health allows at that moment, never from the state of old entries. Silent behaviour in any direction is wrong.
 
 ### Recipe builder
 
