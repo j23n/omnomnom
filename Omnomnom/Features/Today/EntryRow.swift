@@ -1,5 +1,6 @@
 import DeveloperToolsSupport
 import Foundation
+import SwiftData
 import SwiftUI
 
 /// Name, amount and energy for one entry, plus a badge when Health does not hold it fully

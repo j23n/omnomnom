@@ -1,4 +1,5 @@
 import DeveloperToolsSupport
+import SwiftData
 import SwiftUI
 
 /// One meal slot's entries with delete and repeat swipe actions. Tapping an entry that
