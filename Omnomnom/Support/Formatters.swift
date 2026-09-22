@@ -18,9 +18,21 @@ nonisolated enum Formatters {
         }
     }
 
-    /// "182 g" or "62.5 g" for portion chips and entry rows.
+    /// "182 g" or "62.5 g" for portion chips and amount fields.
     static func grams(_ value: Double) -> String {
         "\(number(value, unit: .gram)) g"
+    }
+
+    /// "350 g": whole grams for entry captions, where a decimal adds nothing.
+    static func wholeGrams(_ value: Double) -> String {
+        "\(value.formatted(.number.precision(.fractionLength(0)))) g"
+    }
+
+    /// The amount as VoiceOver should read it: "75.4 grams", "455 milligrams";
+    /// "not recorded" when the value is unknown.
+    static func spokenAmount(_ value: Double?, unit: NutrientUnit) -> String {
+        guard let value else { return "not recorded" }
+        return "\(number(value, unit: unit)) \(unit.spokenName)"
     }
 
     /// "1 serving", "1.5 servings", "0.5 servings".
@@ -71,12 +83,18 @@ nonisolated enum Formatters {
         value.formatted(.number.precision(.fractionLength(0...2)).grouping(.never))
     }
 
-    /// "Today", "Yesterday", "Tomorrow" or a medium date.
+    /// "Today", "Yesterday", "Tomorrow" or a short weekday and date, "Mon 21 Sep", in
+    /// the order the locale puts them.
     static func dayTitle(_ date: Date, calendar: Calendar = .current) -> String {
         if calendar.isDateInToday(date) { return "Today" }
         if calendar.isDateInYesterday(date) { return "Yesterday" }
         if calendar.isDateInTomorrow(date) { return "Tomorrow" }
-        return date.formatted(date: .abbreviated, time: .omitted)
+        return date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
+    }
+
+    /// The full date under `dayTitle`: "Monday, 21 September 2026".
+    static func daySubtitle(_ date: Date, calendar: Calendar = .current) -> String {
+        date.formatted(Date.FormatStyle(date: .complete, time: .omitted, calendar: calendar))
     }
 
     private static func parse(_ text: String, in range: ClosedRange<Double>) -> Double? {

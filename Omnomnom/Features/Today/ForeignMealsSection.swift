@@ -1,4 +1,5 @@
 import DeveloperToolsSupport
+import Foundation
 import SwiftUI
 
 /// Foods other apps or the Health app wrote for the day: name, source, time and energy.
@@ -12,16 +13,12 @@ struct ForeignMealsSection: View {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(meal.name)
-                        HStack(spacing: 6) {
-                            Text(meal.sourceName)
-                            Text(meal.start, style: .time)
-                        }
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        Text("\(meal.sourceName) · \(meal.start.formatted(date: .omitted, time: .shortened))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Text(Formatters.amount(meal.nutrition.energy, unit: .kilocalorie))
-                        .font(.body.monospacedDigit())
+                    ValueText(meal.nutrition.energy, unit: .kilocalorie)
                         .foregroundStyle(.secondary)
                 }
                 .accessibilityElement(children: .combine)

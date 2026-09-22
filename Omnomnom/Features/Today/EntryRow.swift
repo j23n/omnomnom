@@ -6,56 +6,58 @@ import SwiftUI
 /// Name, amount and energy for one entry, plus a badge when Health does not hold it fully
 /// and an "Estimated" badge when the values came from the on-device model.
 /// A recipe entry shows its servings next to the raw grams they weigh.
-/// Rows in the `partial` or `gone` state read as buttons: a tap opens the Health actions.
+/// Rows in the `partial` or `gone` state read as buttons, with a chevron after the
+/// energy: a tap opens the Health actions.
 struct EntryRow: View {
     let entry: LogEntry
 
     private var isActionable: Bool { entry.healthState.needsAttention }
 
-    private var hint: String {
-        isActionable ? "Double tap to restore it to Health or remove it here" : ""
+    /// "1.5 servings · 351 g · 19:15": the amount, then the time it was logged.
+    private var details: String {
+        var parts: [String] = []
+        if let servings = entry.servings {
+            parts.append(Formatters.servings(servings))
+        }
+        parts.append(Formatters.wholeGrams(entry.grams))
+        parts.append(entry.timestamp.formatted(date: .omitted, time: .shortened))
+        return parts.joined(separator: " · ")
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.foodName)
-                HStack(spacing: 6) {
-                    if let servings = entry.servings {
-                        Text("\(Formatters.servings(servings)) · \(Formatters.grams(entry.grams))")
-                    } else {
-                        Text(Formatters.grams(entry.grams))
-                    }
-                    Text(entry.timestamp, style: .time)
-                    if entry.isEstimate {
-                        EntryBadge(text: "Estimated")
-                    }
-                    if let badge = entry.healthState.badge {
-                        EntryBadge(text: badge)
-                    }
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) { caption }
+                    VStack(alignment: .leading, spacing: 4) { caption }
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
-            Spacer()
-            Text(Formatters.amount(entry.snapshot.energy, unit: .kilocalorie))
-                .font(.body.monospacedDigit())
+            .frame(maxWidth: .infinity, alignment: .leading)
+            ValueText(entry.snapshot.energy, unit: .kilocalorie)
+            if isActionable {
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isActionable ? .isButton : [])
-        .accessibilityHint(hint)
+        .accessibilityHint(isActionable ? "Restore to Health or remove here" : "")
     }
-}
 
-/// A small capsule caption next to the amount.
-private struct EntryBadge: View {
-    let text: String
-
-    var body: some View {
-        Text(text)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 1)
-            .background(.quaternary, in: Capsule())
+    @ViewBuilder
+    private var caption: some View {
+        ValueText(details)
+        if entry.isEstimate {
+            Badge("Estimated")
+        }
+        if let text = entry.healthState.badgeText {
+            Badge(text)
+        }
     }
 }
 

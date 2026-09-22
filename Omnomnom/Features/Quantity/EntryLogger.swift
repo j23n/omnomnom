@@ -9,16 +9,16 @@ struct EntryLogger {
     let context: ModelContext
     let health: any HealthWriting
 
-    /// Re-logs an entry as the repeat action does: same amount at `timestamp`, meal slot
-    /// inferred from it. A custom food or product that still exists is recomputed from
-    /// its current values, since the user may have corrected them; a recipe and any entry
-    /// without a live food link are copied from the frozen snapshot. Links and the
-    /// estimate flag are copied for display.
-    func repeatEntry(_ entry: LogEntry, at timestamp: Date) async throws -> LogResult {
+    /// Re-logs an entry as the repeat action does: same amount at `timestamp`, in
+    /// `mealSlot` or, when `nil`, the slot inferred from the time. A custom food or
+    /// product that still exists is recomputed from its current values, since the user
+    /// may have corrected them; a recipe and any entry without a live food link are
+    /// copied from the frozen snapshot. Links and the estimate flag are copied for display.
+    func repeatEntry(_ entry: LogEntry, at timestamp: Date, mealSlot: MealSlot? = nil) async throws -> LogResult {
         let live = entry.food.flatMap { $0.kind == .custom || $0.kind == .product ? $0 : nil }
         let copy = LogEntry(
             timestamp: timestamp,
-            mealSlot: MealSlot.inferred(from: timestamp),
+            mealSlot: mealSlot ?? MealSlot.inferred(from: timestamp),
             foodName: live?.name ?? entry.foodName,
             grams: entry.grams,
             snapshot: live.map { SnapshotMath.snapshot(per100g: $0.per100g, grams: entry.grams) } ?? entry.snapshot

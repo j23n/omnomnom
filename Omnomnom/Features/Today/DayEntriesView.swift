@@ -5,7 +5,8 @@ import SwiftUI
 
 /// The entries of one day, queried live, with totals on top and swipe actions per row.
 /// Local rows render first; what Health holds for the day is read afterwards and
-/// folded into the totals and the "Also in Health" section.
+/// folded into the totals and the "Also in Health" section. The day before is queried
+/// too, only to know whether an empty today can offer to copy it.
 struct DayEntriesView: View {
     let model: TodayViewModel
     private let interval: DateInterval
@@ -14,15 +15,22 @@ struct DayEntriesView: View {
     @Environment(\.health) private var health
     @Environment(\.healthObserving) private var observing
     @Query private var entries: [LogEntry]
+    @Query private var previousDayEntries: [LogEntry]
     @State private var healthSummary = DayHealthSummary.empty
+    @State private var isCopying = false
 
     init(day: Date, model: TodayViewModel, calendar: Calendar = .current) {
         self.model = model
         let start = calendar.startOfDay(for: day)
         let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start
+        let previousStart = calendar.date(byAdding: .day, value: -1, to: start) ?? start
         interval = DateInterval(start: start, end: end)
         _entries = Query(
             filter: #Predicate<LogEntry> { $0.timestamp >= start && $0.timestamp < end },
+            sort: \LogEntry.timestamp
+        )
+        _previousDayEntries = Query(
+            filter: #Predicate<LogEntry> { $0.timestamp >= previousStart && $0.timestamp < start },
             sort: \LogEntry.timestamp
         )
     }
@@ -42,10 +50,10 @@ struct DayEntriesView: View {
             }
             if entries.isEmpty {
                 Section {
-                    ContentUnavailableView(
-                        "Nothing logged yet",
-                        systemImage: "fork.knife",
-                        description: Text("Tap + to log one thing.")
+                    EmptyDayView(
+                        canCopyYesterday: model.isShowingToday && !previousDayEntries.isEmpty,
+                        isCopying: isCopying,
+                        copyYesterday: copyPreviousDay
                     )
                     .listRowSeparator(.hidden)
                 }
@@ -106,6 +114,19 @@ struct DayEntriesView: View {
             await model.repeatEntry(entry, using: logger)
         }
     }
+
+    /// Re-logs yesterday's entries into today; the button stays disabled until the last
+    /// one has been mirrored, so a second tap cannot double the day.
+    private func copyPreviousDay() {
+        guard !isCopying else { return }
+        isCopying = true
+        let logger = EntryLogger(context: context, health: health)
+        let entries = previousDayEntries
+        Task {
+            await model.copyPreviousDay(entries, using: logger)
+            isCopying = false
+        }
+    }
 }
 
 /// Identity of one Health read: the day window and a counter that forces a re-read.
@@ -127,6 +148,13 @@ private nonisolated struct HealthReadKey: Hashable, Sendable {
         DayEntriesView(day: .now, model: TodayViewModel())
     }
     .previewEnvironment(seed: .empty)
+}
+
+#Preview("Empty day with yesterday") {
+    NavigationStack {
+        DayEntriesView(day: .now, model: TodayViewModel())
+    }
+    .previewEnvironment(seed: .yesterdayOnly)
 }
 
 #Preview("Health states") {

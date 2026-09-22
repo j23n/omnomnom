@@ -14,7 +14,7 @@ struct NutritionPreview: View {
                     Text(nutrient.shortName)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(Formatters.amount(nutrition[nutrient], unit: nutrient.unit))
+                    ValueText(nutrition[nutrient], unit: nutrient.unit)
                         .font(nutrient.isPrimary ? .body.weight(.semibold) : .body)
                 }
                 .accessibilityElement(children: .combine)

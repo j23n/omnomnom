@@ -7,23 +7,28 @@ import SwiftUI
 struct ChoiceRow: View {
     let choice: FoodChoice
 
+    /// "Whole Earth · Last 30 g · 588 kcal per 100 g · Open Food Facts", wrapping as one line of text.
+    private var caption: String {
+        var parts: [String] = []
+        if let brand = choice.attribution?.brand {
+            parts.append(brand)
+        }
+        if let last = choice.lastAmount {
+            parts.append("Last \(choice.amountText(last))")
+        }
+        parts.append("\(Formatters.amount(choice.perUnit.energy, unit: .kilocalorie)) per \(choice.unitText)")
+        if choice.attribution?.isFromOpenFoodFacts == true {
+            parts.append("Open Food Facts")
+        }
+        return parts.joined(separator: " · ")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(choice.name)
-            HStack(spacing: 6) {
-                if let brand = choice.attribution?.brand {
-                    Text(brand)
-                }
-                if let last = choice.lastAmount {
-                    Text("Last \(choice.amountText(last))")
-                }
-                Text("\(Formatters.amount(choice.perUnit.energy, unit: .kilocalorie)) per \(choice.unitText)")
-                if choice.attribution?.isFromOpenFoodFacts == true {
-                    Text("Open Food Facts")
-                }
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            ValueText(caption)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)

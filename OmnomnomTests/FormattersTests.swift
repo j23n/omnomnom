@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import Omnomnom
 
@@ -44,6 +45,24 @@ struct FormattersTests {
         #expect(Formatters.servings(1) == "1 serving")
         #expect(Formatters.servings(2) == "2 servings")
         #expect(Formatters.servings(0.5).hasSuffix(" servings"))
+    }
+
+    @Test func wholeGramsRoundToTheGram() {
+        #expect(Formatters.wholeGrams(350) == "350 g")
+        #expect(Formatters.wholeGrams(350.4) == "350 g")
+        #expect(Formatters.wholeGrams(350.6) == "351 g")
+    }
+
+    @Test func spokenAmountNamesTheUnitOrSaysNotRecorded() {
+        #expect(Formatters.spokenAmount(92, unit: .gram) == "92 grams")
+        #expect(Formatters.spokenAmount(nil, unit: .kilocalorie) == "not recorded")
+    }
+
+    @Test func dayTitleIsRelativeNearToday() {
+        #expect(Formatters.dayTitle(.now) == "Today")
+        let calendar = Calendar.current
+        #expect(Formatters.dayTitle(calendar.date(byAdding: .day, value: -1, to: .now) ?? .now) == "Yesterday")
+        #expect(Formatters.dayTitle(calendar.date(byAdding: .day, value: 1, to: .now) ?? .now) == "Tomorrow")
     }
 
     @Test func rangeTextsNameTheUnit() {

@@ -1,81 +1,87 @@
 import DeveloperToolsSupport
 import Foundation
 import SwiftUI
-import UIKit
 
-/// Non-blocking notice at the bottom of Today, dismissed by tap.
+/// Transient notice at the bottom of Today. The view model takes it down after a few
+/// seconds; a tap anywhere on it does so at once.
 struct BannerView: View {
     let message: String
     let dismiss: () -> Void
 
     var body: some View {
         Button(action: dismiss) {
-            HStack {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text(message)
                     .font(.footnote)
                     .multilineTextAlignment(.leading)
-                Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "xmark")
-                    .font(.footnote)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
             }
             .padding()
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-            .padding(.horizontal)
+            .glassEffect(in: RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Notice: \(message). Double tap to dismiss.")
+        .accessibilityLabel(message)
+        .accessibilityHint("Dismisses the notice")
     }
 }
 
 /// Shown once per launch when an entry never reached Health because no nutrient may be
-/// written. Links to the app's page in Settings, where Health permissions live.
+/// written. Opens the Health app, where sharing with this app is switched on.
 struct UnauthorizedNoticeView: View {
     let dismiss: () -> Void
 
+    @Environment(\.openURL) private var openURL
+
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text("Some entries never reached Health because no nutrient may be written.")
-                .font(.footnote)
-                .multilineTextAlignment(.leading)
-            Spacer()
-            if let url = URL(string: UIApplication.openSettingsURLString) {
-                Link("Settings", destination: url)
-                    .font(.footnote.weight(.semibold))
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Health isn't accepting nutrition from this app. Entries are kept here.")
+                    .font(.footnote)
+                    .multilineTextAlignment(.leading)
+                if let url = URL(string: "x-apple-health://") {
+                    Button("Open Health") { openURL(url) }
+                        .font(.footnote.weight(.semibold))
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             Button(action: dismiss) {
                 Image(systemName: "xmark")
-                    .font(.footnote)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
             }
+            .buttonStyle(.plain)
             .accessibilityLabel("Dismiss")
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .padding(.horizontal)
+        .glassEffect(in: RoundedRectangle(cornerRadius: 16))
     }
 }
 
 #if DEBUG
 #Preview("Banner", traits: .sizeThatFitsLayout) {
-    BannerView(message: "Logged locally. Nothing reached Health; check Settings.") {}
-        .padding(.vertical)
+    BannerView(message: "Logged here only. Health didn't accept it.") {}
+        .padding()
 }
 
 #Preview("Banner, long message", traits: .sizeThatFitsLayout) {
     BannerView(message: DeleteOutcome.orphaned.bannerMessage ?? "") {}
-        .padding(.vertical)
+        .padding()
 }
 
 #Preview("Unauthorized notice", traits: .sizeThatFitsLayout) {
     UnauthorizedNoticeView {}
-        .padding(.vertical)
+        .padding()
 }
 
 #Preview("Both, accessibility 5", traits: .sizeThatFitsLayout) {
     VStack(spacing: 8) {
         UnauthorizedNoticeView {}
-        BannerView(message: "Logged locally. Nothing reached Health; check Settings.") {}
+        BannerView(message: "Logged here only. Health didn't accept it.") {}
     }
-    .padding(.vertical)
+    .padding()
     .environment(\.dynamicTypeSize, .accessibility5)
 }
 #endif
