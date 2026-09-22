@@ -1,12 +1,15 @@
 import Foundation
 import SwiftUI
 
-/// The Estimate button on the Add sheet and the sheet behind it. Shown only in log
-/// mode (`day` set) with the module turned on. Tapping it checks the model first: when
-/// it cannot answer, an alert says why instead of opening a sheet that could do nothing.
+/// The estimation sheet behind the Add sheet's Estimate button, which lives in
+/// `ModuleButtonsRow` and sets `isRequested`. Opens only in log mode (`day` set) with
+/// the module turned on, and checks the model first: when it cannot answer, an alert
+/// says why instead of opening a sheet that could do nothing.
 struct EstimationEntryPoint: ViewModifier {
-    /// The day being logged into; `nil` hides the button.
+    /// The day being logged into; `nil` means pick mode, where nothing opens.
     let day: Date?
+    /// Flipped to `true` by the Estimate button; reset here as the check runs.
+    @Binding var isRequested: Bool
     /// Receives the banner text once the estimate's entries are saved.
     let onLogged: (String) -> Void
 
@@ -23,11 +26,11 @@ struct EstimationEntryPoint: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .toolbar {
+            .onChange(of: isRequested) { _, requested in
+                guard requested else { return }
+                isRequested = false
                 if day != nil, estimationEnabled {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("Estimate", systemImage: "sparkles") { open() }
-                    }
+                    open()
                 }
             }
             .sheet(isPresented: $isPresented) {

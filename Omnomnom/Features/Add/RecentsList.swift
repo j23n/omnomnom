@@ -2,11 +2,14 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-/// Before any typing: foods and recipes logged before, most recent first, then the
-/// recipes and custom foods never logged, so a new recipe is one tap away.
+/// Before any typing: the module buttons when a module is on, then foods and recipes
+/// logged before, most recent first, then the recipes and custom foods never logged, so
+/// a new recipe is one tap away.
 struct RecentsList: View {
     /// Recipes are hidden when picking an ingredient, since recipes do not nest.
     let includesRecipes: Bool
+    /// The Scan and Estimate row; `nil` in pick mode.
+    let modules: ModuleButtonsRow?
     let onSelect: (FoodChoice) -> Void
 
     @Query(sort: \Food.lastUsed, order: .reverse) private var foods: [Food]
@@ -43,6 +46,9 @@ struct RecentsList: View {
                     description: Text("Search to find a food. Foods you log appear here.")
                 )
                 .listRowSeparator(.hidden)
+            }
+            if let modules {
+                modules
             }
             if !recents.isEmpty {
                 Section("Recent") {

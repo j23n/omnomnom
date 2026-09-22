@@ -795,10 +795,10 @@ Confirmed fine: dark mode; the accessibility 5 single-column totals; the foreign
 
 ### Add sheet
 
-- **Module buttons are never visible.** Scan and Estimate sit in the top toolbar, and iOS 26 hides the navigation bar while search is active, which this sheet is from the moment it opens. Move them into the content: a row of two bordered buttons above Recent when enabled, and in the no-results and no-recents states.
-- **Captions interleave at large sizes.** "Last 1,5 servings" and "313 kcal per serving" are side-by-side texts, so at accessibility 5 they wrap into each other's lines. One `Text` with " · " separators that wraps naturally.
-- Double spaces between caption parts at default size; same fix.
-- The bottom search field with the circular close button is the right shape for one-handed use; keep.
+- **Module buttons are never visible.** Scan and Estimate sit in the top toolbar, and iOS 26 hides the navigation bar while search is active, which this sheet is from the moment it opens. Move them into the content: a row of two bordered buttons above Recent when enabled, and in the no-results and no-recents states. Done: `ModuleButtonsRow` (two large bordered buttons, side by side or stacked at large type) is a list row above Recent, under the no-recents and no-results placeholders, only in log mode and only with a module on; the entry-point modifiers no longer add toolbar items and start their flow from a `Binding<Bool>` the row flips, with the same availability checks as before.
+- **Captions interleave at large sizes.** "Last 1,5 servings" and "313 kcal per serving" are side-by-side texts, so at accessibility 5 they wrap into each other's lines. One `Text` with " · " separators that wraps naturally. Done: `ChoiceRow` and the bundled `ResultRow` each build one `ValueText` joined with " · ".
+- Double spaces between caption parts at default size; same fix. Done: gone with the single joined caption.
+- The bottom search field with the circular close button is the right shape for one-handed use; keep. Done: unchanged.
 - "Yours" mixes recipes, custom foods and products with only "per serving" versus "per 100 g" to tell them apart; acceptable, revisit with the Library pass.
 
 ### Quantity sheet
