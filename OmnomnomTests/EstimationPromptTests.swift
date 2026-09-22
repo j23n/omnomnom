@@ -1,24 +1,31 @@
 import Testing
 @testable import Omnomnom
 
-/// The instructions carry the rules the plan asks for, and the prompts embed the
-/// description without ever putting it in the instructions.
+/// The instructions ask for foods and portions and forbid nutrition, and the prompts
+/// embed the description without ever putting it in the instructions.
 struct EstimationPromptTests {
     @Test func instructionsStateTheKeyRules() {
         let text = EstimationPrompt.instructions
         #expect(text.contains("food log"))
         #expect(text.contains("conservative"))
         #expect(text.contains("portion that was eaten"))
-        #expect(text.contains("not per 100 g"))
-        #expect(text.contains("sodium in milligrams"))
+        #expect(text.contains("lookupTerm"))
+        #expect(text.contains("Never estimate energy or any nutrient value"))
         #expect(text.contains("unsure"))
         #expect(text.contains("Never give advice"))
+    }
+
+    @Test func instructionsNeverAskForNutrientValues() {
+        let text = EstimationPrompt.instructions
+        #expect(!text.contains("per 100 g"))
+        #expect(!text.contains("milligrams"))
+        #expect(!text.contains("saturated"))
     }
 
     @Test func textPromptQuotesTheDescription() {
         let prompt = EstimationPrompt.text(description: "two scrambled eggs and a slice of rye toast")
         #expect(prompt.contains("\"two scrambled eggs and a slice of rye toast\""))
-        #expect(prompt.hasPrefix("Estimate the nutrition of this meal"))
+        #expect(prompt.hasPrefix("List the foods in this meal"))
     }
 
     @Test func photoPromptMentionsThePhotoAndOptionalHint() {

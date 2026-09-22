@@ -406,13 +406,15 @@ If the app ever lets users correct product data, push those corrections back to 
 
 ### AI photo estimation
 
-The on-device Foundation Models language model gained vision in iOS 27: an image is attached to the prompt alongside the text, with no separate vision pipeline and no model switch. Combined with the `@Generable` macro to request a typed Swift struct, a photo yields a structured macro estimate entirely on-device, with no network, no key and no per-token cost.
+The on-device Foundation Models language model gained vision in iOS 27: an image is attached to the prompt alongside the text, with no separate vision pipeline and no model switch. Combined with the `@Generable` macro to request a typed Swift struct, a photo yields a structured list of the foods on the plate entirely on-device, with no network, no key and no per-token cost.
+
+The model is asked only for what a description or a photo can tell it: which foods, in generic database wording as well as the words the person would use, and roughly how much of each was eaten. It is never asked for a nutrient value, because no language model can know one; that is a lookup. Each item is searched in the bundled database, the best hit becomes the food behind that row, and every number on the screen and in the entry is that food's, scaled to the portion. The match is shown under the item's name and can be changed from the Add sheet in pick mode; an item with no match carries no values and cannot be logged at all, so the user picks a food or removes the row. A logged estimate is therefore an ordinary entry with a real food link and a database snapshot, marked only by its `isEstimate` flag and the "Estimated" badge.
 
 On iOS 26 the same model exists without vision, so the module degrades to a typed description rather than disappearing. See the implementation section for how the two tiers share one prompt and one confirmation screen.
 
 Gate on `SystemLanguageModel.default.availability` before `#available(iOS 27, *)`, in that order: a device on iOS 27 with Apple Intelligence disabled fails the first check, and the availability reason is what the UI should explain.
 
-The result lands in an editable draft the user confirms. An estimate is never written to HealthKit automatically.
+The result lands in a draft the user confirms: the model's one-sentence note, a row per item with its food, its portion and what that portion holds, and the totals. An estimate is never written to HealthKit automatically.
 
 The photo is used for the request in memory; the draft screen offers to keep it, and a kept photo is stored with the entries of that estimate as a `Photo` row, on the device only. Recipes and custom foods take a photo the same way. Photos are never sent to Health and never fetched from Open Food Facts.
 

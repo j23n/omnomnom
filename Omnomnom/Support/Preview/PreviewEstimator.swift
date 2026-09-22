@@ -12,28 +12,58 @@ nonisolated struct PreviewMealEstimator: MealEstimating {
     }
 }
 
-/// Fixed model answers and the draft they convert to.
+/// Fixed model answers and the drafts they become, matched and unmatched. The matched
+/// draft carries its own database rows, so a preview shows real values whether or not
+/// `foods.sqlite` has been built into the bundle on this Mac.
 nonisolated enum PreviewEstimates {
-    /// Two scrambled eggs, a slice of rye toast and butter, as the model would return them.
+    /// Two scrambled eggs, a slice of rye toast and butter, as the model would return
+    /// them: a name to show, a term to search, and the weight eaten.
     static let breakfast = MealEstimate(
         items: [
-            EstimatedItem(
-                name: "Scrambled eggs", grams: 120, kcal: 200, proteinGrams: 13.5, carbGrams: 2, fatGrams: 15,
-                saturatedFatGrams: 5.2, fiberGrams: 0, sugarGrams: 1.2, sodiumMilligrams: 320
-            ),
-            EstimatedItem(
-                name: "Rye toast", grams: 35, kcal: 90, proteinGrams: 3, carbGrams: 17, fatGrams: 1.2,
-                saturatedFatGrams: 0.2, fiberGrams: 2.3, sugarGrams: 1.5, sodiumMilligrams: 200
-            ),
-            EstimatedItem(
-                name: "Butter", grams: 8, kcal: 0, proteinGrams: 0.1, carbGrams: 0, fatGrams: 6.5,
-                saturatedFatGrams: 4.1, fiberGrams: 0, sugarGrams: 0, sodiumMilligrams: 50
-            ),
+            EstimatedItem(name: "Scrambled eggs", lookupTerm: "scrambled eggs", grams: 120),
+            EstimatedItem(name: "Rye toast", lookupTerm: "rye bread", grams: 35),
+            EstimatedItem(name: "Butter", lookupTerm: "butter, salted", grams: 8),
         ],
         note: "Assumed two medium eggs cooked in a little butter and one slice of rye toast."
     )
 
-    /// `breakfast` after conversion: the butter's energy is computed from its macros, with a warning.
-    static let draft = EstimateDraft(result: EstimateConversion.convert(breakfast))
+    /// `breakfast` with a food behind every row, as a resolved estimate looks.
+    static let matchedDraft = draft(choices: [
+        FoodChoice(bundled: scrambledEggs),
+        FoodChoice(bundled: ryeBread),
+        FoodChoice(bundled: butter),
+    ])
+
+    /// `breakfast` with nothing found, as every estimate looks when the database is not
+    /// in the bundle, and as a single row looks until a food is chosen for it.
+    static let unmatchedDraft = draft(choices: [nil, nil, nil])
+
+    /// The converted items with the given foods attached, one per row in order.
+    private static func draft(choices: [FoodChoice?]) -> EstimateDraft {
+        let result = EstimateConversion.convert(breakfast)
+        var items: [ResolvedEstimateItem] = []
+        for (index, item) in result.items.enumerated() {
+            let choice = index < choices.count ? choices[index] : nil
+            items.append(ResolvedEstimateItem(id: item.id, name: item.name, grams: item.grams, choice: choice))
+        }
+        return EstimateDraft(note: result.note, items: items)
+    }
+
+    /// Database rows the preview stands in for, USDA figures rounded.
+    private static let scrambledEggs = BundledFood(
+        id: 9001, name: "Eggs, scrambled, cooked", category: "Dairy and Egg Products",
+        per100g: Nutrition(energy: 149, protein: 10, carbohydrates: 1.6, fatTotal: 11, fatSaturated: 3.6, fiber: 0, sugar: 1.4, sodium: 145),
+        popularity: 80
+    )
+    private static let ryeBread = BundledFood(
+        id: 9002, name: "Bread, rye", category: "Baked Products",
+        per100g: Nutrition(energy: 259, protein: 8.5, carbohydrates: 48.3, fatTotal: 3.3, fatSaturated: 0.6, fiber: 5.8, sugar: 3.9, sodium: 603),
+        popularity: 70
+    )
+    private static let butter = BundledFood(
+        id: 9003, name: "Butter, salted", category: "Dairy and Egg Products",
+        per100g: Nutrition(energy: 717, protein: 0.9, carbohydrates: 0.1, fatTotal: 81.1, fatSaturated: 51.4, fiber: 0, sugar: 0.1, sodium: 643),
+        popularity: 60
+    )
 }
 #endif

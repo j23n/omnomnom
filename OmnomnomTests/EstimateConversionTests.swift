@@ -1,56 +1,41 @@
 import Testing
 @testable import Omnomnom
 
-/// The model's structure becomes draft rows only through the clamps.
+/// What the model says becomes rows to look up: names cleaned, terms kept, weights
+/// bounded, and nothing else carried over.
 struct EstimateConversionTests {
-    private func item(
-        name: String = "Egg", grams: Double = 50, kcal: Double = 72, protein: Double = 6.3, carbs: Double = 0.4,
-        fat: Double = 4.8, saturated: Double = 1.6, fiber: Double = 0, sugar: Double = 0.2, sodium: Double = 71
-    ) -> EstimatedItem {
-        EstimatedItem(
-            name: name, grams: grams, kcal: kcal, proteinGrams: protein, carbGrams: carbs, fatGrams: fat,
-            saturatedFatGrams: saturated, fiberGrams: fiber, sugarGrams: sugar, sodiumMilligrams: sodium
+    private func item(name: String = "Egg", term: String = "scrambled eggs", grams: Double = 50) -> EstimatedItem {
+        EstimatedItem(name: name, lookupTerm: term, grams: grams)
+    }
+
+    private func choice(_ name: String, energy: Double, protein: Double) -> FoodChoice {
+        FoodChoice(
+            source: .bundled(id: name.count), name: name, perUnit: Nutrition(energy: energy, protein: protein)
         )
     }
 
-    @Test func valuesBecomeTheSnapshotAsTheyAre() {
+    @Test func nameWeightAndLookupTermSurviveTheConversion() {
         let result = EstimateConversion.convert(MealEstimate(items: [item()], note: " One large egg. "))
         #expect(result.note == "One large egg.")
-        #expect(result.warnings.isEmpty)
         #expect(result.items.count == 1)
         let row = result.items[0]
         #expect(row.name == "Egg")
+        #expect(row.lookupTerm == "scrambled eggs")
         #expect(row.grams == 50)
-        #expect(row.nutrition == Nutrition(energy: 72, protein: 6.3, carbohydrates: 0.4, fatTotal: 4.8, fatSaturated: 1.6, fiber: 0, sugar: 0.2, sodium: 71))
     }
 
-    @Test func itemsWithoutWeightOrWithNegativeEnergyAreDropped() {
-        let estimate = MealEstimate(items: [item(grams: 0), item(name: "Ghost", kcal: -5), item(grams: .nan), item(name: "Kept")], note: "")
-        let result = EstimateConversion.convert(estimate)
-        #expect(result.items.map(\.name) == ["Kept"])
+    @Test func itemsWithoutAUsableWeightAreDropped() {
+        let estimate = MealEstimate(
+            items: [item(grams: 0), item(name: "Ghost", grams: -5), item(grams: .nan), item(name: "Kept")], note: ""
+        )
+        #expect(EstimateConversion.convert(estimate).items.map(\.name) == ["Kept"])
     }
 
-    @Test func valuesAreCappedAndNegativesBecomeZero() {
-        let wild = item(grams: 9000, kcal: 1_000_000, protein: -3, sodium: .infinity)
-        let row = EstimateConversion.convert(MealEstimate(items: [wild], note: "")).items[0]
-        #expect(row.grams == Formatters.maximumGrams)
-        #expect(row.nutrition.energy == Formatters.maximumNutrientValue)
-        #expect(row.nutrition.protein == 0)
-        #expect(row.nutrition.sodium == 0)
-    }
-
-    @Test func zeroEnergyWithMacrosIsRecomputedAndNoted() {
-        let estimate = MealEstimate(items: [item(name: "Rice", kcal: 0, protein: 4, carbs: 45, fat: 1)], note: "")
-        let result = EstimateConversion.convert(estimate)
-        #expect(result.items[0].nutrition.energy == 4 * 4 + 4 * 45 + 9 * 1)
-        #expect(result.warnings == ["Energy for Rice was computed from its macros."])
-    }
-
-    @Test func zeroEnergyWithoutMacrosStaysZero() {
-        let estimate = MealEstimate(items: [item(name: "Water", kcal: 0, protein: 0, carbs: 0, fat: 0)], note: "")
-        let result = EstimateConversion.convert(estimate)
-        #expect(result.items[0].nutrition.energy == 0)
-        #expect(result.warnings.isEmpty)
+    @Test func weightsAreCappedToTheAmountFieldsBounds() {
+        let estimate = MealEstimate(items: [item(grams: 9000), item(name: "Crumb", grams: 0.01)], note: "")
+        let rows = EstimateConversion.convert(estimate).items
+        #expect(rows[0].grams == Formatters.maximumGrams)
+        #expect(rows[1].grams == Formatters.minimumGrams)
     }
 
     @Test func namesAreTrimmedCappedAndNeverBlank() {
@@ -62,11 +47,20 @@ struct EstimateConversionTests {
         #expect(names[2] == EstimateConversion.fallbackName)
     }
 
-    @Test func totalsSumTheRowsWithZeroForNothing() {
-        let rows = EstimateConversion.convert(MealEstimate(items: [item(protein: 6.5), item(kcal: 28, protein: 1.5)], note: "")).items
-        let totals = EstimateConversion.totals(of: rows)
-        #expect(totals.energy == 100)
-        #expect(totals.protein == 8)
+    @Test func lookupTermsAreTrimmedAndMayStayEmpty() {
+        let estimate = MealEstimate(items: [item(term: "  rye bread \n"), item(term: "   ")], note: "")
+        let terms = EstimateConversion.convert(estimate).items.map(\.lookupTerm)
+        #expect(terms == ["rye bread", ""])
+    }
+
+    @Test func totalsSumTheMatchedRowsWithZeroForNothing() {
+        let matched = ResolvedEstimateItem(name: "Egg", grams: 100, choice: choice("Egg", energy: 149, protein: 10))
+        let other = ResolvedEstimateItem(name: "Toast", grams: 50, choice: choice("Toast", energy: 260, protein: 8))
+        let unmatched = ResolvedEstimateItem(name: "Sauce", grams: 30, choice: nil)
+        let totals = EstimateConversion.totals(of: [matched, other, unmatched])
+        #expect(totals.energy == 279)
+        #expect(totals.protein == 14)
+        #expect(totals.fiber == 0)
         #expect(EstimateConversion.totals(of: []) == Nutrition.zero)
     }
 

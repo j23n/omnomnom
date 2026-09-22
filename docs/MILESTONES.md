@@ -245,6 +245,7 @@ Status log for the work after milestone 6, all on the same review loop (implemen
 - Brand kit: accent colour tangerine, the bite mark (one `Shape` defines it; icon script and SVG follow), rounded bold for the wordmark and the energy figure only, meal symbols, the About row. Recorded in `docs/DESIGN.md` under Brand.
 - Add sheet: Scan and Estimate as list content, single-text captions. Quantity sheet: bottom Log capsule, select-all on focus, accessibility layouts, whole-gram captions.
 - Photos: a `Photo` model with external-storage data, related to an estimate's entries, a recipe or a food; picker section shared by the estimation sheet and both editors; thumbnails and a viewer. This supersedes the milestone 6 note that the photo is never stored: it is stored only when the user keeps it, on the device, and never reaches Health.
+- Estimates grounded in the bundled database: the model returns a name, a generic lookup term and a weight per item and no nutrient values at all; each item is searched in the database and the best hit supplies every number. The draft shows the matched food per row and opens the Add sheet in pick mode to change it; a row without a food cannot be logged. An estimated entry is now an ordinary entry with a food link and a database snapshot, carrying only the `isEstimate` flag. This supersedes the milestone 6 note that an estimate's values are the model's, typed into the draft and logged without a food link.
 
 ### Sign-off
 

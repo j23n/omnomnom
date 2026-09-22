@@ -3,9 +3,10 @@ import os
 import SwiftUI
 
 /// Describe a meal in words, add a photo on iOS 27, and get a draft to check. The
-/// request runs in a cancellable task; the draft screen is pushed on success, offers to
-/// keep the photo with the entries, and hands its banner message back through
-/// `onLogged` once they are saved.
+/// request runs in a cancellable task; what the model named is then looked up in the
+/// bundled database, once, before the draft screen is pushed. The draft offers to keep
+/// the photo with the entries and hands its banner message back through `onLogged` once
+/// they are saved.
 struct EstimationSheet: View {
     let day: Date
     let onLogged: (String) -> Void
@@ -14,6 +15,7 @@ struct EstimationSheet: View {
     private let fixedAvailability: EstimationAvailability?
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.foodRepository) private var foodRepository
     @State private var description = ""
     @State private var photo: Data?
     @State private var availability: EstimationAvailability?
@@ -110,6 +112,8 @@ struct EstimationSheet: View {
         task = Task { await run(input) }
     }
 
+    /// One model request, then one pass over the bundled database for the foods it named.
+    /// The lookup happens here, once, so the draft is already grounded when it appears.
     private func run(_ input: EstimationInput) async {
         do {
             let estimate = try await estimator.estimate(input)
@@ -118,7 +122,9 @@ struct EstimationSheet: View {
             if result.items.isEmpty {
                 errorMessage = "Nothing recognisable came back. Try a fuller description or a clearer photo."
             } else {
-                draft = EstimateDraft(result: result)
+                let items = await EstimateResolver(repository: foodRepository).resolve(result.items)
+                guard !Task.isCancelled else { return }
+                draft = EstimateDraft(note: result.note, items: items)
             }
         } catch {
             guard !Task.isCancelled else { return }

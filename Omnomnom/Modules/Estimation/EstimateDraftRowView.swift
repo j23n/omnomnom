@@ -1,24 +1,46 @@
 import SwiftUI
 
-/// One editable item: name, grams, the eight values, and a remove button. Values are
-/// for the portion, so the fields are labelled with the unit alone, never "per 100 g".
+/// One item of the estimate: what the model called it, the food its values come from,
+/// the portion, and what that portion holds. Only the portion and the food can be
+/// changed; no nutrient is typed here, because every number is the database's.
 struct EstimateDraftRowView: View {
     @Binding var row: EstimateDraftRow
+    /// Opens the food search; the parent owns the sheet, so only one is ever open.
+    let onChooseFood: () -> Void
     let onRemove: () -> Void
 
-    private let columns = [GridItem(.adaptive(minimum: 150), alignment: .leading)]
+    /// The matched food, or the one thing left to do on this row.
+    private var foodText: String {
+        row.choice?.name ?? "Choose a food"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                TextField("Name", text: $row.name)
-                    .accessibilityLabel("Food name")
+            HStack(alignment: .firstTextBaseline) {
+                Text(row.name)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Button(role: .destructive, action: onRemove) {
                     Image(systemName: "minus.circle")
                 }
                 .buttonStyle(.borderless)
                 .accessibilityLabel("Remove \(row.trimmedName.isEmpty ? "item" : row.trimmedName)")
             }
+            Button(action: onChooseFood) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(foodText)
+                        .font(.callout)
+                        .foregroundStyle(row.choice == nil ? Color.accentColor : Color.secondary)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(row.choice == nil ? "Choose a food" : "Values from \(foodText)")
+            .accessibilityHint("Opens the food search")
             HStack(spacing: 4) {
                 Text("Portion")
                     .foregroundStyle(.secondary)
@@ -33,46 +55,16 @@ struct EstimateDraftRowView: View {
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
             }
-            LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-                ForEach(Nutrient.allCases, id: \.self) { nutrient in
-                    EstimateValueField(nutrient: nutrient, row: $row)
+            if let nutrition = row.nutrition {
+                HStack(spacing: 4) {
+                    ValueText(nutrition.energy, unit: .kilocalorie)
+                    Text("for this portion")
                 }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityElement(children: .combine)
             }
         }
         .padding(.vertical, 4)
-    }
-}
-
-/// One small value field with its short name before and its unit after.
-private struct EstimateValueField: View {
-    let nutrient: Nutrient
-    @Binding var row: EstimateDraftRow
-
-    private var text: Binding<String> {
-        Binding(
-            get: { row.text(for: nutrient) },
-            set: { row.setText($0, for: nutrient) }
-        )
-    }
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Text(nutrient.shortName)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-            Spacer(minLength: 4)
-            TextField("unknown", text: text)
-                .keyboardType(.decimalPad)
-                .multilineTextAlignment(.trailing)
-                .font(.callout)
-                .foregroundStyle(row.isInvalid(nutrient) ? Color.red : Color.primary)
-                .frame(maxWidth: 72)
-                .accessibilityLabel("\(nutrient.displayName) for this portion, in \(nutrient.unit.symbol)")
-            Text(nutrient.unit.symbol)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
-        }
     }
 }
