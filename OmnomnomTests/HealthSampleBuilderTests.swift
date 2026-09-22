@@ -52,7 +52,7 @@ struct HealthSampleBuilderTests {
         #expect(correlation?.mealSlot == .breakfast)
         #expect(correlation?.samples.count == 1)
         #expect(correlation?.start == Date(timeIntervalSince1970: 1_000_000))
-        #expect(HealthSampleBuilder.mealSlotMetadataKey == "com.johanneswindelen.omnomnom.mealSlot")
+        #expect(HealthSampleBuilder.mealSlotMetadataKey == "com.j23n.omnomnom.mealSlot")
     }
 
     @Test func syncIdentifiersCoverWrittenNutrientsAndTheCorrelation() {

@@ -83,7 +83,7 @@ Tests (Swift Testing, no HealthKit)
 - Sync identifier construction and metadata builder (pure function over value types, no HK objects).
 - SQLite wrapper against the fixture build of `foods.sqlite`.
 
-Bundle identifier `com.johanneswindelen.omnomnom`, no signing team set. Both outputs of the data pipeline must exist in `Omnomnom/Resources/` before building.
+Bundle identifier `com.j23n.omnomnom`, no signing team set. Both outputs of the data pipeline must exist in `Omnomnom/Resources/` before building.
 
 Sandbox constraint: no Swift toolchain here, so the code is reviewed but not compiled. First Xcode build on a Mac is the gate, and the device checks in PLAN.md close the milestone.
 

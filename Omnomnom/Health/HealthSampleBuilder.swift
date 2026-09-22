@@ -23,7 +23,7 @@ nonisolated struct CorrelationSpec: Hashable, Sendable {
 /// Applies the sync identifier scheme and the partial-authorization rule from PLAN.md.
 nonisolated enum HealthSampleBuilder {
     /// Custom metadata key on the correlation carrying the meal slot's raw value.
-    static let mealSlotMetadataKey = "com.johanneswindelen.omnomnom.mealSlot"
+    static let mealSlotMetadataKey = "com.j23n.omnomnom.mealSlot"
 
     /// Every sync identifier one entry may hold in Health: one per written nutrient, in
     /// `Nutrient` order, plus the correlation. Empty when nothing was written, since no

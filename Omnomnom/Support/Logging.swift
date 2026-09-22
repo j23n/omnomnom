@@ -2,7 +2,7 @@ import os
 
 /// One `Logger` per subsystem area. Subsystem is the bundle identifier.
 nonisolated enum AppLog {
-    static let subsystem = "com.johanneswindelen.omnomnom"
+    static let subsystem = "com.j23n.omnomnom"
 
     static let app = Logger(subsystem: subsystem, category: "app")
     static let barcode = Logger(subsystem: subsystem, category: "barcode")
