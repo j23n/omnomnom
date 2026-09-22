@@ -22,9 +22,10 @@ nonisolated enum PreviewSeed: Hashable, Sendable {
     /// One entry per `HealthState`, plus an estimated entry and a product fetched from
     /// Open Food Facts, so every badge Today can show is on screen at once.
     case healthStates
-    /// Three recipes with ingredients, four custom foods and two products; the first
+    /// Three recipes with ingredients, five custom foods and two products; the first
     /// recipe has been logged once so its editor shows the "previously logged" footnote,
-    /// and the lentil soup and the Greek yogurt carry a photo.
+    /// the lentil soup mixes grams and millilitres, and it and the Greek yogurt carry a
+    /// photo.
     case library
 }
 
@@ -117,7 +118,8 @@ enum PreviewStore {
         source: .custom(foodID: UUID()), name: "Greek yogurt", perUnit: PreviewFoods.greekYogurt, lastAmount: 150
     )
 
-    /// A four-serving lentil soup logged before at 1.5 servings.
+    /// A four-serving lentil soup logged before at 1.5 servings. Its stock is measured
+    /// in millilitres and the rest in grams, so a serving reads as both.
     static let recipeChoice = FoodChoice(
         source: .recipe(id: UUID()),
         name: "Lentil soup",
@@ -125,7 +127,7 @@ enum PreviewStore {
             energy: 318, protein: 17.6, carbohydrates: 49.1, fatTotal: 4.6,
             fatSaturated: 0.6, fiber: 9.9, sugar: 6.4, sodium: 52
         ),
-        gramsPerServing: 233.75,
+        amountPerServing: RawAmount(grams: 233.75, millilitres: 100),
         lastAmount: 1.5
     )
 
@@ -134,7 +136,7 @@ enum PreviewStore {
         source: .recipe(id: UUID()),
         name: "Lentil soup",
         perUnit: recipeChoice.perUnit,
-        gramsPerServing: recipeChoice.gramsPerServing,
+        amountPerServing: recipeChoice.amountPerServing,
         lastAmount: 1.5,
         photo: samplePhoto
     )
@@ -191,6 +193,8 @@ nonisolated enum PreviewFoods {
     static let greekYogurt = Nutrition(energy: 59, protein: 10.2, carbohydrates: 3.6, fatTotal: 0.4, fatSaturated: 0.1, fiber: 0, sugar: 3.2, sodium: 36)
     static let sourdough = Nutrition(energy: 289, protein: 11.8, carbohydrates: 56, fatTotal: 1.8, fatSaturated: 0.4, fiber: 2.4, sugar: 2.9, sodium: 513)
     static let passata = Nutrition(energy: 32, protein: 1.5, carbohydrates: 5.4, fatTotal: 0.3, fatSaturated: 0.05, fiber: 1.4, sugar: 4, sodium: 10)
+    /// Per 100 ml: the stock is the one ingredient of the lentil soup measured by volume.
+    static let vegetableStock = Nutrition(energy: 4, protein: 0.2, carbohydrates: 0.6, fatTotal: 0.1, fatSaturated: 0.02, fiber: 0, sugar: 0.4, sodium: 330)
     static let granola = Nutrition(energy: 471, protein: 10.5, carbohydrates: 58.2, fatTotal: 21.3, fatSaturated: 3.1, fiber: 6.8, sugar: 18.4, sodium: 12)
     static let peanutButter = Nutrition(energy: 588, protein: 25, carbohydrates: 20, fatTotal: 50, fatSaturated: 10, fiber: 6, sugar: 9, sodium: 17)
     static let oatDrink = Nutrition(energy: 46, protein: 1, carbohydrates: 6.6, fatTotal: 1.5, fatSaturated: 0.2, fiber: 0.8, sugar: 4, sodium: 40)
@@ -223,11 +227,11 @@ private struct Seeder {
         case .yesterdayOnly:
             let oats = food("Oats, whole grain, rolled, old fashioned", bundledID: 9, per100g: PreviewFoods.oats)
             let apple = food(PreviewFoods.apple.name, bundledID: 1, per100g: PreviewFoods.apple.per100g)
-            entry(oats, grams: 40, at: time(8, 10, daysAgo: 1), slot: .breakfast)
-            entry(apple, grams: 182, at: time(15, 30, daysAgo: 1), slot: .snack)
+            entry(oats, amount: 40, at: time(8, 10, daysAgo: 1), slot: .breakfast)
+            entry(apple, amount: 182, at: time(15, 30, daysAgo: 1), slot: .snack)
         case .firstRun:
             let banana = food("Bananas, raw", bundledID: 2, per100g: PreviewFoods.banana)
-            entry(banana, grams: 118, at: time(8, 10), slot: .breakfast)
+            entry(banana, amount: 118, at: time(8, 10), slot: .breakfast)
         case .typicalDay:
             typicalDay()
         case .healthStates:
@@ -247,14 +251,14 @@ private struct Seeder {
             per100g: PreviewFoods.oatDrink, measure: .volume
         )
         let soup = lentilSoup()
-        entry(oats, grams: 40, at: time(8, 10), slot: .breakfast)
-        entry(oatDrink, grams: 200, at: time(8, 10), slot: .breakfast)
+        entry(oats, amount: 40, at: time(8, 10), slot: .breakfast)
+        entry(oatDrink, amount: 200, at: time(8, 10), slot: .breakfast)
         let eggs = estimate("Scrambled eggs", grams: 120, nutrition: PreviewFoods.scrambledEggsEstimate, at: time(8, 10), slot: .breakfast)
         let toast = estimate("Rye toast", grams: 35, nutrition: PreviewFoods.ryeToastEstimate, at: time(8, 10), slot: .breakfast)
         photo(for: [eggs, toast])
-        entry(chicken, grams: 150, at: time(12, 40), slot: .lunch)
-        entry(rice, grams: 180, at: time(12, 40), slot: .lunch)
-        entry(apple, grams: 182, at: time(15, 30), slot: .snack)
+        entry(chicken, amount: 150, at: time(12, 40), slot: .lunch)
+        entry(rice, amount: 180, at: time(12, 40), slot: .lunch)
+        entry(apple, amount: 182, at: time(15, 30), slot: .snack)
         entry(soup, servings: 1.5, at: time(19, 15), slot: .dinner)
     }
 
@@ -268,13 +272,13 @@ private struct Seeder {
             "Smooth peanut butter", brand: "Whole Earth", barcode: "5013665111818",
             source: .openFoodFacts, per100g: PreviewFoods.peanutButter
         )
-        entry(oats, grams: 40, at: time(8, 10), slot: .breakfast, state: .synced)
-        entry(banana, grams: 118, at: time(8, 10), slot: .breakfast, state: .partial)
-        entry(chicken, grams: 150, at: time(12, 40), slot: .lunch, state: .gone)
-        entry(rice, grams: 180, at: time(12, 40), slot: .lunch, state: .orphaned)
-        entry(apple, grams: 182, at: time(15, 30), slot: .snack, state: .unauthorized)
+        entry(oats, amount: 40, at: time(8, 10), slot: .breakfast, state: .synced)
+        entry(banana, amount: 118, at: time(8, 10), slot: .breakfast, state: .partial)
+        entry(chicken, amount: 150, at: time(12, 40), slot: .lunch, state: .gone)
+        entry(rice, amount: 180, at: time(12, 40), slot: .lunch, state: .orphaned)
+        entry(apple, amount: 182, at: time(15, 30), slot: .snack, state: .unauthorized)
         estimate("Latte", grams: 250, nutrition: PreviewFoods.latteEstimate, at: time(15, 30), slot: .snack)
-        entry(peanutButter, grams: 30, at: time(19, 15), slot: .dinner, state: .synced)
+        entry(peanutButter, amount: 30, at: time(19, 15), slot: .dinner, state: .synced)
     }
 
     private func library() {
@@ -302,24 +306,29 @@ private struct Seeder {
         entry(soup, servings: 1, at: time(19, 15), slot: .dinner)
     }
 
-    /// Four servings of red lentil soup; the passata is a custom food.
+    /// Four servings of red lentil soup; the passata and the stock are custom foods, and
+    /// the stock is measured in millilitres, so the recipe mixes units.
     private func lentilSoup() -> Recipe {
         let lentils = food("Lentils, pink or red, raw", bundledID: 12, per100g: PreviewFoods.lentils)
         let carrot = food("Carrots, raw", bundledID: 19, per100g: PreviewFoods.carrot)
         let onion = food("Onions, raw", bundledID: 21, per100g: PreviewFoods.onion)
         let oil = food("Oil, olive, salad or cooking", bundledID: 15, per100g: PreviewFoods.oliveOil)
         let passata = food("Tomato passata", kind: .custom, per100g: PreviewFoods.passata)
+        let stock = food("Vegetable stock", kind: .custom, per100g: PreviewFoods.vegetableStock, measure: .volume)
         return recipe(
             "Lentil soup", servings: 4,
-            ingredients: [(lentils, 250), (carrot, 150), (onion, 120), (oil, 15), (passata, 400)]
+            ingredients: [(lentils, 250), (carrot, 150), (onion, 120), (oil, 15), (passata, 400), (stock, 400)]
         )
     }
 
     // MARK: Rows
 
     @discardableResult
-    private func food(_ name: String, kind: FoodKind = .bundled, bundledID: Int? = nil, per100g: Nutrition) -> Food {
-        let food = Food(name: name, kind: kind, bundledID: bundledID, per100g: per100g)
+    private func food(
+        _ name: String, kind: FoodKind = .bundled, bundledID: Int? = nil,
+        per100g: Nutrition, measure: FoodMeasure = .mass
+    ) -> Food {
+        let food = Food(name: name, kind: kind, bundledID: bundledID, per100g: per100g, measure: measure)
         context.insert(food)
         return food
     }
@@ -341,12 +350,12 @@ private struct Seeder {
     }
 
     @discardableResult
-    private func recipe(_ name: String, servings: Double, ingredients: [(food: Food, grams: Double)]) -> Recipe {
+    private func recipe(_ name: String, servings: Double, ingredients: [(food: Food, amount: Double)]) -> Recipe {
         let recipe = Recipe(name: name, servings: servings)
         context.insert(recipe)
         for (index, row) in ingredients.enumerated() {
             let ingredient = RecipeIngredient(
-                sortIndex: index, grams: row.grams, name: row.food.name,
+                sortIndex: index, amount: row.amount, name: row.food.name,
                 per100g: row.food.per100g, measure: row.food.measure
             )
             context.insert(ingredient)
@@ -357,15 +366,16 @@ private struct Seeder {
     }
 
     @discardableResult
-    private func entry(_ food: Food, grams: Double, at timestamp: Date, slot: MealSlot, state: HealthState = .synced) -> LogEntry {
+    private func entry(_ food: Food, amount: Double, at timestamp: Date, slot: MealSlot, state: HealthState = .synced) -> LogEntry {
         let entry = LogEntry(
-            timestamp: timestamp, mealSlot: slot, foodName: food.name, grams: grams,
-            snapshot: SnapshotMath.snapshot(per100g: food.per100g, grams: grams),
+            timestamp: timestamp, mealSlot: slot, foodName: food.name,
+            amount: RawAmount(amount, measure: food.measure),
+            snapshot: SnapshotMath.snapshot(per100g: food.per100g, grams: amount),
             measure: food.measure
         )
         context.insert(entry)
         entry.food = food
-        food.noteUsed(amount: grams, at: timestamp)
+        food.noteUsed(amount: amount, at: timestamp)
         apply(state, to: entry)
         return entry
     }
@@ -374,7 +384,7 @@ private struct Seeder {
     private func entry(_ recipe: Recipe, servings: Double, at timestamp: Date, slot: MealSlot, state: HealthState = .synced) -> LogEntry {
         let entry = LogEntry(
             timestamp: timestamp, mealSlot: slot, foodName: recipe.name,
-            grams: recipe.gramsPerServing * servings,
+            amount: recipe.amountPerServing * servings,
             snapshot: RecipeMath.snapshot(perServing: recipe.perServing, servings: servings)
         )
         context.insert(entry)
@@ -390,7 +400,10 @@ private struct Seeder {
     private func estimate(
         _ name: String, grams: Double, nutrition: Nutrition, at timestamp: Date, slot: MealSlot, state: HealthState = .synced
     ) -> LogEntry {
-        let entry = LogEntry(timestamp: timestamp, mealSlot: slot, foodName: name, grams: grams, snapshot: nutrition)
+        let entry = LogEntry(
+            timestamp: timestamp, mealSlot: slot, foodName: name,
+            amount: RawAmount(grams: grams), snapshot: nutrition
+        )
         context.insert(entry)
         entry.isEstimate = true
         apply(state, to: entry)

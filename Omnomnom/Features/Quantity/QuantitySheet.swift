@@ -52,10 +52,7 @@ struct QuantitySheet: View {
                 Section {
                     NutritionPreview(nutrition: preview)
                     if choice.isRecipe {
-                        LabeledContent(
-                            "Raw weight",
-                            value: Formatters.wholeAmount(choice.grams(for: amount ?? 0), measure: .mass)
-                        )
+                        LabeledContent("Raw amount", value: choice.rawAmount(for: amount ?? 0).wholeText)
                     }
                 } header: {
                     Text("Nutrition")

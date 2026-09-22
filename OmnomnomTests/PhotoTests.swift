@@ -20,7 +20,10 @@ struct PhotoTests {
     }
 
     private func entry(_ name: String, in context: ModelContext) -> LogEntry {
-        let entry = LogEntry(timestamp: .now, mealSlot: .lunch, foodName: name, grams: 100, snapshot: Nutrition(energy: 100))
+        let entry = LogEntry(
+            timestamp: .now, mealSlot: .lunch, foodName: name,
+            amount: RawAmount(grams: 100), snapshot: Nutrition(energy: 100)
+        )
         context.insert(entry)
         return entry
     }

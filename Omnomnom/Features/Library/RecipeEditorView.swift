@@ -33,13 +33,17 @@ struct RecipeEditorView: View {
                     Stepper(value: $draft.servings, in: RecipeDraft.minimumServings...RecipeDraft.maximumServings, step: 0.5) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(Formatters.servings(draft.servings))
-                            Text("= \(Formatters.amount(draft.gramsPerServing, measure: .mass)) raw per serving")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            // Nothing to divide until a row parses, and a serving of
+                            // nothing has no unit to print it in.
+                            if !draft.amountPerServing.isEmpty {
+                                Text("= \(draft.amountPerServing.text) raw per serving")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 } footer: {
-                    Text("Servings are portions of the raw total, not of the cooked weight.")
+                    Text("Servings are portions of the raw total, not of the cooked weight. Ingredients measured in grams and in millilitres are counted apart.")
                 }
                 PhotoPickerSection(photo: $draft.photo, footer: "Shown with the recipe and every entry logged from it.")
                 Section {
@@ -56,7 +60,7 @@ struct RecipeEditorView: View {
                         EditButton()
                     }
                 } footer: {
-                    Text("Raw total \(Formatters.amount(draft.totalWeight, measure: .mass))")
+                    Text(draft.totalAmount.isEmpty ? "No raw total yet" : "Raw total \(draft.totalAmount.text)")
                 }
                 Section("Per serving") {
                     NutritionPreview(nutrition: draft.perServing)

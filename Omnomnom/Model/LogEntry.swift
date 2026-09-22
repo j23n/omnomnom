@@ -11,10 +11,15 @@ final class LogEntry {
     var mealSlotRaw: String = MealSlot.snack.rawValue
     /// Name at log time; never changes even if the food is renamed or deleted.
     var foodName: String = ""
-    /// The amount logged, counted in `measure`'s unit.
+    /// The mass logged, in grams; 0 for an entry that is counted only in millilitres.
     var grams: Double = 0
+    /// The volume logged, in millilitres; `nil` for an entry that has none. A recipe
+    /// entry holds both when its ingredients do, and the two are never added together.
+    var millilitres: Double?
     /// Raw `FoodMeasure` of the food at log time, frozen like the name and the snapshot:
-    /// correcting the food's unit later never reinterprets what is already logged.
+    /// correcting the food's unit later never reinterprets what is already logged. It
+    /// says which of the two columns a directly logged food filled; a recipe entry is
+    /// counted in servings and reads both.
     var measureRaw: String = FoodMeasure.mass.rawValue
     var snapshotEnergy: Double?
     var snapshotProtein: Double?
@@ -34,7 +39,8 @@ final class LogEntry {
     var orphaned: Bool = false
     /// True for an entry the user confirmed from an on-device estimate rather than a food.
     var isEstimate: Bool = false
-    /// Servings logged, for a recipe entry; `nil` for a food. `grams` holds the raw amount either way.
+    /// Servings logged, for a recipe entry; `nil` for a food. `rawAmount` holds what
+    /// those servings, or that food, came to either way.
     var servings: Double?
     var food: Food?
     /// The recipe this was logged from, for display only; the snapshot never recomputes.
@@ -45,15 +51,15 @@ final class LogEntry {
 
     /// Relate to a `Food` or `Recipe` after `context.insert(entry)`, not here.
     init(
-        timestamp: Date, mealSlot: MealSlot, foodName: String, grams: Double,
+        timestamp: Date, mealSlot: MealSlot, foodName: String, amount: RawAmount,
         snapshot: Nutrition, measure: FoodMeasure = .mass
     ) {
         self.id = UUID()
         self.timestamp = timestamp
         self.mealSlotRaw = mealSlot.rawValue
         self.foodName = foodName
-        self.grams = grams
         self.measureRaw = measure.rawValue
+        self.rawAmount = amount
         self.syncVersion = 1
         self.writtenNutrients = []
         self.presentNutrients = []
@@ -92,6 +98,16 @@ final class LogEntry {
     var measure: FoodMeasure {
         get { FoodMeasure(rawValue: measureRaw) ?? .mass }
         set { measureRaw = newValue.rawValue }
+    }
+
+    /// What was logged, mass and volume apart. A volume of nothing is stored as `nil`
+    /// rather than 0, so an entry that has no volume part says so.
+    var rawAmount: RawAmount {
+        get { RawAmount(grams: grams, millilitres: millilitres ?? 0) }
+        set {
+            grams = newValue.grams
+            millilitres = newValue.millilitres > 0 ? newValue.millilitres : nil
+        }
     }
 
     var written: Set<Nutrient> {

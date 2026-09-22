@@ -15,7 +15,7 @@ nonisolated struct ProductAttribution: Hashable, Sendable {
 /// What the user picked in the Add sheet, reduced to the values the Quantity sheet
 /// needs. A food is measured in its own unit, grams or millilitres, and carries the
 /// per-100 values in that unit; a recipe is measured in servings and carries
-/// per-serving values plus the raw grams of one.
+/// per-serving values plus the raw amount of one.
 nonisolated struct FoodChoice: Identifiable, Hashable, Sendable {
     /// Where the item lives: the bundled database, a custom or product `Food` row, or a `Recipe`.
     nonisolated enum Source: Hashable, Sendable {
@@ -30,10 +30,12 @@ nonisolated struct FoodChoice: Identifiable, Hashable, Sendable {
     /// Per 100 g or 100 ml of a food, as `measure` says, or per one serving of a recipe.
     let perUnit: Nutrition
     /// The unit a food's amount and per-100 values are counted in. A recipe is measured
-    /// in servings, so its own measure says nothing and stays `.mass`.
+    /// in servings, so its own measure says nothing and stays `.mass`; the raw amount
+    /// of a serving carries the units its ingredients were in.
     let measure: FoodMeasure
-    /// Raw grams in one serving; `nil` for a food, whose amount is its own unit already.
-    let gramsPerServing: Double?
+    /// The raw amount of one serving; `nil` for a food, whose amount is its own unit
+    /// already. A recipe of mixed ingredients carries mass and volume here at once.
+    let amountPerServing: RawAmount?
     /// Amount used last time, to prefill the field: grams or millilitres for a food,
     /// servings for a recipe. `nil` for an item never logged.
     let lastAmount: Double?
@@ -47,14 +49,14 @@ nonisolated struct FoodChoice: Identifiable, Hashable, Sendable {
 
     init(
         source: Source, name: String, perUnit: Nutrition, measure: FoodMeasure = .mass,
-        gramsPerServing: Double? = nil, lastAmount: Double? = nil,
+        amountPerServing: RawAmount? = nil, lastAmount: Double? = nil,
         attribution: ProductAttribution? = nil, photo: Data? = nil
     ) {
         self.source = source
         self.name = name
         self.perUnit = perUnit
         self.measure = measure
-        self.gramsPerServing = gramsPerServing
+        self.amountPerServing = amountPerServing
         self.lastAmount = lastAmount
         self.attribution = attribution
         self.photo = photo
@@ -81,16 +83,16 @@ nonisolated struct FoodChoice: Identifiable, Hashable, Sendable {
     func with(lastAmount: Double?) -> FoodChoice {
         FoodChoice(
             source: source, name: name, perUnit: perUnit, measure: measure,
-            gramsPerServing: gramsPerServing, lastAmount: lastAmount,
+            amountPerServing: amountPerServing, lastAmount: lastAmount,
             attribution: attribution, photo: photo
         )
     }
 
-    /// Raw grams consumed for `amount` units: the amount itself, or servings times the
-    /// raw weight of one serving.
-    func grams(for amount: Double) -> Double {
-        guard let gramsPerServing else { return amount }
-        return amount * gramsPerServing
+    /// The raw amount consumed for `amount` units: the amount itself under the food's
+    /// own measure, or servings times the raw amount of one serving.
+    func rawAmount(for amount: Double) -> RawAmount {
+        guard let amountPerServing else { return RawAmount(amount, measure: measure) }
+        return amountPerServing * amount
     }
 
     /// Nutrition to freeze for `amount` units.
