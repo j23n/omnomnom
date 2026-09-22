@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import Omnomnom
 
@@ -33,6 +34,17 @@ struct CustomFoodDraftTests {
         #expect(draft.text(for: .sodium) == "2")
         #expect(draft.text(for: .sugar) == "")
         #expect(draft.per100g == stored)
+        #expect(draft.isValid)
+    }
+
+    @Test func prefillCarriesThePhotoAndANewDraftHasNone() {
+        #expect(CustomFoodDraft().photo == nil)
+        let photo = Data([0xFF, 0xD8, 0x02])
+        var draft = CustomFoodDraft(name: "Oats", per100g: Nutrition(energy: 389), photo: photo)
+        #expect(draft.photo == photo)
+        #expect(draft.isValid)
+        draft.photo = nil
+        #expect(draft.photo == nil)
         #expect(draft.isValid)
     }
 

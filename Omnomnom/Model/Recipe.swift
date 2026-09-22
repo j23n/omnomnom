@@ -27,6 +27,10 @@ final class Recipe {
     @Relationship(deleteRule: .nullify, inverse: \LogEntry.recipe)
     var entries: [LogEntry]?
 
+    /// The user's photo of the dish, shown with the recipe and every entry logged from it.
+    @Relationship(deleteRule: .cascade, inverse: \Photo.recipe)
+    var photo: Photo?
+
     init(name: String, servings: Double) {
         self.id = UUID()
         self.name = name
@@ -62,7 +66,8 @@ final class Recipe {
             name: name,
             perUnit: perServing,
             gramsPerServing: gramsPerServing,
-            lastAmount: lastServings
+            lastAmount: lastServings,
+            photo: photo?.data
         )
     }
 

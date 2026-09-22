@@ -31,7 +31,7 @@ struct CustomFoodEditorView: View {
         self.food = food
         self.product = product
         self.onSaved = onSaved
-        var draft = food.map { CustomFoodDraft(name: $0.name, per100g: $0.per100g) } ?? CustomFoodDraft()
+        var draft = food.map { CustomFoodDraft(name: $0.name, per100g: $0.per100g, photo: $0.photo?.data) } ?? CustomFoodDraft()
         if food == nil, let name = product?.name {
             draft.name = name
         }
@@ -66,6 +66,7 @@ struct CustomFoodEditorView: View {
                 } footer: {
                     Text("Energy is required. Leave a value blank when it is not known; it is then not written to Health.")
                 }
+                PhotoPickerSection(photo: $draft.photo, footer: "Shown with the food and every entry logged from it.")
                 if food != nil {
                     Section {
                         Text("Previously logged entries are unchanged.")
@@ -97,7 +98,8 @@ struct CustomFoodEditorView: View {
     /// Updates the food in place or inserts a new one: a custom food, or a product with
     /// its barcode and source `manual` when the editor was opened from the scanner.
     /// Editing a product fetched from Open Food Facts also switches its source to
-    /// `manual`: the values are the user's now, so the badge and attribution go.
+    /// `manual`: the values are the user's now, so the badge and attribution go. The
+    /// photo is created, replaced or deleted to match the draft.
     private func save() {
         guard let per100g = draft.per100g else { return }
         let saved: Food
@@ -117,6 +119,7 @@ struct CustomFoodEditorView: View {
             }
             context.insert(saved)
         }
+        saved.photo = Photo.replacing(saved.photo, with: draft.photo, in: context)
         do {
             try context.save()
             onSaved?(saved)
@@ -138,6 +141,13 @@ struct CustomFoodEditorView: View {
 #Preview("Editing a custom food") {
     let container = PreviewStore.container(seed: .library)
     let food = PreviewStore.food(in: container, kind: .custom)
+    return CustomFoodEditorView(food: food)
+        .previewEnvironment(container: container)
+}
+
+#Preview("Editing a custom food with a photo") {
+    let container = PreviewStore.container(seed: .library)
+    let food = PreviewStore.foods(in: container).first { $0.photo != nil }
     return CustomFoodEditorView(food: food)
         .previewEnvironment(container: container)
 }

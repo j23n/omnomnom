@@ -3,8 +3,8 @@ import os
 import SwiftData
 
 /// Moves a recipe between its model and its draft. Writing replaces the ingredient rows
-/// in draft order, freezing the draft's copy of each food, and saves once. Main-actor
-/// because it drives a `ModelContext`.
+/// in draft order, freezing the draft's copy of each food, creates, replaces or deletes
+/// the photo, and saves once. Main-actor because it drives a `ModelContext`.
 struct RecipeWriter {
     let context: ModelContext
 
@@ -13,6 +13,7 @@ struct RecipeWriter {
         var draft = RecipeDraft()
         draft.name = recipe.name
         draft.servings = recipe.servings
+        draft.photo = recipe.photo?.data
         draft.ingredients = recipe.sortedIngredients.map { row in
             IngredientDraft(
                 id: row.id,
@@ -42,6 +43,7 @@ struct RecipeWriter {
         recipe.name = draft.trimmedName
         recipe.servings = draft.servings
         recipe.updatedAt = Date.now
+        recipe.photo = Photo.replacing(recipe.photo, with: draft.photo, in: context)
         do {
             for (index, row) in draft.ingredients.enumerated() {
                 guard let grams = row.grams else { throw RecipeWriteError.invalidDraft }

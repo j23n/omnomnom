@@ -53,6 +53,7 @@ struct EntryLogger {
                 return .failed(error.localizedDescription)
             }
         }
+        entry.releasePhoto(in: context)
         context.delete(entry)
         do {
             try context.save()

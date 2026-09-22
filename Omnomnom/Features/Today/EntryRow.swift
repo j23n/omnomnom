@@ -7,9 +7,13 @@ import SwiftUI
 /// and an "Estimated" badge when the values came from the on-device model.
 /// A recipe entry shows its servings next to the raw grams they weigh.
 /// Rows in the `partial` or `gone` state read as buttons, with a chevron after the
-/// energy: a tap opens the Health actions.
+/// energy: a tap opens the Health actions. An entry with a photo, its own or its
+/// recipe's or food's, leads with a thumbnail that opens the photo; the thumbnail is
+/// a button of its own, so the row's tap still works everywhere else.
 struct EntryRow: View {
     let entry: LogEntry
+
+    @State private var isShowingPhoto = false
 
     private var isActionable: Bool { entry.healthState.needsAttention }
 
@@ -25,6 +29,25 @@ struct EntryRow: View {
     }
 
     var body: some View {
+        HStack(spacing: 12) {
+            if let photo = entry.displayPhoto?.data {
+                Button {
+                    isShowingPhoto = true
+                } label: {
+                    PhotoThumbnail(data: photo, size: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Photo")
+                .sheet(isPresented: $isShowingPhoto) {
+                    PhotoViewer(data: photo, title: entry.foodName, subtitle: Self.photoSubtitle(for: entry.timestamp))
+                }
+            }
+            summary
+        }
+    }
+
+    /// Everything but the thumbnail, combined into one element for VoiceOver.
+    private var summary: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.foodName)
@@ -47,6 +70,11 @@ struct EntryRow: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isActionable ? .isButton : [])
         .accessibilityHint(isActionable ? "Restore to Health or remove here" : "")
+    }
+
+    /// "Today, 08:10": the day as Today names it, then the time.
+    private static func photoSubtitle(for timestamp: Date) -> String {
+        "\(Formatters.dayTitle(timestamp)), \(timestamp.formatted(date: .omitted, time: .shortened))"
     }
 
     @ViewBuilder
@@ -74,7 +102,7 @@ struct EntryRow: View {
     .modelContainer(container)
 }
 
-#Preview("Typical day with a recipe entry", traits: .sizeThatFitsLayout) {
+#Preview("Typical day with photos", traits: .sizeThatFitsLayout) {
     let container = PreviewStore.container(seed: .typicalDay)
     return VStack(alignment: .leading, spacing: 16) {
         ForEach(PreviewStore.entries(in: container)) { entry in

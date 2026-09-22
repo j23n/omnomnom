@@ -41,6 +41,7 @@ struct RecipeEditorView: View {
                 } footer: {
                     Text("Servings are portions of the raw total, not of the cooked weight.")
                 }
+                PhotoPickerSection(photo: $draft.photo, footer: "Shown with the recipe and every entry logged from it.")
                 Section {
                     ForEach($draft.ingredients) { $ingredient in
                         IngredientRow(ingredient: $ingredient)
@@ -112,6 +113,13 @@ struct RecipeEditorView: View {
     // The lentil soup has been logged once, so the "previously logged" footnote shows.
     let container = PreviewStore.container(seed: .library)
     let recipe = PreviewStore.recipes(in: container).first { !($0.entries ?? []).isEmpty }
+    return RecipeEditorView(recipe: recipe)
+        .previewEnvironment(container: container)
+}
+
+#Preview("Editing a recipe with a photo") {
+    let container = PreviewStore.container(seed: .library)
+    let recipe = PreviewStore.recipes(in: container).first { $0.photo != nil }
     return RecipeEditorView(recipe: recipe)
         .previewEnvironment(container: container)
 }

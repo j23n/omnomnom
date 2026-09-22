@@ -677,7 +677,7 @@ Add sheet → Estimate (toolbar, module on; availability checked at tap, alert i
 | "Estimating…" / "Cancel" / "Estimate" | `:57,59,62` | keep |
 | "Estimates are rough and made on this device. You check every value before it is logged." | `:70` | keep |
 | "Nothing recognisable came back. Try a fuller description or a clearer photo." | `:109` | keep |
-| "Photo" / "The photo stays in memory on this device and is not saved anywhere." | `EstimationPhotoSection.swift:75,77` | keep |
+| "Photo" / "Used on this device only. You choose whether to keep it when you log." | `PhotoPickerSection.swift`, footer passed by `EstimationSheet` | keep; superseded the old "not saved anywhere" line once photos could be kept |
 | "Choose photo" / "Choose another photo" / "Take photo" / "Remove" / "Photo of the meal" | `:41,52,35,33` | keep |
 | "The photo could not be encoded." / "That item could not be read as a photo." / "Could not load the photo: …" / "That file is not a photo the device can read." | `:62,85,91,104` | keep |
 | "Ready. Describe a meal or add a photo of it." / "Ready. Describe a meal in words; photos need iOS 27." | `EstimationAvailability.swift:40,42` | keep (Settings only) |

@@ -1,16 +1,19 @@
 import Foundation
 
-/// Value-type state of the custom food editor: a name and the typed per-100 g text
-/// for each nutrient. Energy is required; a blank field means the value is unknown.
+/// Value-type state of the custom food editor: a name, the typed per-100 g text for
+/// each nutrient and the photo. Energy is required; a blank field means the value is unknown.
 nonisolated struct CustomFoodDraft: Hashable, Sendable {
     var name = ""
+    /// The stored-size photo of the food; `nil` for none.
+    var photo: Data?
     private var fields: [Nutrient: String] = [:]
 
     init() {}
 
     /// Prefilled from an existing food's values.
-    init(name: String, per100g: Nutrition) {
+    init(name: String, per100g: Nutrition, photo: Data? = nil) {
         self.name = name
+        self.photo = photo
         for nutrient in Nutrient.allCases {
             if let value = per100g[nutrient] {
                 fields[nutrient] = Formatters.fieldText(value)

@@ -26,6 +26,8 @@ nonisolated struct RecipeDraft: Hashable, Sendable {
     var name = ""
     var servings = 1.0
     var ingredients: [IngredientDraft] = []
+    /// The stored-size photo of the dish; `nil` for none.
+    var photo: Data?
 
     /// Grams a freshly added ingredient starts with; edited inline.
     static let defaultGrams = 100.0

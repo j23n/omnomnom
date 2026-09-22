@@ -54,3 +54,5 @@ Filled in as the screen-by-screen pass settles each one.
 - One accent colour, tangerine, in a light and a dark value, both passing 3:1 for white text on a glass-prominent button; the asset catalog is the only place the values live.
 - The mark appears on the app icon, on the onboarding intro, on the empty day and in Settings › About. Nowhere else without a decision here.
 - The rounded system design at bold weight is used for the wordmark and the energy total, and for nothing else.
+- Photos are the user's own: taken or picked on the device, downscaled to 1024 px JPEG, kept with an estimate's entries, a recipe or a custom food, shown as a 44 pt thumbnail on Today, in the Library and in the Add sheet, and opened full size from Today. Never fetched from a database or from Open Food Facts, never written to Health, never sent anywhere. An entry logged from a recipe or food shows that photo.
+- Scan and Estimate live in the Add sheet's content, not its toolbar, because the navigation bar is hidden while search is active. Log on the Quantity sheet and Continue in onboarding use the same bottom glass capsule as Add food on Today.

@@ -35,6 +35,9 @@ final class LogEntry {
     var food: Food?
     /// The recipe this was logged from, for display only; the snapshot never recomputes.
     var recipe: Recipe?
+    /// The plate this entry was estimated from, shared with the other entries of that
+    /// estimate; `nil` for an entry logged from a food or recipe, whose photo is theirs.
+    var photo: Photo?
 
     /// Relate to a `Food` or `Recipe` after `context.insert(entry)`, not here.
     init(timestamp: Date, mealSlot: MealSlot, foodName: String, grams: Double, snapshot: Nutrition) {
@@ -96,5 +99,21 @@ final class LogEntry {
         let written = self.written
         let present = self.present
         return Nutrient.allCases.filter { written.contains($0) && !present.contains($0) }
+    }
+
+    /// The photo to show on the row: the entry's own, else the recipe's, else the food's.
+    var displayPhoto: Photo? {
+        photo ?? recipe?.photo ?? food?.photo
+    }
+
+    /// Call before `context.delete(entry)`: deletes the entry's own photo unless another
+    /// entry of the same estimate still shows it. A recipe's or food's photo is theirs
+    /// and is never touched here.
+    func releasePhoto(in context: ModelContext) {
+        guard let photo else { return }
+        let sharedWithOthers = (photo.entries ?? []).contains { $0.id != id && !$0.isDeleted }
+        if !sharedWithOthers {
+            context.delete(photo)
+        }
     }
 }

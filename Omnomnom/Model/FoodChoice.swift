@@ -35,12 +35,15 @@ nonisolated struct FoodChoice: Identifiable, Hashable, Sendable {
     let lastAmount: Double?
     /// Barcode, brand and origin of a product; `nil` for everything else.
     let attribution: ProductAttribution?
+    /// The stored photo of a custom food, product or recipe, so a row can show it
+    /// without a fetch; `nil` for a bundled food and for anything without one.
+    var photo: Data? = nil
 
     var id: Source { source }
 
     init(
         source: Source, name: String, perUnit: Nutrition, gramsPerServing: Double? = nil,
-        lastAmount: Double? = nil, attribution: ProductAttribution? = nil
+        lastAmount: Double? = nil, attribution: ProductAttribution? = nil, photo: Data? = nil
     ) {
         self.source = source
         self.name = name
@@ -48,6 +51,7 @@ nonisolated struct FoodChoice: Identifiable, Hashable, Sendable {
         self.gramsPerServing = gramsPerServing
         self.lastAmount = lastAmount
         self.attribution = attribution
+        self.photo = photo
     }
 
     /// A search hit from the bundled database; knows nothing of past use yet.
@@ -70,7 +74,7 @@ nonisolated struct FoodChoice: Identifiable, Hashable, Sendable {
     func with(lastAmount: Double?) -> FoodChoice {
         FoodChoice(
             source: source, name: name, perUnit: perUnit, gramsPerServing: gramsPerServing,
-            lastAmount: lastAmount, attribution: attribution
+            lastAmount: lastAmount, attribution: attribution, photo: photo
         )
     }
 
