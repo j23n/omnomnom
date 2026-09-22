@@ -13,7 +13,7 @@ struct FoodChoiceTests {
         #expect(choice.bundledID == 42)
         #expect(choice.isRecipe == false)
         #expect(choice.lastAmount == nil)
-        #expect(choice.gramsPerServing == nil)
+        #expect(choice.amountPerServing == nil)
         #expect(choice.measure == .mass)
         #expect(choice.unitText == "100 g")
     }
@@ -28,14 +28,14 @@ struct FoodChoiceTests {
         #expect(choice.measure == .volume)
         #expect(choice.unitText == "100 ml")
         #expect(choice.amountText(250) == "250 ml")
-        #expect(choice.grams(for: 250) == 250)
+        #expect(choice.rawAmount(for: 250) == RawAmount(millilitres: 250))
         #expect(choice.snapshot(for: 200).energy == 92)
         #expect(choice.with(lastAmount: 300).measure == .volume)
     }
 
     @Test func foodAmountIsGramsAndSnapshotScalesPer100g() {
         let choice = FoodChoice(source: .custom(foodID: UUID()), name: "Granola", perUnit: apple)
-        #expect(choice.grams(for: 150) == 150)
+        #expect(choice.rawAmount(for: 150) == RawAmount(grams: 150))
         #expect(choice.snapshot(for: 200).energy == 104)
         #expect(choice.snapshot(for: 200).sodium == nil)
         #expect(choice.bundledID == nil)
@@ -44,10 +44,13 @@ struct FoodChoiceTests {
 
     @Test func recipeAmountIsServingsAndSnapshotMultipliesPerServing() {
         let perServing = Nutrition(energy: 400, protein: 20)
-        let choice = FoodChoice(source: .recipe(id: UUID()), name: "Chili", perUnit: perServing, gramsPerServing: 250, lastAmount: 2)
+        let choice = FoodChoice(
+            source: .recipe(id: UUID()), name: "Chili", perUnit: perServing,
+            amountPerServing: RawAmount(grams: 200, millilitres: 50), lastAmount: 2
+        )
         #expect(choice.isRecipe)
         #expect(choice.bundledID == nil)
-        #expect(choice.grams(for: 1.5) == 375)
+        #expect(choice.rawAmount(for: 1.5) == RawAmount(grams: 300, millilitres: 75))
         #expect(choice.snapshot(for: 1.5).energy == 600)
         #expect(choice.snapshot(for: 1.5).protein == 30)
         #expect(choice.snapshot(for: 1.5).fiber == nil)

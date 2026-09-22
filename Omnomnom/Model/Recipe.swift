@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-/// A named list of raw ingredient weights divided into servings. A template, not a
+/// A named list of raw ingredient amounts divided into servings. A template, not a
 /// live reference: logging one freezes the per-serving figures into the entry, so
 /// editing the recipe later never touches what was already logged or sent to Health.
 ///
@@ -45,27 +45,33 @@ final class Recipe {
         (ingredients ?? []).sorted { $0.sortIndex < $1.sortIndex }
     }
 
-    /// Raw weight and nutrition of the whole dish.
-    var total: (weight: Double, nutrition: Nutrition) {
-        RecipeMath.total(ingredients: sortedIngredients.map { (grams: $0.grams, per100g: $0.per100g) })
+    /// Raw amount and nutrition of the whole dish. The amount keeps mass and volume
+    /// apart, since the ingredients need not share a unit.
+    var total: (amount: RawAmount, nutrition: Nutrition) {
+        RecipeMath.total(
+            ingredients: sortedIngredients.map { (amount: $0.grams, measure: $0.measure, per100: $0.per100g) }
+        )
     }
 
     var perServing: Nutrition {
         RecipeMath.perServing(total: total.nutrition, servings: servings)
     }
 
-    /// Raw grams in one serving.
-    var gramsPerServing: Double {
-        RecipeMath.gramsPerServing(weight: total.weight, servings: servings)
+    /// The raw amount of one serving.
+    var amountPerServing: RawAmount {
+        RecipeMath.amountPerServing(total: total.amount, servings: servings)
     }
 
     /// The choice that opens this recipe in the Quantity sheet, with per-serving values.
+    /// The total is walked once here: `perServing` and `amountPerServing` each fetch and
+    /// sum every ingredient row, and this is built for every row of the Add sheet.
     var choice: FoodChoice {
-        FoodChoice(
+        let total = self.total
+        return FoodChoice(
             source: .recipe(id: id),
             name: name,
-            perUnit: perServing,
-            gramsPerServing: gramsPerServing,
+            perUnit: RecipeMath.perServing(total: total.nutrition, servings: servings),
+            amountPerServing: RecipeMath.amountPerServing(total: total.amount, servings: servings),
             lastAmount: lastServings,
             photo: photo?.data
         )

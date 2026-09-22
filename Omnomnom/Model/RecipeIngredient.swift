@@ -30,10 +30,10 @@ final class RecipeIngredient {
     var food: Food?
 
     /// Relate to a `Recipe` and a `Food` after `context.insert(ingredient)`, not here.
-    init(sortIndex: Int, grams: Double, name: String, per100g: Nutrition, measure: FoodMeasure = .mass) {
+    init(sortIndex: Int, amount: Double, name: String, per100g: Nutrition, measure: FoodMeasure = .mass) {
         self.id = UUID()
         self.sortIndex = sortIndex
-        self.grams = grams
+        self.grams = amount
         self.measureRaw = measure.rawValue
         self.name = name
         self.per100g = per100g

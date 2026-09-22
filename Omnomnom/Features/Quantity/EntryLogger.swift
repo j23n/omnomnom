@@ -17,12 +17,16 @@ struct EntryLogger {
     /// copied from the frozen snapshot. Links and the estimate flag are copied for display.
     func repeatEntry(_ entry: LogEntry, at timestamp: Date, mealSlot: MealSlot? = nil) async throws -> LogResult {
         let live = entry.food.flatMap { $0.kind == .custom || $0.kind == .product ? $0 : nil }
+        let logged = entry.rawAmount
+        // What the food itself was counted in, which is the figure its per-100 values
+        // scale against; a recipe entry has no live food and copies its snapshot.
+        let counted = logged.amount(in: entry.measure)
         let copy = LogEntry(
             timestamp: timestamp,
             mealSlot: mealSlot ?? MealSlot.inferred(from: timestamp),
             foodName: live?.name ?? entry.foodName,
-            grams: entry.grams,
-            snapshot: live.map { SnapshotMath.snapshot(per100g: $0.per100g, grams: entry.grams) } ?? entry.snapshot,
+            amount: logged,
+            snapshot: live.map { SnapshotMath.snapshot(per100g: $0.per100g, grams: counted) } ?? entry.snapshot,
             measure: entry.measure
         )
         context.insert(copy)
@@ -30,7 +34,7 @@ struct EntryLogger {
         copy.isEstimate = entry.isEstimate
         copy.food = entry.food
         copy.recipe = entry.recipe
-        entry.food?.noteUsed(amount: entry.grams, at: Date.now)
+        entry.food?.noteUsed(amount: counted, at: Date.now)
         if let servings = entry.servings {
             entry.recipe?.noteUsed(servings: servings, at: Date.now)
         }
@@ -41,8 +45,8 @@ struct EntryLogger {
 
     /// Applies a corrected amount, meal slot and time to an entry that is already
     /// logged, then mirrors the whole entry to Health again under a bumped version.
-    /// `amount` is grams or servings, as `basis` says; the snapshot is scaled from the
-    /// entry's own frozen values, never from the linked food.
+    /// `amount` is the food's own unit or servings, as `basis` says; the snapshot is
+    /// scaled from the entry's own frozen values, never from the linked food.
     ///
     /// There is no delete step on the Health side. The set of nutrients written is the
     /// snapshot's non-nil values intersected with the types Health authorizes, and
@@ -53,7 +57,7 @@ struct EntryLogger {
     func update(
         _ entry: LogEntry, amount: Double, basis: EntryAmountBasis, mealSlot: MealSlot, at timestamp: Date
     ) async throws -> LogResult {
-        entry.grams = basis.grams(for: amount)
+        entry.rawAmount = basis.rawAmount(for: amount)
         entry.servings = basis.isServings ? amount : nil
         entry.snapshot = basis.snapshot(for: amount)
         return try await commitEdit(entry, mealSlot: mealSlot, at: timestamp)
@@ -61,7 +65,7 @@ struct EntryLogger {
 
     /// The same edit with the amount left alone: for an entry there is nothing to scale,
     /// and for one whose amount the user did not touch, so the rounding the field applies
-    /// to a displayed value never writes itself back. The snapshot and the grams stand.
+    /// to a displayed value never writes itself back. The snapshot and the amount stand.
     func update(_ entry: LogEntry, mealSlot: MealSlot, at timestamp: Date) async throws -> LogResult {
         try await commitEdit(entry, mealSlot: mealSlot, at: timestamp)
     }

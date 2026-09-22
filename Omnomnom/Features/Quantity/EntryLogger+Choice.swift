@@ -35,17 +35,17 @@ extension EntryLogger {
                 throw EntryLoggerError.sourceMissing
             }
             return try await insert(
-                food: food, per100g: choice.perUnit, grams: amount, mealSlot: mealSlot, at: timestamp, isEstimate: isEstimate
+                food: food, per100g: choice.perUnit, amount: amount, mealSlot: mealSlot, at: timestamp, isEstimate: isEstimate
             )
         case .custom(let foodID):
             guard let food = try Food.custom(id: foodID, in: context) else { throw EntryLoggerError.sourceMissing }
             return try await insert(
-                food: food, per100g: food.per100g, grams: amount, mealSlot: mealSlot, at: timestamp, isEstimate: isEstimate
+                food: food, per100g: food.per100g, amount: amount, mealSlot: mealSlot, at: timestamp, isEstimate: isEstimate
             )
         case .product(let foodID):
             guard let food = try Food.product(id: foodID, in: context) else { throw EntryLoggerError.sourceMissing }
             return try await insert(
-                food: food, per100g: food.per100g, grams: amount, mealSlot: mealSlot, at: timestamp, isEstimate: isEstimate
+                food: food, per100g: food.per100g, amount: amount, mealSlot: mealSlot, at: timestamp, isEstimate: isEstimate
             )
         case .recipe(let id):
             guard let recipe = try Recipe.find(id: id, in: context) else { throw EntryLoggerError.sourceMissing }
@@ -57,21 +57,21 @@ extension EntryLogger {
 
     /// The local save is the part that throws; Health and the follow-up save report through the result.
     private func insert(
-        food: Food, per100g: Nutrition, grams: Double, mealSlot: MealSlot, at timestamp: Date, isEstimate: Bool
+        food: Food, per100g: Nutrition, amount: Double, mealSlot: MealSlot, at timestamp: Date, isEstimate: Bool
     ) async throws -> LogResult {
         let entry = LogEntry(
             timestamp: timestamp,
             mealSlot: mealSlot,
             foodName: food.name,
-            grams: grams,
-            snapshot: SnapshotMath.snapshot(per100g: per100g, grams: grams),
+            amount: RawAmount(amount, measure: food.measure),
+            snapshot: SnapshotMath.snapshot(per100g: per100g, grams: amount),
             measure: food.measure
         )
         context.insert(entry)
         entry.isEstimate = isEstimate
         entry.food = food
         let lastAmount = food.lastGrams
-        food.noteUsed(amount: grams, at: Date.now)
+        food.noteUsed(amount: amount, at: Date.now)
         if isEstimate {
             // An estimated weight is the model's guess. It counts as a use, but it must
             // not come back as the amount the Quantity sheet prefills next time, which
@@ -83,8 +83,9 @@ extension EntryLogger {
         return await mirror(entry)
     }
 
-    /// Freezes per-serving times `servings` into the entry, with the raw grams that
-    /// many servings weigh, and links the recipe for display only.
+    /// Freezes per-serving times `servings` into the entry, with the raw amount that
+    /// many servings come to, and links the recipe for display only. That amount keeps
+    /// mass and volume apart, so a recipe mixing the two records both.
     private func insert(
         recipe: Recipe, servings: Double, mealSlot: MealSlot, at timestamp: Date, isEstimate: Bool
     ) async throws -> LogResult {
@@ -93,7 +94,7 @@ extension EntryLogger {
             timestamp: timestamp,
             mealSlot: mealSlot,
             foodName: recipe.name,
-            grams: recipe.gramsPerServing * servings,
+            amount: recipe.amountPerServing * servings,
             snapshot: RecipeMath.snapshot(perServing: recipe.perServing, servings: servings)
         )
         context.insert(entry)

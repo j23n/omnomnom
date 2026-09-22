@@ -10,16 +10,16 @@ nonisolated struct IngredientDraft: Identifiable, Hashable, Sendable {
     let per100g: Nutrition
     /// Grams or millilitres, copied from the food; the typed amount is in this unit.
     let measure: FoodMeasure
-    var gramsText: String
+    var amountText: String
 
     /// The typed amount, or `nil` while the text is empty, not a number or out of range.
-    var grams: Double? {
-        Formatters.parseAmount(gramsText)
+    var amount: Double? {
+        Formatters.parseAmount(amountText)
     }
 
     /// Energy for the typed amount; `nil` while the amount is not valid.
     var energy: Double? {
-        grams.flatMap { per100g.scaled(toGrams: $0).energy }
+        amount.flatMap { per100g.scaled(toGrams: $0).energy }
     }
 }
 
@@ -33,7 +33,7 @@ nonisolated struct RecipeDraft: Hashable, Sendable {
     var photo: Data?
 
     /// The amount a freshly added ingredient starts with, in its own unit; edited inline.
-    static let defaultGrams = 100.0
+    static let defaultAmount = 100.0
     static let minimumServings = 0.5
     static let maximumServings = 100.0
 
@@ -42,22 +42,23 @@ nonisolated struct RecipeDraft: Hashable, Sendable {
     }
 
     /// Rows with a valid amount; a row being typed counts as nothing until it parses.
-    var rows: [(grams: Double, per100g: Nutrition)] {
+    var rows: [(amount: Double, measure: FoodMeasure, per100: Nutrition)] {
         ingredients.compactMap { row in
-            row.grams.map { (grams: $0, per100g: row.per100g) }
+            row.amount.map { (amount: $0, measure: row.measure, per100: row.per100g) }
         }
     }
 
-    var totalWeight: Double {
-        RecipeMath.total(ingredients: rows).weight
+    /// The raw total, mass and volume apart.
+    var totalAmount: RawAmount {
+        RecipeMath.total(ingredients: rows).amount
     }
 
     var perServing: Nutrition {
         RecipeMath.perServing(total: RecipeMath.total(ingredients: rows).nutrition, servings: servings)
     }
 
-    var gramsPerServing: Double {
-        RecipeMath.gramsPerServing(weight: totalWeight, servings: servings)
+    var amountPerServing: RawAmount {
+        RecipeMath.amountPerServing(total: totalAmount, servings: servings)
     }
 
     /// A name, a sensible servings count, and at least one row, every row with a valid amount.
@@ -65,10 +66,10 @@ nonisolated struct RecipeDraft: Hashable, Sendable {
         !trimmedName.isEmpty
             && (Self.minimumServings...Self.maximumServings).contains(servings)
             && !ingredients.isEmpty
-            && ingredients.allSatisfy { $0.grams != nil }
+            && ingredients.allSatisfy { $0.amount != nil }
     }
 
-    /// Appends a food at `defaultGrams`, in the food's own unit. A recipe is ignored:
+    /// Appends a food at `defaultAmount`, in the food's own unit. A recipe is ignored:
     /// recipes do not nest.
     mutating func add(_ choice: FoodChoice) {
         guard !choice.isRecipe else { return }
@@ -78,7 +79,7 @@ nonisolated struct RecipeDraft: Hashable, Sendable {
             name: choice.name,
             per100g: choice.perUnit,
             measure: choice.measure,
-            gramsText: Formatters.fieldText(Self.defaultGrams)
+            amountText: Formatters.fieldText(Self.defaultAmount)
         ))
     }
 }

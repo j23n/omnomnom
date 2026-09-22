@@ -22,7 +22,7 @@ struct RecipeWriter {
                 name: row.name,
                 per100g: row.per100g,
                 measure: row.measure,
-                gramsText: Formatters.fieldText(row.grams)
+                amountText: Formatters.fieldText(row.grams)
             )
         }
         return draft
@@ -48,9 +48,9 @@ struct RecipeWriter {
         recipe.photo = Photo.replacing(recipe.photo, with: draft.photo, in: context)
         do {
             for (index, row) in draft.ingredients.enumerated() {
-                guard let grams = row.grams else { throw RecipeWriteError.invalidDraft }
+                guard let amount = row.amount else { throw RecipeWriteError.invalidDraft }
                 let ingredient = RecipeIngredient(
-                    sortIndex: index, grams: grams, name: row.name, per100g: row.per100g, measure: row.measure
+                    sortIndex: index, amount: amount, name: row.name, per100g: row.per100g, measure: row.measure
                 )
                 context.insert(ingredient)
                 ingredient.recipe = recipe

@@ -20,14 +20,16 @@ struct EntryRow: View {
 
     @State private var isShowingPhoto = false
 
-    /// "1.5 servings · 351 g · 19:15": the amount in the unit it was logged in, then the
-    /// time it was logged.
+    /// "1.5 servings · 351 g · 19:15": the amount in the units it was logged in, both
+    /// of them for a recipe that mixes them, then the time it was logged.
     private var details: String {
         var parts: [String] = []
         if let servings = entry.servings {
             parts.append(Formatters.servings(servings))
         }
-        parts.append(Formatters.wholeAmount(entry.grams, measure: entry.measure))
+        if !entry.rawAmount.isEmpty {
+            parts.append(entry.rawAmount.wholeText)
+        }
         parts.append(entry.timestamp.formatted(date: .omitted, time: .shortened))
         return parts.joined(separator: " · ")
     }

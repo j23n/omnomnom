@@ -46,6 +46,9 @@ struct EntryEditorView: View {
     private let openedAmountText: String
     private let openedMealSlot: MealSlot
     private let openedTimestamp: Date
+    /// The unit the disabled field carries for an entry there is nothing to scale;
+    /// unused while there is a basis, which names the unit through its choice.
+    private let loggedMeasure: FoodMeasure
 
     init(
         entry: LogEntry,
@@ -60,7 +63,13 @@ struct EntryEditorView: View {
         let basis = EntryAmountBasis(entry: entry)
         self.basis = basis
         choice = basis?.choice
-        let initialAmountText = basis.map { Formatters.prefillText($0.amount) } ?? ""
+        // Without a basis the entry may still hold an amount, only one that cannot be
+        // scaled: a recipe entry whose servings count went to zero still weighs what it
+        // weighed. The disabled field shows it rather than reading empty.
+        let logged = Self.loggedAmount(of: entry)
+        loggedMeasure = logged.measure
+        let initialAmountText = basis.map { Formatters.prefillText($0.amount) }
+            ?? (logged.value > 0 ? Formatters.prefillText(logged.value) : "")
         openedAmountText = initialAmountText
         openedMealSlot = entry.mealSlot
         openedTimestamp = entry.timestamp
@@ -72,8 +81,18 @@ struct EntryEditorView: View {
 
     /// Servings for a recipe entry, else the unit the entry was logged in.
     private var unit: AmountUnit {
-        guard let choice else { return .food(entry.measure) }
+        guard let choice else { return .food(loggedMeasure) }
         return AmountUnit(choice: choice)
+    }
+
+    /// The entry's own amount and the unit to show it in: the one it says it was logged
+    /// in, or, when that part is empty, whichever part it does hold. A recipe entry that
+    /// mixes units shows its mass; the whole pair is under Raw amount either way.
+    private static func loggedAmount(of entry: LogEntry) -> (value: Double, measure: FoodMeasure) {
+        let raw = entry.rawAmount
+        if raw.amount(in: entry.measure) > 0 { return (raw.amount(in: entry.measure), entry.measure) }
+        if raw.millilitres > 0 { return (raw.millilitres, .volume) }
+        return (raw.grams, .mass)
     }
 
     private var amount: Double? {
@@ -92,9 +111,10 @@ struct EntryEditorView: View {
         return basis.snapshot(for: amount ?? 0)
     }
 
-    private var rawWeight: Double {
-        guard let basis else { return entry.grams }
-        return basis.grams(for: amount ?? 0)
+    /// What the typed servings come to, mass and volume apart; only a recipe shows it.
+    private var rawAmount: RawAmount {
+        guard let basis else { return entry.rawAmount }
+        return basis.rawAmount(for: amount ?? 0)
     }
 
     /// Whether the typed amount differs from the one the editor opened with. An
@@ -195,7 +215,7 @@ struct EntryEditorView: View {
         Section {
             NutritionPreview(nutrition: preview)
             if basis?.isServings == true {
-                LabeledContent("Raw weight", value: Formatters.wholeAmount(rawWeight, measure: .mass))
+                LabeledContent("Raw amount", value: rawAmount.wholeText)
             }
         } header: {
             Text("Nutrition")

@@ -14,16 +14,16 @@ struct IngredientRow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            TextField("0", text: $ingredient.gramsText)
+            TextField("0", text: $ingredient.amountText)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
                 .frame(maxWidth: 80)
-                .foregroundStyle(ingredient.grams == nil ? Color.red : Color.primary)
+                .foregroundStyle(ingredient.amount == nil ? Color.red : Color.primary)
                 .accessibilityLabel("\(ingredient.measure.displayName) of \(ingredient.name)")
                 .accessibilityValue(
-                    ingredient.gramsText.isEmpty
+                    ingredient.amountText.isEmpty
                         ? "no amount"
-                        : "\(ingredient.gramsText) \(ingredient.measure.spokenName)"
+                        : "\(ingredient.amountText) \(ingredient.measure.spokenName)"
                 )
             Text(ingredient.measure.unitSymbol)
                 .foregroundStyle(.secondary)
