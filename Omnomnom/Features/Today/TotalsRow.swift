@@ -1,38 +1,38 @@
 import DeveloperToolsSupport
 import SwiftUI
 
-/// All eight totals, always visible: four primary large, four secondary small.
-/// Falls back to a single column when the type size makes two rows of four too wide.
-/// With `foreign` set, the figures include what other sources wrote to Health and a
-/// small line says how much of the energy that is; a report, never a verdict.
+/// All eight totals, always visible. Energy leads on its own line; protein, carbohydrates
+/// and fat follow larger than saturated fat, fiber, sugar and sodium. The grid gives way
+/// to one column when the type size no longer fits it across. With `foreign` set, the
+/// figures include what other sources wrote to Health and a small line says how much of
+/// the energy that is; a report, never a verdict.
 struct TotalsRow: View {
     let totals: Nutrition
     /// Amounts other sources wrote to Health for the day; `nil` when there are none.
     var foreign: Nutrition? = nil
+
+    private static let large: [Nutrient] = [.protein, .carbohydrates, .fatTotal]
+    private static let small: [Nutrient] = [.fatSaturated, .fiber, .sugar, .sodium]
 
     private var combined: Nutrition {
         foreign.map { totals + $0 } ?? totals
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 12) {
+            TotalCell(nutrient: .energy, value: combined.energy, font: .title.weight(.semibold))
             ViewThatFits(in: .horizontal) {
-                Grid(horizontalSpacing: 12, verticalSpacing: 10) {
+                Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 12) {
                     GridRow {
-                        ForEach(Nutrient.primary, id: \.self) { nutrient in
-                            TotalCell(nutrient: nutrient, value: combined[nutrient], emphasized: true)
-                        }
+                        cells(Self.large, font: .title3.weight(.semibold))
                     }
                     GridRow {
-                        ForEach(Nutrient.secondary, id: \.self) { nutrient in
-                            TotalCell(nutrient: nutrient, value: combined[nutrient], emphasized: false)
-                        }
+                        cells(Self.small, font: .body)
                     }
                 }
                 VStack(alignment: .leading, spacing: 8) {
-                    ForEach(Nutrient.allCases, id: \.self) { nutrient in
-                        TotalCell(nutrient: nutrient, value: combined[nutrient], emphasized: nutrient.isPrimary)
-                    }
+                    cells(Self.large, font: .title3.weight(.semibold))
+                    cells(Self.small, font: .body)
                 }
             }
             if let foreign {
@@ -43,6 +43,14 @@ struct TotalsRow: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 4)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Daily totals")
+    }
+
+    private func cells(_ nutrients: [Nutrient], font: Font) -> some View {
+        ForEach(nutrients, id: \.self) { nutrient in
+            TotalCell(nutrient: nutrient, value: combined[nutrient], font: font)
+        }
     }
 
     /// "incl. 250 kcal from Health", or a wording without a figure when energy is absent.
@@ -54,24 +62,23 @@ struct TotalsRow: View {
     }
 }
 
+/// Label over value, sized to its content so the grid measures what it really needs.
 private struct TotalCell: View {
     let nutrient: Nutrient
     let value: Double?
-    let emphasized: Bool
+    let font: Font
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(nutrient.shortName)
-                .font(.caption2)
+                .font(.caption)
                 .foregroundStyle(.secondary)
-            Text(Formatters.amount(value, unit: nutrient.unit))
-                .font(emphasized ? .title3.weight(.semibold) : .subheadline)
-                .monospacedDigit()
-                .lineLimit(1)
+            ValueText(value, unit: nutrient.unit)
+                .font(font)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .gridColumnAlignment(.leading)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(nutrient.displayName) \(Formatters.amount(value, unit: nutrient.unit))")
+        .accessibilityLabel("\(nutrient.displayName), \(Formatters.spokenAmount(value, unit: nutrient.unit))")
     }
 }
 

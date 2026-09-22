@@ -60,6 +60,6 @@ struct EstimateDraftTests {
         #expect(EstimationLogOutcome(results: [fine]).bannerMessage == "Logged 1 estimated item.")
         #expect(EstimationLogOutcome(results: [fine, fine]).bannerMessage == "Logged 2 estimated items.")
         let mixed = EstimationLogOutcome(results: [fine, denied, denied]).bannerMessage
-        #expect(mixed == "Logged 3 estimated items. Logged locally. Nothing reached Health; check Settings.")
+        #expect(mixed == "Logged 3 estimated items. Logged here only. Health didn't accept it.")
     }
 }

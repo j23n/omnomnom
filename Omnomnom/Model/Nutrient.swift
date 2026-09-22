@@ -89,4 +89,13 @@ nonisolated enum NutrientUnit: String, Codable, Sendable {
         case .milligram: "mg"
         }
     }
+
+    /// The unit's name for VoiceOver, which would otherwise spell out the symbol.
+    var spokenName: String {
+        switch self {
+        case .kilocalorie: "kilocalories"
+        case .gram: "grams"
+        case .milligram: "milligrams"
+        }
+    }
 }

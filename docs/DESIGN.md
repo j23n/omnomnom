@@ -33,3 +33,5 @@ Every screen is held to the plan's targets rather than to taste:
 ## Decisions
 
 Filled in as the screen-by-screen pass settles each one.
+
+- Copy yesterday re-logs each entry at the same time of day, never in the future, keeping its meal slot; each copy is mirrored to Health like a repeat.

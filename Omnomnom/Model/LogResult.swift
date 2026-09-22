@@ -12,13 +12,13 @@ nonisolated struct LogResult: Hashable, Sendable {
     /// Non-blocking message for Today, or `nil` when everything went through.
     var bannerMessage: String? {
         if let healthError {
-            return "Logged locally. Health did not accept it: \(healthError)"
+            return "Logged here only. Health didn't accept it: \(healthError)"
         }
         if let storeError {
             return "Saved to Health but could not update the local record: \(storeError)"
         }
         if written.isEmpty {
-            return "Logged locally. Nothing reached Health; check Settings."
+            return "Logged here only. Health didn't accept it."
         }
         return nil
     }

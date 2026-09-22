@@ -3,11 +3,14 @@ import Foundation
 import os
 import SwiftData
 
-/// Which rows a preview container starts with. Every seed uses today's date so the
-/// Today screen shows them without navigating; times are 08:10, 12:40, 15:30 and 19:15.
+/// Which rows a preview container starts with. Every seed but `yesterdayOnly` uses
+/// today's date so the Today screen shows them without navigating; times are 08:10,
+/// 12:40, 15:30 and 19:15.
 nonisolated enum PreviewSeed: Hashable, Sendable {
     /// Nothing at all: no foods, no entries, no recipes.
     case empty
+    /// Nothing today, but oats and an apple logged yesterday, so Today offers to copy them.
+    case yesterdayOnly
     /// The first thing ever logged: one banana at breakfast, synced.
     case firstRun
     /// Oats at breakfast, chicken and rice at lunch, an apple as a snack, and 1.5
@@ -177,6 +180,11 @@ private struct Seeder {
         switch seed {
         case .empty:
             break
+        case .yesterdayOnly:
+            let oats = food("Oats, whole grain, rolled, old fashioned", bundledID: 9, per100g: PreviewFoods.oats)
+            let apple = food(PreviewFoods.apple.name, bundledID: 1, per100g: PreviewFoods.apple.per100g)
+            entry(oats, grams: 40, at: time(8, 10, daysAgo: 1), slot: .breakfast)
+            entry(apple, grams: 182, at: time(15, 30, daysAgo: 1), slot: .snack)
         case .firstRun:
             let banana = food("Bananas, raw", bundledID: 2, per100g: PreviewFoods.banana)
             entry(banana, grams: 118, at: time(8, 10), slot: .breakfast)
@@ -345,9 +353,10 @@ private struct Seeder {
         }
     }
 
-    /// Today at `hour`:`minute` local time.
-    private func time(_ hour: Int, _ minute: Int) -> Date {
-        calendar.date(bySettingHour: hour, minute: minute, second: 0, of: Date.now) ?? Date.now
+    /// Today, or `daysAgo` days back, at `hour`:`minute` local time.
+    private func time(_ hour: Int, _ minute: Int, daysAgo: Int = 0) -> Date {
+        let day = calendar.date(byAdding: .day, value: -daysAgo, to: Date.now) ?? Date.now
+        return calendar.date(bySettingHour: hour, minute: minute, second: 0, of: day) ?? day
     }
 }
 #endif

@@ -36,13 +36,13 @@ nonisolated enum HealthState: String, Sendable {
     }
 
     /// Short badge text for states worth showing on Today; `nil` for `synced`.
-    var badge: String? {
+    var badgeText: String? {
         switch self {
         case .synced: nil
         case .partial: "Partly in Health"
-        case .gone: "Not in Health"
-        case .unauthorized: "Not written"
-        case .orphaned: "Left in Health"
+        case .gone: "Missing from Health"
+        case .unauthorized: "Not written to Health"
+        case .orphaned: "Only in Health"
         }
     }
 }

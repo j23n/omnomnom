@@ -35,7 +35,7 @@ struct SnapshotTests {
         #expect(HealthState.derive(written: written, present: [], orphaned: false) == .gone)
         #expect(HealthState.derive(written: [], present: [], orphaned: false) == .unauthorized)
         #expect(HealthState.derive(written: written, present: written, orphaned: true) == .orphaned)
-        #expect(HealthState.synced.badge == nil)
-        #expect(HealthState.gone.badge != nil)
+        #expect(HealthState.synced.badgeText == nil)
+        #expect(HealthState.gone.badgeText != nil)
     }
 }

@@ -2,7 +2,8 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-/// Date header, daily totals, entries grouped by meal slot, add button.
+/// The selected day's totals and entries. The day is the title, day navigation lives in
+/// the toolbar and the add button in a bar at the bottom, within reach of the thumb.
 struct TodayView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var model: TodayViewModel
@@ -14,87 +15,62 @@ struct TodayView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                DayHeader(model: model)
-                DayEntriesView(day: model.selectedDay, model: model)
-            }
-            .navigationTitle("Today")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        model.isAddPresented = true
-                    } label: {
-                        Label("Add food", systemImage: "plus")
+            DayEntriesView(day: model.selectedDay, model: model)
+                .navigationTitle(model.dayTitle)
+                .navigationSubtitle(model.daySubtitle)
+                .toolbar {
+                    ToolbarItemGroup(placement: .topBarLeading) {
+                        Button {
+                            model.showPreviousDay()
+                        } label: {
+                            Image(systemName: "chevron.left")
+                        }
+                        .accessibilityLabel("Previous day")
+                        Button {
+                            model.showNextDay()
+                        } label: {
+                            Image(systemName: "chevron.right")
+                        }
+                        .accessibilityLabel("Next day")
+                        if !model.isShowingToday {
+                            Button("Today") { model.showToday() }
+                        }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            model.isDatePickerPresented = true
+                        } label: {
+                            Image(systemName: "calendar")
+                        }
+                        .accessibilityLabel("Choose a day")
+                        .popover(isPresented: $model.isDatePickerPresented) {
+                            DayPicker(model: model)
+                        }
+                    }
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            model.isAddPresented = true
+                        } label: {
+                            Label("Add food", systemImage: "plus")
+                        }
                     }
                 }
-            }
-            .sheet(isPresented: $model.isAddPresented) {
-                AddFoodSheet(mode: .log(
-                    day: model.selectedDay,
-                    onLogged: { model.handle($0) },
-                    onMessage: { model.banner = $0 }
-                ))
-            }
-            .safeAreaInset(edge: .bottom) {
-                VStack(spacing: 8) {
-                    if model.showsUnauthorizedNotice {
-                        UnauthorizedNoticeView { model.showsUnauthorizedNotice = false }
-                    }
-                    if let banner = model.banner {
-                        BannerView(message: banner) { model.banner = nil }
+                .safeAreaBar(edge: .bottom) {
+                    TodayBottomBar(model: model)
+                }
+                .sheet(isPresented: $model.isAddPresented) {
+                    AddFoodSheet(mode: .log(
+                        day: model.selectedDay,
+                        onLogged: { model.handle($0) },
+                        onMessage: { model.show(banner: $0) }
+                    ))
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active {
+                        model.sceneBecameActive()
                     }
                 }
-            }
-            .onChange(of: scenePhase) { _, phase in
-                if phase == .active {
-                    model.sceneBecameActive()
-                }
-            }
         }
-    }
-}
-
-/// Previous / next day arrows around a tappable date that opens a graphical picker.
-private struct DayHeader: View {
-    @Bindable var model: TodayViewModel
-
-    var body: some View {
-        HStack {
-            Button {
-                model.showPreviousDay()
-            } label: {
-                Image(systemName: "chevron.left")
-            }
-            .accessibilityLabel("Previous day")
-            Spacer()
-            Button(model.dayTitle) {
-                model.isDatePickerPresented = true
-            }
-            .font(.headline)
-            .popover(isPresented: $model.isDatePickerPresented) {
-                DatePicker(
-                    "Day",
-                    selection: Binding(
-                        get: { model.selectedDay },
-                        set: { model.select(day: $0) }
-                    ),
-                    displayedComponents: .date
-                )
-                .datePickerStyle(.graphical)
-                .padding()
-                .presentationCompactAdaptation(.popover)
-            }
-            Spacer()
-            Button {
-                model.showNextDay()
-            } label: {
-                Image(systemName: "chevron.right")
-            }
-            .accessibilityLabel("Next day")
-        }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
     }
 }
 
@@ -102,6 +78,11 @@ private struct DayHeader: View {
 #Preview("Empty day") {
     TodayView()
         .previewEnvironment(seed: .empty)
+}
+
+#Preview("Empty day with yesterday") {
+    TodayView()
+        .previewEnvironment(seed: .yesterdayOnly)
 }
 
 #Preview("First run") {
@@ -157,7 +138,7 @@ private struct DayHeader: View {
         .previewEnvironment(seed: .typicalDay)
 }
 
-#Preview("Banner and notice stacked") {
+#Preview("Bottom bar with banner and notice") {
     let model = TodayViewModel()
     model.banner = LogResult(entryID: UUID(), written: [], healthError: nil, storeError: nil).bannerMessage
     model.showsUnauthorizedNotice = true
