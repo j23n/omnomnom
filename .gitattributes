@@ -6,3 +6,6 @@
 *.gif filter=lfs diff=lfs merge=lfs -text
 *.webp filter=lfs diff=lfs merge=lfs -text
 docs/design/screenshots/** filter=lfs diff=lfs merge=lfs -text
+
+# The app icon is a small flat PNG the build needs even in a checkout without Git LFS.
+Omnomnom/Assets.xcassets/**/*.png -filter -diff -merge

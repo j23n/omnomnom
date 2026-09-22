@@ -39,24 +39,39 @@ struct OnboardingView: View {
     }
 }
 
+/// The mark and wordmark over the one paragraph that says what the app is. The copy
+/// scrolls once the type size outgrows the page, so the Continue button stays put at
+/// the bottom; at smaller sizes the scroll view centres it and does not bounce.
 private struct IntroPage: View {
     let next: () -> Void
 
     var body: some View {
         VStack(spacing: 24) {
-            Spacer()
-            Image(systemName: "fork.knife.circle")
-                .font(.system(size: 72))
-                .foregroundStyle(.tint)
-            Text("Log what you eat")
-                .font(.largeTitle.bold())
-            Text("Omnomnom is an entry mask for Apple Health. Search a food, type the grams, and the nutrients go to Health. No scores, no advice, no account, and it works offline.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Button("Continue", action: next)
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+            ScrollView {
+                VStack(spacing: 24) {
+                    BiteMark()
+                        .fill(.tint)
+                        .frame(width: 96, height: 96)
+                    Wordmark()
+                    Text("Log what you eat")
+                        .font(.largeTitle.bold())
+                    Text("Omnomnom is an entry mask for Apple Health. Search a food, type the grams, and the nutrients go to Health. No scores, no advice, no account, and it works offline.")
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .defaultScrollAnchor(.center, for: .alignment)
+            .scrollBounceBehavior(.basedOnSize)
+            Button {
+                next()
+            } label: {
+                Text("Continue")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glassProminent)
+            .controlSize(.large)
+            .buttonBorderShape(.capsule)
         }
         .padding(32)
     }

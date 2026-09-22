@@ -17,6 +17,16 @@ nonisolated enum MealSlot: String, CaseIterable, Codable, Sendable {
         }
     }
 
+    /// The SF Symbol shown next to the slot's name on Today.
+    var symbolName: String {
+        switch self {
+        case .breakfast: "sunrise"
+        case .lunch: "sun.max"
+        case .dinner: "moon.stars"
+        case .snack: "carrot"
+        }
+    }
+
     /// Guesses the slot from the hour of `date`. Editable by the user afterwards.
     static func inferred(from date: Date, calendar: Calendar = .current) -> MealSlot {
         let hour = calendar.component(.hour, from: date)
