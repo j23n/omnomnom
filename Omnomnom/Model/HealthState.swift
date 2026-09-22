@@ -8,7 +8,8 @@ nonisolated enum HealthState: String, Sendable {
     case partial
     /// Health has none of the samples this app wrote.
     case gone
-    /// Nothing was written because no nutrient type was authorized.
+    /// Nothing of this entry ever reached Health: no nutrient was authorized when it was
+    /// logged, or the write failed. A fact about this entry, not about Health right now.
     case unauthorized
     /// The entry was deleted locally but the samples could not be removed from Health.
     case orphaned
@@ -27,21 +28,25 @@ nonisolated enum HealthState: String, Sendable {
         return .synced
     }
 
-    /// States the user can act on from Today: restore the samples or remove the entry here.
+    /// States the user can act on from the entry's editor: write the entry to Health or
+    /// remove it here. `unauthorized` is one of them: an entry that never reached Health
+    /// can be written now, and without that a failed write would be unrecoverable.
     var needsAttention: Bool {
         switch self {
-        case .partial, .gone: true
-        case .synced, .unauthorized, .orphaned: false
+        case .partial, .gone, .unauthorized: true
+        case .synced, .orphaned: false
         }
     }
 
-    /// Short badge text for states worth showing on Today; `nil` for `synced`.
+    /// Short badge text for states worth showing on Today; `nil` for `synced`. The two
+    /// states Health is short of read apart rather than only differing in tense: `gone`
+    /// was in Health and went, `unauthorized` never arrived.
     var badgeText: String? {
         switch self {
         case .synced: nil
         case .partial: "Partly in Health"
-        case .gone: "Missing from Health"
-        case .unauthorized: "Not written to Health"
+        case .gone: "No longer in Health"
+        case .unauthorized: "Not in Health"
         case .orphaned: "Only in Health"
         }
     }

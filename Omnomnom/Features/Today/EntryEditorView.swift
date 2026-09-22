@@ -206,8 +206,8 @@ struct EntryEditorView: View {
         Section {
             Text(Self.message(for: entry))
                 .foregroundStyle(.secondary)
-            if entry.healthState.needsAttention || entry.healthState == .orphaned {
-                Button("Write to Health again") {
+            if entry.healthState != .synced {
+                Button(Self.writeTitle(for: entry.healthState)) {
                     Task { await restore() }
                 }
                 .disabled(isWorking)
@@ -217,14 +217,22 @@ struct EntryEditorView: View {
         }
     }
 
+    /// "again" is only true of an entry Health once held; one that never got there is
+    /// being written for the first time.
+    private static func writeTitle(for state: HealthState) -> String {
+        state == .unauthorized ? "Write to Health" : "Write to Health again"
+    }
+
     /// Where the entry stands with Health, in a sentence. For the states the user can
-    /// act on this names what Health dropped, as the Today dialog did before.
+    /// act on this names what Health dropped, as the Today dialog did before; for one
+    /// that never reached Health it says so without guessing why, since an empty
+    /// written set covers both a refused permission and a write that failed.
     static func message(for entry: LogEntry) -> String {
         switch entry.healthState {
         case .synced:
             return "Written to Health."
         case .unauthorized:
-            return "Kept here only."
+            return "Health never got this entry. Write it to Health now, or leave it here."
         case .orphaned:
             return "Removed here but still in Health."
         case .partial, .gone:
@@ -295,7 +303,7 @@ private struct EditorPreview: View {
             if let entry {
                 EntryEditorView(
                     entry: entry,
-                    onRestore: { entry in "Restored \(entry.foodName) to Health." },
+                    onRestore: { entry in "Wrote \(entry.foodName) to Health." },
                     onDelete: { _ in },
                     onFinished: { _ in }
                 )
@@ -328,6 +336,11 @@ private struct EditorPreview: View {
 #Preview("Needs Health attention") {
     let container = PreviewStore.container(seed: .healthStates)
     return EditorPreview(container: container, entry: PreviewStore.entry(in: container, state: .partial))
+}
+
+#Preview("Never reached Health") {
+    let container = PreviewStore.container(seed: .healthStates)
+    return EditorPreview(container: container, entry: PreviewStore.entry(in: container, state: .unauthorized))
 }
 
 #Preview("Accessibility 5") {

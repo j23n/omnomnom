@@ -14,7 +14,7 @@ final class TodayViewModel {
     var banner: String?
     /// Entry whose editor is up; `nil` when none.
     var editingEntry: LogEntry?
-    /// Whether the once-per-launch notice about unauthorized entries is on screen.
+    /// Whether the once-per-launch notice that Health is refusing nutrition is on screen.
     var showsUnauthorizedNotice = false
     /// Bumped whenever the day's Health samples should be read again.
     private(set) var healthRefresh = 0
@@ -95,9 +95,16 @@ final class TodayViewModel {
         show(banner: result.bannerMessage)
     }
 
-    /// Raises the unauthorized notice the first time a day shows such an entry.
-    func noteUnauthorizedEntries(_ hasAny: Bool) {
-        guard hasAny, !unauthorizedNoticeShown else { return }
+    /// Raises the notice the first time a day with entries is shown while Health is
+    /// there and currently accepts no nutrient at all.
+    ///
+    /// The notice makes a present-tense claim, so it is made from what Health allows
+    /// now rather than from the rows. An entry whose nutrients never reached Health is
+    /// a settled fact about that entry, and may well predate a permission the user has
+    /// since granted; reading the notice off such rows made it appear on every launch.
+    func noteHealthAuthorization(_ authorization: HealthAuthorization, hasEntries: Bool) {
+        guard hasEntries, authorization.isAvailable, authorization.authorized.isEmpty else { return }
+        guard !unauthorizedNoticeShown else { return }
         unauthorizedNoticeShown = true
         showsUnauthorizedNotice = true
     }
@@ -121,17 +128,24 @@ final class TodayViewModel {
         healthRefresh += 1
     }
 
-    /// Writes the entry to Health again under a bumped version and hands back what to
-    /// tell the user. The editor is the only caller and shows it inside the sheet: a
-    /// banner would go up on Today, underneath the sheet, where nobody would see it.
+    /// Writes the entry to Health under a bumped version and hands back what to tell the
+    /// user. The editor is the only caller and shows it inside the sheet: a banner would
+    /// go up on Today, underneath the sheet, where nobody would see it. The wording says
+    /// what happened rather than "restored", since the entry may never have been there.
     func restore(_ entry: LogEntry, using logger: EntryLogger) async -> String {
         defer { healthRefresh += 1 }
         do {
             let result = try await logger.restore(entry)
-            return result.bannerMessage ?? "Restored \(entry.foodName) to Health."
+            if result.healthError == nil, result.written.isEmpty {
+                // Health took the write and saved nothing, which is what it does while
+                // no nutrient may be written. `LogResult` speaks for a log that just
+                // happened; here nothing was logged, only offered again.
+                return "Health still isn't accepting nutrition. The entry is kept here."
+            }
+            return result.bannerMessage ?? "Wrote \(entry.foodName) to Health."
         } catch {
             AppLog.store.error("restore failed: \(error.localizedDescription, privacy: .public)")
-            return "Could not restore the entry."
+            return "Could not write the entry to Health."
         }
     }
 
