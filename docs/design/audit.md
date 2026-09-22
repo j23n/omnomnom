@@ -123,9 +123,9 @@ Missing: "copy yesterday" (plan, fast path section). Missing: a first-run varian
 | "Written by another app" (hint) | `ForeignMealsSection.swift:27` | keep |
 | "Delete", "Repeat" | `MealSection.swift:26,34` | keep |
 | "Estimated" | `EntryRow.swift:29` | keep |
-| "Partly in Health", "Not in Health", "Not written", "Left in Health" | `HealthState.swift:42-45` | keep the first two; "Not written" → "Not in Health" is ambiguous with `gone`, keep as is but see finding 6; "Left in Health" → "Still in Health" |
-| "Restore to Health" / "Remove here" | `EntryHealthActions.swift:26-27` | keep |
-| "Health no longer has this entry." / "Health no longer has protein and fiber." + "Restore writes it to Health again; Remove deletes it from this app only." | `EntryHealthActions.swift:38-42` | keep |
+| "Partly in Health", "No longer in Health", "Not in Health", "Only in Health" | `HealthState.swift:46-50` | settled: `gone` and `unauthorized` differ in tense on purpose, one was there and went, the other never arrived |
+| "Write it to Health again" / "Delete entry" | `EntryEditorView.swift` | settled: both live in the entry editor, which every row opens |
+| "Health no longer has this entry." / "Health no longer has protein and fiber." | `EntryEditorView.swift` | kept; the trailing sentence went with the dialog, since the editor shows the two actions |
 | "Double tap to restore it to Health or remove it here" | `EntryRow.swift:14` | shorten: "Restore to Health or remove here" (VoiceOver adds "double tap") |
 | "Some entries never reached Health because no nutrient may be written." | `BannerView.swift:36` | reword: "Nothing is being written to Health. Allow it in Health › Sharing." |
 | "Settings" (link) | `BannerView.swift:41` | reword to match destination (finding 6) |
@@ -136,7 +136,7 @@ Missing: "copy yesterday" (plan, fast path section). Missing: a first-run varian
 | "Logged locally. Nothing reached Health; check Settings." | `LogResult.swift:21` | reword: "Logged here. Nothing reached Health." (the notice carries the link) |
 | "Health no longer lets this app delete its data. Delete again to remove the entry here; remove it in Health separately." | `LogResult.swift:41` | shorten: "Health refused the delete. Swipe again to remove it here; remove it in Health yourself." |
 | "Could not delete: …" | `LogResult.swift:43` | keep |
-| "Restored \(name) to Health." / "Could not restore the entry." | `TodayViewModel.swift:86,89` | keep |
+| "Restored \(name) to Health." / "Could not restore the entry." / "Health still isn't accepting nutrition. The entry is kept here." | `TodayViewModel.swift` | keep; the third covers a write that was allowed to do nothing |
 | "Logged \(name) again." / "Could not log the entry again." | `TodayViewModel.swift:98,101` | keep, but do not require a tap to dismiss a success (finding 7) |
 | "Storage unavailable" / "The app could not open its local store. Restart the app; if this persists, reinstall it." | `OmnomnomApp.swift:62,64` | keep |
 
@@ -787,7 +787,7 @@ Agreed change list, implemented as one commit:
 2. A bottom "Add food" glass-prominent button in the safe-area bar; the toolbar plus stays.
 3. Totals card: energy as a hero line, then protein, carbs and fat, then the four secondaries. The energy value "1.189…" was truncated at default size in the four-column grid.
 4. One notice slot in the bottom bar: transient banners auto-dismiss, the permission notice persists with plain copy and an "Open Health" action.
-5. One badge style; wording "Partly in Health", "Missing from Health", "Not written to Health", "Only in Health"; a chevron on rows that open the restore dialog.
+5. One badge style; wording "Partly in Health", "No longer in Health", "Not in Health", "Only in Health"; a chevron on every row, since every row opens the entry editor.
 6. Captions: integer grams and a middle dot separator everywhere.
 7. Empty day: "Nothing logged", the bottom button as the call to action, and "Copy yesterday" when yesterday has entries.
 
