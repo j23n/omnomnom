@@ -31,7 +31,7 @@ struct QuantitySheet: View {
         _timestamp = State(initialValue: timestamp)
         _mealSlot = State(initialValue: MealSlot.inferred(from: timestamp))
         _chips = State(initialValue: choice.isRecipe ? AmountChip.servings : [])
-        let prefill = choice.lastAmount ?? (choice.isRecipe ? 1 : nil)
+        let prefill: Double? = choice.lastAmount ?? (choice.isRecipe ? 1.0 : nil)
         _amountText = State(initialValue: prefill.map(Formatters.fieldText) ?? "")
     }
 

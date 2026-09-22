@@ -36,7 +36,7 @@ nonisolated enum HealthQueries {
             .filter(nutrients.contains)
             .map { HKSamplePredicate.sample(type: HealthObjects.quantityType(for: $0), predicate: bySyncIdentifier) }
         predicates.append(HKSamplePredicate.sample(type: HKCorrelationType(.food), predicate: bySyncIdentifier))
-        return HKSampleQueryDescriptor(predicates: predicates, sortDescriptors: [])
+        return HKSampleQueryDescriptor<HKSample>(predicates: predicates, sortDescriptors: [])
     }
 
     /// Every dietary quantity sample starting in `interval`, oldest first.
@@ -45,7 +45,8 @@ nonisolated enum HealthQueries {
         let predicates = Nutrient.allCases.map { nutrient in
             HKSamplePredicate.quantitySample(type: HealthObjects.quantityType(for: nutrient), predicate: inInterval)
         }
-        return HKSampleQueryDescriptor(predicates: predicates, sortDescriptors: [SortDescriptor(\.startDate)])
+        let byStart = SortDescriptor<HKQuantitySample>(\.startDate)
+        return HKSampleQueryDescriptor<HKQuantitySample>(predicates: predicates, sortDescriptors: [byStart])
     }
 
     /// The sync identifier in an object's or deleted object's metadata, if it has one.
