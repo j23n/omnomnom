@@ -3,10 +3,11 @@ import os
 import SwiftData
 import SwiftUI
 
-/// The estimate as editable rows, the totals, the meal slot and time, then Log. Nothing
-/// reaches the store or Health until the button is tapped; every value can be changed
-/// or the row removed first. When the estimate came from a photo, a toggle decides
-/// whether the photo is kept with the entries; it is on by default.
+/// The estimate as rows to check, the totals, the meal slot and time, then Log. Every
+/// value comes from the food on its row, which can be changed or the row removed; a row
+/// without a food cannot be logged at all. Nothing reaches the store or Health until the
+/// button is tapped. When the estimate came from a photo, a toggle decides whether the
+/// photo is kept with the entries; it is on by default.
 struct EstimateDraftView: View {
     let day: Date
     /// The stored-size photo the estimate was made from; `nil` for a text estimate.
@@ -22,6 +23,8 @@ struct EstimateDraftView: View {
     @State private var keepsPhoto = true
     @State private var isSaving = false
     @State private var saveError: String?
+    /// The row whose food is being chosen; the sheet lives here so only one is ever open.
+    @State private var picking: EstimateDraftRow?
 
     /// - Parameter day: the day shown on Today; the entries default to that day at the current time.
     init(draft: EstimateDraft, day: Date, photo: Data? = nil, onLogged: @escaping (String) -> Void) {
@@ -41,26 +44,27 @@ struct EstimateDraftView: View {
 
     var body: some View {
         Form {
-            if !draft.note.isEmpty || !draft.warnings.isEmpty {
+            if !draft.note.isEmpty {
                 Section("Assumptions") {
-                    if !draft.note.isEmpty {
-                        Text(draft.note)
-                    }
-                    ForEach(draft.warnings, id: \.self) { warning in
-                        Text(warning)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
+                    Text(draft.note)
                 }
             }
             Section {
                 ForEach($draft.rows) { $row in
-                    EstimateDraftRowView(row: $row) { draft.remove(id: row.id) }
+                    EstimateDraftRowView(
+                        row: $row,
+                        onChooseFood: { picking = row },
+                        onRemove: { draft.remove(id: row.id) }
+                    )
                 }
             } header: {
                 Text("Items")
             } footer: {
-                Text("Values are for the portion. Blank means unknown.")
+                if draft.hasUnmatchedRows {
+                    Text("A row without a food cannot be logged. Choose one, or remove the row.")
+                } else {
+                    Text("Every value comes from the food on the row, for the portion you enter.")
+                }
             }
             Section("Totals") {
                 NutritionPreview(nutrition: draft.totals)
@@ -102,15 +106,37 @@ struct EstimateDraftView: View {
                 .disabled(draft.items == nil || isSaving)
             }
         }
+        .sheet(item: $picking) { row in
+            AddFoodSheet(mode: .pick(onPick: { choose($0, for: row.id) }))
+        }
     }
 
+    /// The picked food becomes the row's source of values; the portion is left as typed.
+    /// A recipe is refused: the row's number is grams, which a recipe would read as
+    /// servings. The Add sheet hides recipes in pick mode, so this is belt and braces.
+    private func choose(_ choice: FoodChoice, for rowID: UUID) {
+        guard !choice.isRecipe else { return }
+        guard let index = draft.rows.firstIndex(where: { $0.id == rowID }) else { return }
+        draft.rows[index].choice = choice
+    }
+
+    /// Rows are saved one by one, so a row that failed leaves the ones before it in the
+    /// store. Whatever was logged is dropped from the draft before anything is shown, so
+    /// tapping Log again can only log what is left. The screen closes once nothing is.
     private func log() async {
         guard let items = draft.items, !isSaving else { return }
         isSaving = true
         let logger = EstimateLogger(context: context, health: health)
         do {
             let outcome = try await logger.log(items, mealSlot: mealSlot, at: timestamp, photo: keepsPhoto ? photo : nil)
-            onLogged(outcome.bannerMessage)
+            let logged = Set(outcome.loggedRowIDs)
+            draft.rows.removeAll { logged.contains($0.id) }
+            if draft.rows.isEmpty {
+                onLogged(outcome.bannerMessage)
+            } else {
+                saveError = outcome.bannerMessage
+                isSaving = false
+            }
         } catch {
             saveError = "Could not save: \(error.localizedDescription)"
             isSaving = false
@@ -119,23 +145,60 @@ struct EstimateDraftView: View {
 }
 
 #if DEBUG
-#Preview("Three items, one warning") {
+/// Resolves a fixed estimate against the injected repository and then shows the draft, so
+/// one preview exercises the real lookup. With `foods.sqlite` not yet built into the
+/// bundle nothing matches and every row asks for a food, which is the honest state.
+private struct ResolvedEstimatePreview: View {
+    let estimate: MealEstimate
+
+    @Environment(\.foodRepository) private var repository
+    @State private var draft: EstimateDraft?
+
+    var body: some View {
+        NavigationStack {
+            if let draft {
+                EstimateDraftView(draft: draft, day: .now) { _ in }
+            } else {
+                ProgressView()
+            }
+        }
+        .task {
+            let result = EstimateConversion.convert(estimate)
+            let items = await EstimateResolver(repository: repository).resolve(result.items)
+            draft = EstimateDraft(note: result.note, items: items)
+        }
+    }
+}
+
+#Preview("Three items, all matched") {
     NavigationStack {
-        EstimateDraftView(draft: PreviewEstimates.draft, day: .now) { _ in }
+        EstimateDraftView(draft: PreviewEstimates.matchedDraft, day: .now) { _ in }
     }
     .previewEnvironment(seed: .empty)
 }
 
+#Preview("Nothing matched, Log disabled") {
+    NavigationStack {
+        EstimateDraftView(draft: PreviewEstimates.unmatchedDraft, day: .now) { _ in }
+    }
+    .previewEnvironment(seed: .empty)
+}
+
+#Preview("Resolved against the bundled database") {
+    ResolvedEstimatePreview(estimate: PreviewEstimates.breakfast)
+        .previewEnvironment(seed: .empty)
+}
+
 #Preview("From a photo") {
     NavigationStack {
-        EstimateDraftView(draft: PreviewEstimates.draft, day: .now, photo: PreviewStore.samplePhoto) { _ in }
+        EstimateDraftView(draft: PreviewEstimates.matchedDraft, day: .now, photo: PreviewStore.samplePhoto) { _ in }
     }
     .previewEnvironment(seed: .empty)
 }
 
 #Preview("Dark") {
     NavigationStack {
-        EstimateDraftView(draft: PreviewEstimates.draft, day: .now) { _ in }
+        EstimateDraftView(draft: PreviewEstimates.matchedDraft, day: .now) { _ in }
     }
     .previewEnvironment(seed: .empty)
     .preferredColorScheme(.dark)
@@ -143,14 +206,14 @@ struct EstimateDraftView: View {
 
 #Preview("Accessibility 5") {
     NavigationStack {
-        EstimateDraftView(draft: PreviewEstimates.draft, day: .now) { _ in }
+        EstimateDraftView(draft: PreviewEstimates.matchedDraft, day: .now) { _ in }
     }
     .previewEnvironment(seed: .empty)
     .environment(\.dynamicTypeSize, .accessibility5)
 }
 
-#Preview("Invalid row, Log disabled") {
-    var draft = PreviewEstimates.draft
+#Preview("Invalid portion, Log disabled") {
+    var draft = PreviewEstimates.matchedDraft
     draft.rows[1].gramsText = ""
     return NavigationStack {
         EstimateDraftView(draft: draft, day: .now) { _ in }

@@ -1,34 +1,24 @@
 import Foundation
 
-/// Editable state of one draft row: the name, the grams and one text per nutrient,
-/// all as typed. A blank nutrient means unknown; text that does not parse blocks logging.
+/// Editable state of one draft row: the name the model gave, the food its values come
+/// from, and the grams as typed. No nutrient is ever typed here; the numbers are the
+/// database's, for the weight in the field.
 nonisolated struct EstimateDraftRow: Identifiable, Hashable, Sendable {
     let id: UUID
-    var name: String
+    let name: String
     var gramsText: String
-    private var fields: [Nutrient: String] = [:]
+    /// The food every value on this row comes from; `nil` until one is chosen.
+    var choice: FoodChoice?
 
-    init(item: EstimatedDraftItem) {
+    init(item: ResolvedEstimateItem) {
         id = item.id
         name = item.name
         gramsText = Formatters.fieldText(item.grams)
-        for nutrient in Nutrient.allCases {
-            if let value = item.nutrition[nutrient] {
-                fields[nutrient] = Formatters.fieldText(value)
-            }
-        }
+        choice = item.choice
     }
 
     var trimmedName: String {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    func text(for nutrient: Nutrient) -> String {
-        fields[nutrient] ?? ""
-    }
-
-    mutating func setText(_ text: String, for nutrient: Nutrient) {
-        fields[nutrient] = text
     }
 
     /// The typed grams within the amount field's bounds, or `nil`.
@@ -40,44 +30,36 @@ nonisolated struct EstimateDraftRow: Identifiable, Hashable, Sendable {
         grams == nil
     }
 
-    /// Whether a field holds text that does not parse; blank is fine.
-    func isInvalid(_ nutrient: Nutrient) -> Bool {
-        let text = self.text(for: nutrient).trimmingCharacters(in: .whitespaces)
-        return !text.isEmpty && Formatters.parseNutrientValue(text) == nil
+    /// What this portion holds, from the matched food; `nil` until a food is chosen and
+    /// the grams parse.
+    var nutrition: Nutrition? {
+        item?.nutrition
     }
 
-    /// The row as an item to log, or `nil` when the name is blank, the grams are out of
-    /// range, or a field does not parse. Values are the snapshot as typed, not per 100 g.
-    var item: EstimatedDraftItem? {
-        guard !trimmedName.isEmpty, let grams else { return nil }
-        var nutrition = Nutrition()
-        for nutrient in Nutrient.allCases {
-            let text = self.text(for: nutrient).trimmingCharacters(in: .whitespaces)
-            if text.isEmpty { continue }
-            guard let value = Formatters.parseNutrientValue(text) else { return nil }
-            nutrition[nutrient] = value
-        }
-        return EstimatedDraftItem(id: id, name: String(trimmedName.prefix(EstimateConversion.maximumNameLength)), grams: grams, nutrition: nutrition)
+    /// The row as an item to log, or `nil` when no food is matched or the grams are out
+    /// of range. The values are derived from the food, never from what the model said.
+    var item: ResolvedEstimateItem? {
+        guard let choice, let grams else { return nil }
+        return ResolvedEstimateItem(id: id, name: name, grams: grams, choice: choice)
     }
 }
 
-/// The whole draft the user confirms: the model's note, the conversion warnings, and
-/// the rows. Pure value type so the maths behind the totals and the Log button is tested.
+/// The whole draft the user confirms: the model's note and the rows. Pure value type so
+/// the maths behind the totals and the Log button is tested.
 nonisolated struct EstimateDraft: Hashable, Sendable {
     var note: String
-    var warnings: [String]
     var rows: [EstimateDraftRow]
 
-    init(result: EstimateConversion.Result) {
-        note = result.note
-        warnings = result.warnings
-        rows = result.items.map(EstimateDraftRow.init(item:))
+    init(note: String, items: [ResolvedEstimateItem]) {
+        self.note = note
+        rows = items.map(EstimateDraftRow.init(item:))
     }
 
-    /// Every row as an item, or `nil` when there are none or one of them is invalid.
-    var items: [EstimatedDraftItem]? {
+    /// Every row as an item, or `nil` when there are none or one of them has no food or
+    /// no usable weight.
+    var items: [ResolvedEstimateItem]? {
         guard !rows.isEmpty else { return nil }
-        var items: [EstimatedDraftItem] = []
+        var items: [ResolvedEstimateItem] = []
         for row in rows {
             guard let item = row.item else { return nil }
             items.append(item)
@@ -85,7 +67,13 @@ nonisolated struct EstimateDraft: Hashable, Sendable {
         return items
     }
 
-    /// Sum over the rows that parse; every nutrient reads 0 rather than blank.
+    /// Whether a row is still without a food. Such a row cannot be logged: there would be
+    /// no values to log but invented ones.
+    var hasUnmatchedRows: Bool {
+        rows.contains { $0.choice == nil }
+    }
+
+    /// Sum over the rows that resolve; every nutrient reads 0 rather than blank.
     var totals: Nutrition {
         EstimateConversion.totals(of: rows.compactMap(\.item))
     }

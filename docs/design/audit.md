@@ -636,9 +636,9 @@ Add sheet → Estimate (toolbar, module on; availability checked at tap, alert i
 ### 2. Hierarchy and layout
 
 - `EstimationSheet.swift:38-72`: `Form` with "Describe the meal" (vertical-axis `TextField`, 1…4 lines), photo section (thumbnail 72×72, "Choose photo", "Take photo", "Remove"), unavailable message, an action section holding the Estimate button or the progress row, an error line, and a footer. The primary action is an in-form button, unlike every other sheet where it is a `.confirmationAction`.
-- `EstimateDraftView.swift:38-77`: `Form` with "Assumptions" (note + warnings), "Items" (editable rows), "Totals" (`NutritionPreview`), Meal/Time, error. "Log N items" top-right; back button returns to the input.
-- `EstimateDraftRowView.swift:12-42`: name field + remove button, "Portion" row with a 100 pt field, then a `LazyVGrid(.adaptive(minimum: 150))` of eight `EstimateValueField`s (caption label, 72 pt field, unit). Dense but structured.
-- Colour: red on invalid (`:29,69`).
+- `EstimateDraftView.swift`: `Form` with "Assumptions" (the model's note), "Items" (one row per food, with a footer that says a row without a food cannot be logged), "Totals" (`NutritionPreview`), Meal/Time, the "Keep photo" toggle, error. "Log N items" top-right; back button returns to the input. The food picker is one sheet owned by this screen, so only one is ever open.
+- `EstimateDraftRowView.swift`: the model's name as text with the remove button, then the matched food as a button that opens the Add sheet in pick mode, the "Portion" row with a 100 pt field, and the energy for that portion as a caption. No nutrient fields at all: every value comes from the matched food.
+- Colour: the accent on an unmatched row's "Choose a food", red on a portion that does not parse.
 
 ### 3. States
 
