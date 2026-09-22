@@ -13,8 +13,8 @@ enum AddFoodMode {
 }
 
 /// Search over the Library and the bundled database, with recents before any typing.
-/// In log mode, and with the module on, a Scan button leads to the barcode flow and an
-/// Estimate button to the on-device estimation sheet.
+/// In log mode, and with the module on, a Scan button in the list leads to the barcode
+/// flow and an Estimate button to the on-device estimation sheet.
 struct AddFoodSheet: View {
     let mode: AddFoodMode
 
@@ -28,6 +28,8 @@ struct AddFoodSheet: View {
     @State private var results: [BundledFood] = []
     @State private var searchError: String?
     @State private var choice: FoodChoice?
+    @State private var scanRequested = false
+    @State private var estimateRequested = false
 
     private var isSearching: Bool {
         !searchText.trimmingCharacters(in: .whitespaces).isEmpty
@@ -44,13 +46,21 @@ struct AddFoodSheet: View {
         return nil
     }
 
+    /// The Scan and Estimate row for the lists; `nil` in pick mode, where neither applies.
+    private var modules: ModuleButtonsRow? {
+        guard includesRecipes else { return nil }
+        return ModuleButtonsRow(scanRequested: $scanRequested, estimateRequested: $estimateRequested)
+    }
+
     var body: some View {
         NavigationStack {
             Group {
                 if isSearching {
-                    SearchResultsList(local: local, results: results, errorMessage: searchError) { present($0) }
+                    SearchResultsList(local: local, results: results, errorMessage: searchError, modules: modules) {
+                        present($0)
+                    }
                 } else {
-                    RecentsList(includesRecipes: includesRecipes) { present($0) }
+                    RecentsList(includesRecipes: includesRecipes, modules: modules) { present($0) }
                 }
             }
             .navigationTitle(includesRecipes ? "Add food" : "Add ingredient")
@@ -72,8 +82,8 @@ struct AddFoodSheet: View {
                     .presentationDetents([.medium, .large])
                 }
             }
-            .modifier(BarcodeEntryPoint(isActive: includesRecipes) { present($0) })
-            .modifier(EstimationEntryPoint(day: logDay) { estimated($0) })
+            .modifier(BarcodeEntryPoint(isActive: includesRecipes, isRequested: $scanRequested) { present($0) })
+            .modifier(EstimationEntryPoint(day: logDay, isRequested: $estimateRequested) { estimated($0) })
         }
     }
 
@@ -158,6 +168,11 @@ struct AddFoodSheet: View {
 #Preview("Log mode, modules on") {
     AddFoodSheet(mode: .log(day: .now, onLogged: { _ in }, onMessage: { _ in }))
         .previewEnvironment(seed: .library, defaults: PreviewDefaults.modulesOn)
+}
+
+#Preview("Log mode, modules on, nothing logged yet") {
+    AddFoodSheet(mode: .log(day: .now, onLogged: { _ in }, onMessage: { _ in }))
+        .previewEnvironment(seed: .empty, defaults: PreviewDefaults.modulesOn)
 }
 
 #Preview("Pick mode") {

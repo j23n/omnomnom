@@ -14,13 +14,16 @@ private nonisolated enum BarcodeStage: Identifiable, Sendable {
     }
 }
 
-/// The Scan button on the Add sheet and the sheets behind it: the scanner, then either
-/// the Quantity sheet through `onFound` or, after a miss, the food editor prefilled with
-/// the barcode, whose saved food ends in `onFound` too. Shown only in log mode with the
-/// module turned on. Each next sheet is presented from `onDismiss` of the previous one,
-/// so two presentations never overlap.
+/// The barcode flow behind the Add sheet's Scan button: the scanner, then either the
+/// Quantity sheet through `onFound` or, after a miss, the food editor prefilled with
+/// the barcode, whose saved food ends in `onFound` too. The button itself lives in
+/// `ModuleButtonsRow`, which sets `isRequested`; the flow starts only in log mode with
+/// the module turned on. Each next sheet is presented from `onDismiss` of the previous
+/// one, so two presentations never overlap.
 struct BarcodeEntryPoint: ViewModifier {
     let isActive: Bool
+    /// Flipped to `true` by the Scan button; reset here as the scanner opens.
+    @Binding var isRequested: Bool
     let onFound: (FoodChoice) -> Void
 
     @AppStorage(BarcodeModule.enabledKey) private var scanningEnabled = false
@@ -29,11 +32,11 @@ struct BarcodeEntryPoint: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .toolbar {
+            .onChange(of: isRequested) { _, requested in
+                guard requested else { return }
+                isRequested = false
                 if isActive, scanningEnabled {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("Scan", systemImage: "barcode.viewfinder") { stage = .scan }
-                    }
+                    stage = .scan
                 }
             }
             .sheet(item: $stage, onDismiss: { advance() }) { stage in

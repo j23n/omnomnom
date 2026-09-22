@@ -2,10 +2,13 @@ import SwiftUI
 
 /// Name matches from the Library first ("Yours"), then ranked FTS results from the
 /// bundled database. Tapping a row hands a `FoodChoice` to whoever opened the sheet.
+/// With nothing found, the module buttons offer the other ways in.
 struct SearchResultsList: View {
     let local: [FoodChoice]
     let results: [BundledFood]
     let errorMessage: String?
+    /// The Scan and Estimate row for the no-results state; `nil` in pick mode.
+    let modules: ModuleButtonsRow?
     let onSelect: (FoodChoice) -> Void
 
     var body: some View {
@@ -13,6 +16,9 @@ struct SearchResultsList: View {
             if local.isEmpty, results.isEmpty, errorMessage == nil {
                 ContentUnavailableView.search
                     .listRowSeparator(.hidden)
+                if let modules {
+                    modules
+                }
             }
             if !local.isEmpty {
                 Section("Yours") {
@@ -55,17 +61,22 @@ struct SearchResultsList: View {
 private struct ResultRow: View {
     let food: BundledFood
 
+    /// "Fruits and Fruit Juices · 52 kcal per 100 g", wrapping as one line of text.
+    private var caption: String {
+        var parts: [String] = []
+        if let category = food.category {
+            parts.append(category)
+        }
+        parts.append("\(Formatters.amount(food.per100g.energy, unit: .kilocalorie)) per 100 g")
+        return parts.joined(separator: " · ")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(food.name)
-            HStack(spacing: 6) {
-                if let category = food.category {
-                    Text(category)
-                }
-                Text(Formatters.amount(food.per100g.energy, unit: .kilocalorie) + " per 100 g")
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            ValueText(caption)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
@@ -74,26 +85,34 @@ private struct ResultRow: View {
 
 #if DEBUG
 #Preview("Yours and database") {
-    SearchResultsList(local: PreviewStore.localResults, results: PreviewStore.bundledResults, errorMessage: nil) { _ in }
+    SearchResultsList(local: PreviewStore.localResults, results: PreviewStore.bundledResults, errorMessage: nil, modules: nil) { _ in }
 }
 
 #Preview("Database only") {
-    SearchResultsList(local: [], results: PreviewStore.bundledResults, errorMessage: nil) { _ in }
+    SearchResultsList(local: [], results: PreviewStore.bundledResults, errorMessage: nil, modules: nil) { _ in }
 }
 
 #Preview("No matches") {
-    SearchResultsList(local: [], results: [], errorMessage: nil) { _ in }
+    SearchResultsList(local: [], results: [], errorMessage: nil, modules: nil) { _ in }
+}
+
+#Preview("No matches, modules on") {
+    SearchResultsList(
+        local: [], results: [], errorMessage: nil,
+        modules: ModuleButtonsRow(scanRequested: .constant(false), estimateRequested: .constant(false))
+    ) { _ in }
+    .defaultAppStorage(PreviewDefaults.modulesOn)
 }
 
 #Preview("Database missing") {
     SearchResultsList(
         local: PreviewStore.localResults, results: [],
-        errorMessage: FoodRepositoryError.databaseMissing.errorDescription
+        errorMessage: FoodRepositoryError.databaseMissing.errorDescription, modules: nil
     ) { _ in }
 }
 
 #Preview("Accessibility 5") {
-    SearchResultsList(local: PreviewStore.localResults, results: PreviewStore.bundledResults, errorMessage: nil) { _ in }
+    SearchResultsList(local: PreviewStore.localResults, results: PreviewStore.bundledResults, errorMessage: nil, modules: nil) { _ in }
         .environment(\.dynamicTypeSize, .accessibility5)
 }
 #endif
