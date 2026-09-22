@@ -803,9 +803,9 @@ Confirmed fine: dark mode; the accessibility 5 single-column totals; the foreign
 
 ### Quantity sheet
 
-- **Log is top-right.** Bottom "Log" glass-prominent button in the safe-area bar; the field stays focused above it.
-- **Prefilled field appends digits.** Cursor sits after the prefilled value; select all on focus.
-- **Accessibility 5 breaks the card.** The unit label hyphenates to "serv-ings" beside the field, chips clip off the right edge, and the three-column nutrition grid hyphenates its labels. Unit below the field at large sizes, chips in a wrapping layout, and the nutrition grid degrading to a single column like Today.
-- "Raw weight 350,6 g" and the prefilled "33,9 g" carry decimals; integers in captions and prefill rounding to one decimal at most.
+- **Log is top-right.** Bottom "Log" glass-prominent button in the safe-area bar; the field stays focused above it. Done: a full-width capsule Log in `.safeAreaBar(edge: .bottom)`, the same shape as Today's Add food; the top-right Log is gone, Cancel stays, and the field still takes focus on appear.
+- **Prefilled field appends digits.** Cursor sits after the prefilled value; select all on focus. Done: `AmountField` binds a `TextSelection` and selects the whole text whenever the field gains focus.
+- **Accessibility 5 breaks the card.** The unit label hyphenates to "serv-ings" beside the field, chips clip off the right edge, and the three-column nutrition grid hyphenates its labels. Unit below the field at large sizes, chips in a wrapping layout, and the nutrition grid degrading to a single column like Today. Done: the unit drops under the field through `ViewThatFits`, chips wrap in a new `FlowLayout`, and the preview is a four-across `Grid` that gives way to two across and then one column.
+- "Raw weight 350,6 g" and the prefilled "33,9 g" carry decimals; integers in captions and prefill rounding to one decimal at most. Done: raw weight uses `Formatters.wholeGrams`, the prefill `Formatters.prefillText` (one decimal at most, whole when whole).
 - The title "Amount" is neutral; the food name in the card carries the meaning. Keep.
 - Brand line, attribution footer, meal and time rows: fine.

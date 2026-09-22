@@ -83,6 +83,12 @@ nonisolated enum Formatters {
         value.formatted(.number.precision(.fractionLength(0...2)).grouping(.never))
     }
 
+    /// Text to prefill the amount field with: at most one decimal, so a stored
+    /// 350.625 g reads "350.6" and a whole amount stays whole.
+    static func prefillText(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(0...1)).grouping(.never))
+    }
+
     /// "Today", "Yesterday", "Tomorrow" or a short weekday and date, "Mon 21 Sep", in
     /// the order the locale puts them.
     static func dayTitle(_ date: Date, calendar: Calendar = .current) -> String {

@@ -4,8 +4,9 @@ import SwiftData
 import SwiftUI
 
 /// Grams (or servings for a recipe), shortcut chips, live preview, meal slot and time,
-/// then Log. The entry always stores raw grams; a recipe entry stores servings too.
-/// A product fetched from Open Food Facts carries its attribution under the preview.
+/// then Log in a bar at the bottom, above the keyboard and within reach of the thumb.
+/// The entry always stores raw grams; a recipe entry stores servings too. A product
+/// fetched from Open Food Facts carries its attribution under the preview.
 struct QuantitySheet: View {
     let choice: FoodChoice
     let onLogged: (LogResult) -> Void
@@ -32,7 +33,7 @@ struct QuantitySheet: View {
         _mealSlot = State(initialValue: MealSlot.inferred(from: timestamp))
         _chips = State(initialValue: choice.isRecipe ? AmountChip.servings : [])
         let prefill: Double? = choice.lastAmount ?? (choice.isRecipe ? 1.0 : nil)
-        _amountText = State(initialValue: prefill.map(Formatters.fieldText) ?? "")
+        _amountText = State(initialValue: prefill.map(Formatters.prefillText) ?? "")
     }
 
     private var amount: Double? {
@@ -50,7 +51,7 @@ struct QuantitySheet: View {
                 Section {
                     NutritionPreview(nutrition: preview)
                     if choice.isRecipe {
-                        LabeledContent("Raw weight", value: Formatters.grams(choice.grams(for: amount ?? 0)))
+                        LabeledContent("Raw weight", value: Formatters.wholeGrams(choice.grams(for: amount ?? 0)))
                     }
                 } header: {
                     Text("Nutrition")
@@ -78,12 +79,20 @@ struct QuantitySheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Log") {
-                        Task { await confirm() }
-                    }
-                    .disabled(amount == nil || isSaving)
+            }
+            .safeAreaBar(edge: .bottom) {
+                Button {
+                    Task { await confirm() }
+                } label: {
+                    Text("Log")
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.glassProminent)
+                .controlSize(.large)
+                .buttonBorderShape(.capsule)
+                .disabled(amount == nil || isSaving)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
             }
             .task { await prepare() }
         }
@@ -96,7 +105,7 @@ struct QuantitySheet: View {
                 let portions = try await foodRepository.portions(for: bundledID)
                 chips = AmountChip.portions(portions)
                 if amountText.isEmpty, let first = portions.first {
-                    amountText = Formatters.fieldText(first.grams)
+                    amountText = Formatters.prefillText(first.grams)
                 }
             } catch {
                 AppLog.foodDB.error("portions failed: \(error.localizedDescription, privacy: .private)")

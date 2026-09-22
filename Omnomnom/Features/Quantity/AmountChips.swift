@@ -20,7 +20,8 @@ nonisolated struct AmountChip: Hashable, Sendable {
     ]
 }
 
-/// Shortcuts as chips. Tapping one fills the amount field; the unit never changes.
+/// Shortcuts as chips, wrapping onto further rows when they do not fit across. Tapping
+/// one fills the amount field; the unit never changes.
 struct AmountChips: View {
     let chips: [AmountChip]
     let onSelect: (Double) -> Void
@@ -29,21 +30,17 @@ struct AmountChips: View {
         if chips.isEmpty {
             EmptyView()
         } else {
-            ScrollView(.horizontal) {
-                HStack(spacing: 8) {
-                    ForEach(chips, id: \.self) { chip in
-                        Button {
-                            onSelect(chip.value)
-                        } label: {
-                            Text(chip.label)
-                                .lineLimit(1)
-                        }
-                        .buttonStyle(.bordered)
-                        .accessibilityLabel(chip.label)
+            FlowLayout(spacing: 8) {
+                ForEach(chips, id: \.self) { chip in
+                    Button {
+                        onSelect(chip.value)
+                    } label: {
+                        Text(chip.label)
                     }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel(chip.label)
                 }
             }
-            .scrollIndicators(.hidden)
         }
     }
 }
