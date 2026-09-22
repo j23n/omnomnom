@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The bite: a disc with one round bite out of its upper right and two crumbs, on the
+  light accent colour. Same geometry as BiteMark (Omnomnom/Support/Brand/BiteMark.swift)
+  and Tools/icon/make_icon.py; values are the 1024 square times the relative geometry.
+  Ready to drop into Icon Composer as a single layer over the background.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <mask id="bite" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="white"/>
+      <circle cx="711.68" cy="332.8" r="138.24" fill="black"/>
+    </mask>
+  </defs>
+  <rect width="1024" height="1024" fill="#E8641C"/>
+  <circle cx="512" cy="542.72" r="307.2" fill="#FFFFFF" mask="url(#bite)"/>
+  <circle cx="819.2" cy="240.64" r="24.576" fill="#FFFFFF"/>
+  <circle cx="875.52" cy="317.44" r="16.384" fill="#FFFFFF"/>
+</svg>

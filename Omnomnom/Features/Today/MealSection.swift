@@ -4,6 +4,8 @@ import SwiftUI
 
 /// One meal slot's entries with delete and repeat swipe actions. Tapping an entry that
 /// Health no longer holds in full hands it to `onHealthAction`; other rows ignore taps.
+/// The header carries the slot's symbol in the tint; the name keeps the list's own
+/// header styling and is what VoiceOver reads.
 struct MealSection: View {
     let slot: MealSlot
     let entries: [LogEntry]
@@ -12,7 +14,7 @@ struct MealSection: View {
     let onHealthAction: (LogEntry) -> Void
 
     var body: some View {
-        Section(slot.displayName) {
+        Section {
             ForEach(entries) { entry in
                 EntryRow(entry: entry)
                     .contentShape(Rectangle())
@@ -36,6 +38,14 @@ struct MealSection: View {
                         }
                         .tint(.accentColor)
                     }
+            }
+        } header: {
+            Label {
+                Text(slot.displayName)
+            } icon: {
+                Image(systemName: slot.symbolName)
+                    .foregroundStyle(.tint)
+                    .accessibilityHidden(true)
             }
         }
     }

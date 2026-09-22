@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Health status, the opt-in modules with their state, and data sources.
+/// Health status, the opt-in modules with their state, data sources, and an About row
+/// with the mark, the wordmark and the version.
 struct SettingsView: View {
     @AppStorage(BarcodeModule.enabledKey) private var barcodeScanningEnabled = false
     @AppStorage(EstimationModule.enabledKey) private var mealEstimationEnabled = false
@@ -47,6 +48,23 @@ struct SettingsView: View {
                     NavigationLink("Sources") {
                         SourcesView()
                     }
+                }
+                Section("About") {
+                    HStack(alignment: .top, spacing: 12) {
+                        BiteMark()
+                            .fill(.tint)
+                            .frame(width: 28, height: 28)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Wordmark()
+                            Text(AppVersion.display)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text("Your food log, written to Health.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
                 }
             }
             .navigationTitle("Settings")

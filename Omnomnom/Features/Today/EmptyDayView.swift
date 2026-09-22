@@ -1,8 +1,8 @@
 import DeveloperToolsSupport
 import SwiftUI
 
-/// The card for a day without entries. On today, with something logged yesterday, it
-/// offers to copy those entries; any other day only points at the Add button.
+/// The card for a day without entries, under the mark. On today, with something logged
+/// yesterday, it offers to copy those entries; any other day only points at the Add button.
 struct EmptyDayView: View {
     let canCopyYesterday: Bool
     let isCopying: Bool
@@ -10,7 +10,13 @@ struct EmptyDayView: View {
 
     var body: some View {
         ContentUnavailableView {
-            Label("Nothing logged", systemImage: "fork.knife")
+            Label {
+                Text("Nothing logged")
+            } icon: {
+                BiteMark()
+                    .fill(.tint)
+                    .frame(width: 56, height: 56)
+            }
         } description: {
             Text("Use Add food below.")
         } actions: {

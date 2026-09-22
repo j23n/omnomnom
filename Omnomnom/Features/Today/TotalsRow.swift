@@ -1,7 +1,8 @@
 import DeveloperToolsSupport
 import SwiftUI
 
-/// All eight totals, always visible. Energy leads on its own line; protein, carbohydrates
+/// All eight totals, always visible. Energy leads on its own line in the rounded face at
+/// bold weight, the one figure in the app set that way; protein, carbohydrates
 /// and fat follow larger than saturated fat, fiber, sugar and sodium. The grid gives way
 /// to one column when the type size no longer fits it across. With `foreign` set, the
 /// figures include what other sources wrote to Health and a small line says how much of
@@ -20,7 +21,7 @@ struct TotalsRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            TotalCell(nutrient: .energy, value: combined.energy, font: .title.weight(.semibold))
+            TotalCell(nutrient: .energy, value: combined.energy, font: .system(.largeTitle, design: .rounded, weight: .bold))
             ViewThatFits(in: .horizontal) {
                 Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 12) {
                     GridRow {
