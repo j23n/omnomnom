@@ -774,3 +774,38 @@ Preview each at Default and AX3 (and AX5 for Today totals and Onboarding), light
 | 9 | Estimation (findings 1–5) | 5 |
 
 Roughly fifty edits, front-loaded on the two screens the fast path runs through. Steps 2 and 3 should be previewed together, since the bottom action and the detent decision interact with the keyboard.
+
+## Screenshot findings
+
+Recorded from the first simulator captures (22 September 2026), light and dark at default size and at accessibility 5. These supersede the code-side guesses above where they differ.
+
+### Today
+
+Agreed change list, implemented as one commit:
+
+1. The date becomes the navigation title with the full date as subtitle; day chevrons and a calendar button move to the toolbar; the sticky day bar goes. The duplicate "Today" was visibly a bug.
+2. A bottom "Add food" glass-prominent button in the safe-area bar; the toolbar plus stays.
+3. Totals card: energy as a hero line, then protein, carbs and fat, then the four secondaries. The energy value "1.189…" was truncated at default size in the four-column grid.
+4. One notice slot in the bottom bar: transient banners auto-dismiss, the permission notice persists with plain copy and an "Open Health" action.
+5. One badge style; wording "Partly in Health", "Missing from Health", "Not written to Health", "Only in Health"; a chevron on rows that open the restore dialog.
+6. Captions: integer grams and a middle dot separator everywhere.
+7. Empty day: "Nothing logged", the bottom button as the call to action, and "Copy yesterday" when yesterday has entries.
+
+Confirmed fine: dark mode; the accessibility 5 single-column totals; the foreign share line.
+
+### Add sheet
+
+- **Module buttons are never visible.** Scan and Estimate sit in the top toolbar, and iOS 26 hides the navigation bar while search is active, which this sheet is from the moment it opens. Move them into the content: a row of two bordered buttons above Recent when enabled, and in the no-results and no-recents states.
+- **Captions interleave at large sizes.** "Last 1,5 servings" and "313 kcal per serving" are side-by-side texts, so at accessibility 5 they wrap into each other's lines. One `Text` with " · " separators that wraps naturally.
+- Double spaces between caption parts at default size; same fix.
+- The bottom search field with the circular close button is the right shape for one-handed use; keep.
+- "Yours" mixes recipes, custom foods and products with only "per serving" versus "per 100 g" to tell them apart; acceptable, revisit with the Library pass.
+
+### Quantity sheet
+
+- **Log is top-right.** Bottom "Log" glass-prominent button in the safe-area bar; the field stays focused above it.
+- **Prefilled field appends digits.** Cursor sits after the prefilled value; select all on focus.
+- **Accessibility 5 breaks the card.** The unit label hyphenates to "serv-ings" beside the field, chips clip off the right edge, and the three-column nutrition grid hyphenates its labels. Unit below the field at large sizes, chips in a wrapping layout, and the nutrition grid degrading to a single column like Today.
+- "Raw weight 350,6 g" and the prefilled "33,9 g" carry decimals; integers in captions and prefill rounding to one decimal at most.
+- The title "Amount" is neutral; the food name in the card carries the meaning. Keep.
+- Brand line, attribution footer, meal and time rows: fine.
