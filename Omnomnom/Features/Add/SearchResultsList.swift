@@ -73,11 +73,15 @@ private struct ResultRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(food.name)
-            ValueText(caption)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        HStack(spacing: 12) {
+            PhotoThumbnail(data: nil, size: 44)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(food.name)
+                ValueText(caption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
