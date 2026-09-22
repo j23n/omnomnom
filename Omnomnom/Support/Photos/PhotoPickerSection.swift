@@ -6,15 +6,18 @@ import PhotosUI
 import SwiftUI
 import UIKit
 
-/// A form section that holds one photo: the thumbnail when there is one, the camera
-/// when the device has one, the library picker, and a remove button. Whatever is
-/// picked or captured goes through `PhotoData.stored(from:)` at once, so the binding
-/// never holds more than the stored size. Each screen says in `footer` what it keeps.
+/// A form section that holds one photo: the thumbnail, the camera when the device has
+/// one, the library picker, and a remove button. With no photo yet the thumbnail is the
+/// placeholder, which shows where the picked photo will go; the buttons below it, not
+/// the square, are what the user taps. Whatever is picked or captured goes through
+/// `PhotoData.stored(from:)` at once, so the binding never holds more than the stored
+/// size. Each screen says in `footer` what it keeps.
 struct PhotoPickerSection: View {
     @Binding var photo: Data?
     let isBusy: Bool
     let footer: String
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var pickerItem: PhotosPickerItem?
     @State private var isCameraPresented = false
     @State private var loadError: String?
@@ -29,12 +32,20 @@ struct PhotoPickerSection: View {
         UIImagePickerController.isSourceTypeAvailable(.camera)
     }
 
+    /// Whether the thumbnail gets a row of its own. The placeholder is not drawn at
+    /// accessibility type sizes, and a row whose whole content is missing would be a
+    /// blank cell between the header and the buttons.
+    private var showsThumbnail: Bool {
+        photo != nil || !dynamicTypeSize.isAccessibilitySize
+    }
+
     var body: some View {
         Section {
-            if photo != nil {
+            if showsThumbnail {
                 PhotoThumbnail(data: photo, size: 72)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Photo")
+                    .accessibilityHidden(photo == nil)
             }
             if hasCamera {
                 Button {
