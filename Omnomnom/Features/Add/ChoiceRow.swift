@@ -2,9 +2,9 @@ import DeveloperToolsSupport
 import SwiftUI
 
 /// One recipe or stored food in the Add sheet: name, the amount used last time and
-/// energy per unit ("per 100 g" for a food, "per serving" for a recipe), with the
-/// user's photo when there is one. A product adds its brand and, when fetched from
-/// there, names Open Food Facts.
+/// energy per unit ("per 100 g" or "per 100 ml" for a food, as the food itself says,
+/// "per serving" for a recipe), with the user's photo when there is one. A product adds
+/// its brand and, when fetched from there, names Open Food Facts.
 struct ChoiceRow: View {
     let choice: FoodChoice
 

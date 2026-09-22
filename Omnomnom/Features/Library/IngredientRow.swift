@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// One ingredient in the builder: name and its energy, with the gram field inline.
+/// One ingredient in the builder: name and its energy, with the amount field inline in
+/// the food's own unit, grams or millilitres.
 struct IngredientRow: View {
     @Binding var ingredient: IngredientDraft
 
@@ -18,9 +19,13 @@ struct IngredientRow: View {
                 .multilineTextAlignment(.trailing)
                 .frame(maxWidth: 80)
                 .foregroundStyle(ingredient.grams == nil ? Color.red : Color.primary)
-                .accessibilityLabel("Grams of \(ingredient.name)")
-                .accessibilityValue(ingredient.gramsText.isEmpty ? "no amount" : "\(ingredient.gramsText) grams")
-            Text("g")
+                .accessibilityLabel("\(ingredient.measure.displayName) of \(ingredient.name)")
+                .accessibilityValue(
+                    ingredient.gramsText.isEmpty
+                        ? "no amount"
+                        : "\(ingredient.gramsText) \(ingredient.measure.spokenName)"
+                )
+            Text(ingredient.measure.unitSymbol)
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
         }

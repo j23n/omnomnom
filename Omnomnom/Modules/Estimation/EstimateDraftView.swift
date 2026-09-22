@@ -111,9 +111,10 @@ struct EstimateDraftView: View {
         }
     }
 
-    /// The picked food becomes the row's source of values; the portion is left as typed.
-    /// A recipe is refused: the row's number is grams, which a recipe would read as
-    /// servings. The Add sheet hides recipes in pick mode, so this is belt and braces.
+    /// The picked food becomes the row's source of values, and with it the unit the
+    /// portion is read in; the number itself is left as typed. A recipe is refused: the
+    /// row's number is an amount of one food, which a recipe would read as servings.
+    /// The Add sheet hides recipes in pick mode, so this is belt and braces.
     private func choose(_ choice: FoodChoice, for rowID: UUID) {
         guard !choice.isRecipe else { return }
         guard let index = draft.rows.firstIndex(where: { $0.id == rowID }) else { return }
@@ -214,7 +215,7 @@ private struct ResolvedEstimatePreview: View {
 
 #Preview("Invalid portion, Log disabled") {
     var draft = PreviewEstimates.matchedDraft
-    draft.rows[1].gramsText = ""
+    draft.rows[1].amountText = ""
     return NavigationStack {
         EstimateDraftView(draft: draft, day: .now) { _ in }
     }

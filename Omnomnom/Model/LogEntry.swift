@@ -11,7 +11,11 @@ final class LogEntry {
     var mealSlotRaw: String = MealSlot.snack.rawValue
     /// Name at log time; never changes even if the food is renamed or deleted.
     var foodName: String = ""
+    /// The amount logged, counted in `measure`'s unit.
     var grams: Double = 0
+    /// Raw `FoodMeasure` of the food at log time, frozen like the name and the snapshot:
+    /// correcting the food's unit later never reinterprets what is already logged.
+    var measureRaw: String = FoodMeasure.mass.rawValue
     var snapshotEnergy: Double?
     var snapshotProtein: Double?
     var snapshotCarbohydrates: Double?
@@ -30,7 +34,7 @@ final class LogEntry {
     var orphaned: Bool = false
     /// True for an entry the user confirmed from an on-device estimate rather than a food.
     var isEstimate: Bool = false
-    /// Servings logged, for a recipe entry; `nil` for a food. `grams` holds the raw weight either way.
+    /// Servings logged, for a recipe entry; `nil` for a food. `grams` holds the raw amount either way.
     var servings: Double?
     var food: Food?
     /// The recipe this was logged from, for display only; the snapshot never recomputes.
@@ -40,12 +44,16 @@ final class LogEntry {
     var photo: Photo?
 
     /// Relate to a `Food` or `Recipe` after `context.insert(entry)`, not here.
-    init(timestamp: Date, mealSlot: MealSlot, foodName: String, grams: Double, snapshot: Nutrition) {
+    init(
+        timestamp: Date, mealSlot: MealSlot, foodName: String, grams: Double,
+        snapshot: Nutrition, measure: FoodMeasure = .mass
+    ) {
         self.id = UUID()
         self.timestamp = timestamp
         self.mealSlotRaw = mealSlot.rawValue
         self.foodName = foodName
         self.grams = grams
+        self.measureRaw = measure.rawValue
         self.syncVersion = 1
         self.writtenNutrients = []
         self.presentNutrients = []
@@ -78,6 +86,12 @@ final class LogEntry {
     var mealSlot: MealSlot {
         get { MealSlot(rawValue: mealSlotRaw) ?? .snack }
         set { mealSlotRaw = newValue.rawValue }
+    }
+
+    /// The unit the amount was logged in, as the food read at that moment.
+    var measure: FoodMeasure {
+        get { FoodMeasure(rawValue: measureRaw) ?? .mass }
+        set { measureRaw = newValue.rawValue }
     }
 
     var written: Set<Nutrient> {

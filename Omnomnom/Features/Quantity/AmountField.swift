@@ -1,14 +1,21 @@
 import SwiftUI
 
-/// The unit an `AmountField` collects: grams for a food, servings for a recipe.
-nonisolated enum AmountUnit: Sendable {
-    case grams
+/// The unit an `AmountField` collects: the food's own, grams or millilitres, or
+/// servings for a recipe. One `FoodMeasure` is the single source of a food's unit text,
+/// so the field, its hint and its VoiceOver label can never disagree.
+nonisolated enum AmountUnit: Hashable, Sendable {
+    case food(FoodMeasure)
     case servings
+
+    /// The unit of what is being logged: servings for a recipe, else the food's own.
+    init(choice: FoodChoice) {
+        self = choice.isRecipe ? .servings : .food(choice.measure)
+    }
 
     /// Shown after the field.
     var symbol: String {
         switch self {
-        case .grams: "g"
+        case .food(let measure): measure.unitSymbol
         case .servings: "servings"
         }
     }
@@ -16,15 +23,24 @@ nonisolated enum AmountUnit: Sendable {
     /// VoiceOver label for the field.
     var accessibilityLabel: String {
         switch self {
-        case .grams: "Grams"
+        case .food(let measure): measure.displayName
         case .servings: "Servings"
         }
     }
 
-    /// The typed amount, or `nil` when it is empty, not a number or out of range.
+    /// The unit's name as VoiceOver should read it after the typed number.
+    var spokenName: String {
+        switch self {
+        case .food(let measure): measure.spokenName
+        case .servings: "servings"
+        }
+    }
+
+    /// The typed amount, or `nil` when it is empty, not a number or out of range. The
+    /// bounds are the same for grams and millilitres: they bound an amount, not a mass.
     func parse(_ text: String) -> Double? {
         switch self {
-        case .grams: Formatters.parseGrams(text)
+        case .food: Formatters.parseAmount(text)
         case .servings: Formatters.parseServings(text)
         }
     }
@@ -32,7 +48,7 @@ nonisolated enum AmountUnit: Sendable {
     /// "0.1 and 5000 g", for the inline hint when the text is out of range.
     var rangeText: String {
         switch self {
-        case .grams: Formatters.gramsRangeText
+        case .food(let measure): Formatters.amountRangeText(measure: measure)
         case .servings: Formatters.servingsRangeText
         }
     }
@@ -76,7 +92,7 @@ struct AmountField: View {
                 .multilineTextAlignment(.trailing)
                 .focused(isFocused)
                 .accessibilityLabel(unit.accessibilityLabel)
-                .accessibilityValue(text.isEmpty ? "no amount" : "\(text) \(unit.symbol)")
+                .accessibilityValue(text.isEmpty ? "no amount" : "\(text) \(unit.spokenName)")
             Text(unit.symbol)
                 .font(.title2)
                 .foregroundStyle(.secondary)

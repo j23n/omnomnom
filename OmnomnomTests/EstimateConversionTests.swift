@@ -34,8 +34,8 @@ struct EstimateConversionTests {
     @Test func weightsAreCappedToTheAmountFieldsBounds() {
         let estimate = MealEstimate(items: [item(grams: 9000), item(name: "Crumb", grams: 0.01)], note: "")
         let rows = EstimateConversion.convert(estimate).items
-        #expect(rows[0].grams == Formatters.maximumGrams)
-        #expect(rows[1].grams == Formatters.minimumGrams)
+        #expect(rows[0].grams == Formatters.maximumAmount)
+        #expect(rows[1].grams == Formatters.minimumAmount)
     }
 
     @Test func namesAreTrimmedCappedAndNeverBlank() {

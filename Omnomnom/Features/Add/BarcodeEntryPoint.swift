@@ -59,8 +59,8 @@ struct BarcodeEntryPoint: ViewModifier {
         switch outcome {
         case .found(let choice):
             onFound(choice)
-        case .manual(let barcode, let prefillName, let reason):
-            stage = .manual(ProductPrefill(barcode: barcode, name: prefillName, reason: reason))
+        case .manual(let barcode, let prefillName, let measure, let reason):
+            stage = .manual(ProductPrefill(barcode: barcode, name: prefillName, measure: measure, reason: reason))
         }
     }
 }

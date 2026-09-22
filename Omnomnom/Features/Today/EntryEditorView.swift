@@ -70,8 +70,10 @@ struct EntryEditorView: View {
         _chips = State(initialValue: basis?.isServings == true ? AmountChip.servings : [])
     }
 
+    /// Servings for a recipe entry, else the unit the entry was logged in.
     private var unit: AmountUnit {
-        basis?.isServings == true ? .servings : .grams
+        guard let choice else { return .food(entry.measure) }
+        return AmountUnit(choice: choice)
     }
 
     private var amount: Double? {
@@ -181,7 +183,7 @@ struct EntryEditorView: View {
             Section {
                 Text(entry.foodName)
                     .font(.headline)
-                AmountField(text: $amountText, unit: .grams, isFocused: $amountFocused)
+                AmountField(text: $amountText, unit: unit, isFocused: $amountFocused)
                     .disabled(true)
             } footer: {
                 Text("This entry has no amount to scale.")
@@ -193,7 +195,7 @@ struct EntryEditorView: View {
         Section {
             NutritionPreview(nutrition: preview)
             if basis?.isServings == true {
-                LabeledContent("Raw weight", value: Formatters.wholeGrams(rawWeight))
+                LabeledContent("Raw weight", value: Formatters.wholeAmount(rawWeight, measure: .mass))
             }
         } header: {
             Text("Nutrition")

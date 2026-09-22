@@ -48,7 +48,7 @@ struct OpenFoodFactsClientTests {
         let requests = await transport.requests
         let request = try #require(requests.first)
         #expect(requests.count == 1)
-        #expect(request.url?.absoluteString == "https://world.openfoodfacts.org/api/v2/product/4006381333931.json?fields=code,product_name,brands,nutriments")
+        #expect(request.url?.absoluteString == "https://world.openfoodfacts.org/api/v2/product/4006381333931.json?fields=code,product_name,brands,nutriments,quantity,product_quantity_unit")
         #expect(request.httpMethod == "GET")
         #expect(request.value(forHTTPHeaderField: "User-Agent") == userAgent)
         #expect(request.timeoutInterval == 10)

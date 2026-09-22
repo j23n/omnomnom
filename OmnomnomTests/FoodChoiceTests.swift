@@ -14,7 +14,23 @@ struct FoodChoiceTests {
         #expect(choice.isRecipe == false)
         #expect(choice.lastAmount == nil)
         #expect(choice.gramsPerServing == nil)
+        #expect(choice.measure == .mass)
         #expect(choice.unitText == "100 g")
+    }
+
+    /// A food measured in millilitres carries that through every label the row and the
+    /// Quantity sheet read off the choice; the arithmetic is the same either way.
+    @Test func volumeFoodNamesMillilitresEverywhere() {
+        let oatDrink = Nutrition(energy: 46, protein: 1, carbohydrates: 6.6)
+        let choice = FoodChoice(
+            source: .product(foodID: UUID()), name: "Oat drink", perUnit: oatDrink, measure: .volume, lastAmount: 250
+        )
+        #expect(choice.measure == .volume)
+        #expect(choice.unitText == "100 ml")
+        #expect(choice.amountText(250) == "250 ml")
+        #expect(choice.grams(for: 250) == 250)
+        #expect(choice.snapshot(for: 200).energy == 92)
+        #expect(choice.with(lastAmount: 300).measure == .volume)
     }
 
     @Test func foodAmountIsGramsAndSnapshotScalesPer100g() {

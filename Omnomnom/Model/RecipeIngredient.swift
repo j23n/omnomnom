@@ -1,8 +1,8 @@
 import Foundation
 import SwiftData
 
-/// One row of a recipe: a raw gram weight plus a frozen copy of the food's name and
-/// per-100 g values taken when the row was added. The `food` link is display only,
+/// One row of a recipe: a raw amount plus a frozen copy of the food's name, unit and
+/// per-100 values taken when the row was added. The `food` link is display only,
 /// so a deleted or refreshed food never changes what the recipe computes.
 ///
 /// Same schema rules as the other models: defaulted scalars, optional relationships
@@ -12,7 +12,10 @@ import SwiftData
 final class RecipeIngredient {
     var id: UUID = UUID()
     var sortIndex: Int = 0
+    /// The raw amount of this row, counted in `measure`'s unit.
     var grams: Double = 0
+    /// Raw `FoodMeasure`, copied from the food when the row was added.
+    var measureRaw: String = FoodMeasure.mass.rawValue
     /// Name at the time the row was added; never changes with the food.
     var name: String = ""
     var per100gEnergy: Double?
@@ -27,15 +30,22 @@ final class RecipeIngredient {
     var food: Food?
 
     /// Relate to a `Recipe` and a `Food` after `context.insert(ingredient)`, not here.
-    init(sortIndex: Int, grams: Double, name: String, per100g: Nutrition) {
+    init(sortIndex: Int, grams: Double, name: String, per100g: Nutrition, measure: FoodMeasure = .mass) {
         self.id = UUID()
         self.sortIndex = sortIndex
         self.grams = grams
+        self.measureRaw = measure.rawValue
         self.name = name
         self.per100g = per100g
     }
 
-    /// The frozen per-100 g values as one value type.
+    /// Grams or millilitres: the unit this row's amount and per-100 values are in.
+    var measure: FoodMeasure {
+        get { FoodMeasure(rawValue: measureRaw) ?? .mass }
+        set { measureRaw = newValue.rawValue }
+    }
+
+    /// The frozen per-100 values as one value type, in `measure`'s unit.
     var per100g: Nutrition {
         get {
             Nutrition(

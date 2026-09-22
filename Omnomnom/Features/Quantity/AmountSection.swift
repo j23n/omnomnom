@@ -8,7 +8,7 @@ struct AmountSection: View {
     @Binding var text: String
     var isFocused: FocusState<Bool>.Binding
 
-    private var unit: AmountUnit { choice.isRecipe ? .servings : .grams }
+    private var unit: AmountUnit { AmountUnit(choice: choice) }
 
     var body: some View {
         Section {

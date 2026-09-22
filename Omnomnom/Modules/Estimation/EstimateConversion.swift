@@ -37,7 +37,7 @@ nonisolated enum EstimateConversion {
         var items: [EstimatedDraftItem] = []
         for raw in estimate.items {
             guard raw.grams.isFinite, raw.grams > 0 else { continue }
-            let grams = min(max(raw.grams, Formatters.minimumGrams), Formatters.maximumGrams)
+            let grams = min(max(raw.grams, Formatters.minimumAmount), Formatters.maximumAmount)
             items.append(
                 EstimatedDraftItem(name: cleanName(raw.name), lookupTerm: cleanTerm(raw.lookupTerm), grams: grams)
             )

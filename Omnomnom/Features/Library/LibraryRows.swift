@@ -51,9 +51,9 @@ struct RecipeRow: View {
     }
 }
 
-/// Name and energy per 100 g of one custom food or product, with the brand of a
-/// product and the user's photo when there is one. The row opens the food editor, so
-/// it carries a chevron and reads as a button.
+/// Name and energy per 100 of one custom food or product, in the food's own unit, with
+/// the brand of a product and the user's photo when there is one. The row opens the
+/// food editor, so it carries a chevron and reads as a button.
 struct CustomFoodRow: View {
     let food: Food
 
@@ -63,7 +63,7 @@ struct CustomFoodRow: View {
         if let brand = food.brand {
             parts.append(brand)
         }
-        parts.append("\(Formatters.amount(food.per100g.energy, unit: .kilocalorie)) per 100 g")
+        parts.append("\(Formatters.amount(food.per100g.energy, unit: .kilocalorie)) \(food.measure.referenceText)")
         return parts.joined(separator: " · ")
     }
 

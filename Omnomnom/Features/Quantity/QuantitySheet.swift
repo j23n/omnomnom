@@ -3,10 +3,11 @@ import os
 import SwiftData
 import SwiftUI
 
-/// Grams (or servings for a recipe), shortcut chips, live preview, meal slot and time,
-/// then Log in a bar at the bottom, above the keyboard and within reach of the thumb.
-/// The entry always stores raw grams; a recipe entry stores servings too. A product
-/// fetched from Open Food Facts carries its attribution under the preview.
+/// The food's own unit, grams or millilitres (or servings for a recipe), shortcut
+/// chips, live preview, meal slot and time, then Log in a bar at the bottom, above the
+/// keyboard and within reach of the thumb. The entry stores the raw amount and the unit
+/// it was counted in; a recipe entry stores servings too. A product fetched from Open
+/// Food Facts carries its attribution under the preview.
 struct QuantitySheet: View {
     let choice: FoodChoice
     let onLogged: (LogResult) -> Void
@@ -37,7 +38,7 @@ struct QuantitySheet: View {
     }
 
     private var amount: Double? {
-        (choice.isRecipe ? AmountUnit.servings : AmountUnit.grams).parse(amountText)
+        AmountUnit(choice: choice).parse(amountText)
     }
 
     private var preview: Nutrition {
@@ -51,7 +52,10 @@ struct QuantitySheet: View {
                 Section {
                     NutritionPreview(nutrition: preview)
                     if choice.isRecipe {
-                        LabeledContent("Raw weight", value: Formatters.wholeGrams(choice.grams(for: amount ?? 0)))
+                        LabeledContent(
+                            "Raw weight",
+                            value: Formatters.wholeAmount(choice.grams(for: amount ?? 0), measure: .mass)
+                        )
                     }
                 } header: {
                     Text("Nutrition")

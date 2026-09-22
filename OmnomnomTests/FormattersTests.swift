@@ -3,20 +3,20 @@ import Testing
 @testable import Omnomnom
 
 struct FormattersTests {
-    @Test func parseGramsAcceptsCommaAndTrimsWhitespace() {
-        #expect(Formatters.parseGrams(" 62,5 ") == 62.5)
-        #expect(Formatters.parseGrams("182") == 182)
+    @Test func parseAmountAcceptsCommaAndTrimsWhitespace() {
+        #expect(Formatters.parseAmount(" 62,5 ") == 62.5)
+        #expect(Formatters.parseAmount("182") == 182)
     }
 
-    @Test func parseGramsRejectsGarbageAndOutOfRange() {
-        #expect(Formatters.parseGrams("") == nil)
-        #expect(Formatters.parseGrams("abc") == nil)
-        #expect(Formatters.parseGrams("0") == nil)
-        #expect(Formatters.parseGrams("0.05") == nil)
-        #expect(Formatters.parseGrams("5000.1") == nil)
-        #expect(Formatters.parseGrams("inf") == nil)
-        #expect(Formatters.parseGrams("0.1") == 0.1)
-        #expect(Formatters.parseGrams("5000") == 5000)
+    @Test func parseAmountRejectsGarbageAndOutOfRange() {
+        #expect(Formatters.parseAmount("") == nil)
+        #expect(Formatters.parseAmount("abc") == nil)
+        #expect(Formatters.parseAmount("0") == nil)
+        #expect(Formatters.parseAmount("0.05") == nil)
+        #expect(Formatters.parseAmount("5000.1") == nil)
+        #expect(Formatters.parseAmount("inf") == nil)
+        #expect(Formatters.parseAmount("0.1") == 0.1)
+        #expect(Formatters.parseAmount("5000") == 5000)
     }
 
     @Test func parseServingsAcceptsFractionsWithinRange() {
@@ -47,10 +47,20 @@ struct FormattersTests {
         #expect(Formatters.servings(0.5).hasSuffix(" servings"))
     }
 
-    @Test func wholeGramsRoundToTheGram() {
-        #expect(Formatters.wholeGrams(350) == "350 g")
-        #expect(Formatters.wholeGrams(350.4) == "350 g")
-        #expect(Formatters.wholeGrams(350.6) == "351 g")
+    @Test func wholeAmountRoundsToTheUnitAndNamesIt() {
+        #expect(Formatters.wholeAmount(350, measure: .mass) == "350 g")
+        #expect(Formatters.wholeAmount(350.4, measure: .mass) == "350 g")
+        #expect(Formatters.wholeAmount(350.6, measure: .mass) == "351 g")
+        #expect(Formatters.wholeAmount(250, measure: .volume) == "250 ml")
+        #expect(Formatters.wholeAmount(249.5, measure: .volume) == "250 ml")
+    }
+
+    /// Whole numbers only where the text is compared: the decimal separator is the host's.
+    @Test func amountKeepsOneDecimalAndNamesTheUnit() {
+        #expect(Formatters.amount(182, measure: .mass) == "182 g")
+        #expect(Formatters.amount(250, measure: .volume) == "250 ml")
+        #expect(Formatters.amount(62.5, measure: .mass).hasSuffix(" g"))
+        #expect(Formatters.amount(62.5, measure: .volume).hasSuffix(" ml"))
     }
 
     @Test func spokenAmountNamesTheUnitOrSaysNotRecorded() {
@@ -66,14 +76,15 @@ struct FormattersTests {
     }
 
     @Test func rangeTextsNameTheUnit() {
-        #expect(Formatters.gramsRangeText.hasSuffix(" and 5000 g"))
+        #expect(Formatters.amountRangeText(measure: .mass).hasSuffix(" and 5000 g"))
+        #expect(Formatters.amountRangeText(measure: .volume).hasSuffix(" and 5000 ml"))
         #expect(Formatters.servingsRangeText.hasSuffix(" and 50 servings"))
     }
 
     @Test func fieldTextDropsTrailingZeroAndGrouping() {
         #expect(Formatters.fieldText(100) == "100")
         #expect(Formatters.fieldText(1500) == "1500")
-        #expect(Formatters.parseGrams(Formatters.fieldText(62.5)) == 62.5)
+        #expect(Formatters.parseAmount(Formatters.fieldText(62.5)) == 62.5)
     }
 
     /// Whole results only where the text is compared: the decimal separator is the host's.
@@ -82,8 +93,8 @@ struct FormattersTests {
         #expect(Formatters.prefillText(30.0) == "30")
         #expect(Formatters.prefillText(33.96) == "34")
         #expect(Formatters.prefillText(1500) == "1500")
-        #expect(Formatters.parseGrams(Formatters.prefillText(33.94)) == 33.9)
-        #expect(Formatters.parseGrams(Formatters.prefillText(350.625)) == 350.6)
+        #expect(Formatters.parseAmount(Formatters.prefillText(33.94)) == 33.9)
+        #expect(Formatters.parseAmount(Formatters.prefillText(350.625)) == 350.6)
         #expect(Formatters.parseServings(Formatters.prefillText(1.5)) == 1.5)
     }
 }

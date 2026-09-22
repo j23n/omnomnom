@@ -55,7 +55,7 @@ private struct IntroPage: View {
                     Wordmark()
                     Text("Log what you eat")
                         .font(.largeTitle.bold())
-                    Text("Omnomnom is an entry mask for Apple Health. Search a food, type the grams, and the nutrients go to Health. No scores, no advice, no account, and it works offline.")
+                    Text("Omnomnom is an entry mask for Apple Health. Search a food, type the amount, and the nutrients go to Health. No scores, no advice, no account, and it works offline.")
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
                 }

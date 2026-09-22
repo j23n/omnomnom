@@ -1,9 +1,12 @@
 import Foundation
 
-/// Value-type state of the custom food editor: a name, the typed per-100 g text for
-/// each nutrient and the photo. Energy is required; a blank field means the value is unknown.
+/// Value-type state of the custom food editor: a name, the unit the food is measured
+/// in, the typed per-100 text for each nutrient and the photo. Energy is required; a
+/// blank field means the value is unknown.
 nonisolated struct CustomFoodDraft: Hashable, Sendable {
     var name = ""
+    /// Grams or millilitres. Every value typed here is per 100 of this unit.
+    var measure: FoodMeasure = .mass
     /// The stored-size photo of the food; `nil` for none.
     var photo: Data?
     private var fields: [Nutrient: String] = [:]
@@ -11,8 +14,9 @@ nonisolated struct CustomFoodDraft: Hashable, Sendable {
     init() {}
 
     /// Prefilled from an existing food's values.
-    init(name: String, per100g: Nutrition, photo: Data? = nil) {
+    init(name: String, per100g: Nutrition, measure: FoodMeasure = .mass, photo: Data? = nil) {
         self.name = name
+        self.measure = measure
         self.photo = photo
         for nutrient in Nutrient.allCases {
             if let value = per100g[nutrient] {

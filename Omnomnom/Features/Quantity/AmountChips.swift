@@ -7,9 +7,12 @@ nonisolated struct AmountChip: Hashable, Sendable {
     let label: String
     let value: Double
 
-    /// Household measures of a bundled food, such as "1 medium, 182 g".
+    /// Household measures of a bundled food, such as "1 medium, 182 g". The bundled
+    /// database is per 100 g throughout, so a portion is always a mass.
     static func portions(_ portions: [Portion]) -> [AmountChip] {
-        portions.map { AmountChip(label: "\($0.label), \(Formatters.grams($0.grams))", value: $0.grams) }
+        portions.map {
+            AmountChip(label: "\($0.label), \(Formatters.amount($0.grams, measure: .mass))", value: $0.grams)
+        }
     }
 
     /// Half, one and two servings of a recipe.
