@@ -1,0 +1,8 @@
+# Images and screenshots go through Git LFS. Run `git lfs install` once per clone.
+*.png filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
+*.heic filter=lfs diff=lfs merge=lfs -text
+*.gif filter=lfs diff=lfs merge=lfs -text
+*.webp filter=lfs diff=lfs merge=lfs -text
+docs/design/screenshots/** filter=lfs diff=lfs merge=lfs -text
