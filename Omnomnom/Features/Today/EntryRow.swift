@@ -6,16 +6,17 @@ import SwiftUI
 /// Name, amount and energy for one entry, plus a badge when Health does not hold it fully
 /// and an "Estimated" badge when the values came from the on-device model.
 /// A recipe entry shows its servings next to the raw grams they weigh.
-/// Rows in the `partial` or `gone` state read as buttons, with a chevron after the
-/// energy: a tap opens the Health actions. An entry with a photo, its own or its
-/// recipe's or food's, leads with a thumbnail that opens the photo; the thumbnail is
-/// a button of its own, so the row's tap still works everywhere else.
+/// Every row reads as a button, with a chevron after the energy: a tap opens the
+/// entry's editor. An entry with a photo, its own or its recipe's or food's, leads
+/// with a thumbnail that opens the photo; the thumbnail is a button of its own, so
+/// the row's tap still works everywhere else.
 struct EntryRow: View {
     let entry: LogEntry
+    /// Opens the entry, for VoiceOver. The list handles the sighted tap, which cannot
+    /// be a `Button` here because the photo thumbnail inside the row already is one.
+    var onOpen: () -> Void = {}
 
     @State private var isShowingPhoto = false
-
-    private var isActionable: Bool { entry.healthState.needsAttention }
 
     /// "1.5 servings · 351 g · 19:15": the amount, then the time it was logged.
     private var details: String {
@@ -60,16 +61,15 @@ struct EntryRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             ValueText(entry.snapshot.energy, unit: .kilocalorie)
-            if isActionable {
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-                    .accessibilityHidden(true)
-            }
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(isActionable ? .isButton : [])
-        .accessibilityHint(isActionable ? "Restore to Health or remove here" : "")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint("Opens the entry")
+        .accessibilityAction { onOpen() }
     }
 
     /// "Today, 08:10": the day as Today names it, then the time.
