@@ -53,7 +53,7 @@ struct EstimationSheet: View {
                 if availability?.supportsPhoto == true {
                     PhotoPickerSection(
                         photo: $photo, isBusy: isEstimating,
-                        footer: "Used on this device only. You choose whether to keep it when you log."
+                        footer: "You choose whether to keep it when you log."
                     )
                 }
                 if let availability, !availability.isAvailable {
@@ -79,7 +79,7 @@ struct EstimationSheet: View {
                             .foregroundStyle(.secondary)
                     }
                 } footer: {
-                    Text("Estimates are rough and made on this device. You check every value before it is logged.")
+                    Text("Estimates are rough. You confirm every value before anything is logged.")
                 }
             }
             .navigationTitle("Estimate a meal")

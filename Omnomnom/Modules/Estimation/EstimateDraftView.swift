@@ -87,8 +87,6 @@ struct EstimateDraftView: View {
             } footer: {
                 if draft.hasUnmatchedRows {
                     Text("A row without a food cannot be logged. Choose one, or remove the row.")
-                } else {
-                    Text("Every value comes from the food on the row, for the portion you enter.")
                 }
             }
             Section("Totals") {
@@ -99,8 +97,6 @@ struct EstimateDraftView: View {
                     isSavingRecipe = true
                 }
                 .disabled(!draft.canBecomeRecipe)
-            } footer: {
-                Text("Keeps these items as a recipe you can log again. Rows without a food are left out.")
             }
             Section {
                 Picker("Meal", selection: $mealSlot) {
@@ -116,10 +112,6 @@ struct EstimateDraftView: View {
                             Text("Keep photo")
                         }
                     }
-                }
-            } footer: {
-                if photo != nil {
-                    Text("Kept with these entries on this device. Never sent to Health.")
                 }
             }
             if let saveError {

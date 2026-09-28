@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// Name, the amount field with its range hint, the shortcut chips and, for a recipe,
-/// the one line that says what a serving is a portion of.
+/// Name, the amount field with its range hint, and the shortcut chips.
 struct AmountSection: View {
     let choice: FoodChoice
     let chips: [AmountChip]
@@ -22,11 +21,6 @@ struct AmountSection: View {
             AmountField(text: $text, unit: unit, isFocused: isFocused)
             if !text.isEmpty, unit.parse(text) == nil {
                 Text("Enter between \(unit.rangeText)")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-            if choice.isRecipe {
-                Text("Servings are portions of the raw total")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

@@ -60,10 +60,16 @@ struct CustomFoodEditorView: View {
         return "New custom food"
     }
 
-    /// Whether the unit is fixed: changing it under logged entries would silently
-    /// reinterpret their amounts, and those entries are a record, not a reference.
-    private var isMeasureLocked: Bool {
+    /// Whether anything has been logged from this food. The unit is then fixed, since
+    /// changing it would silently reinterpret those amounts, and they are a record
+    /// rather than a reference; it is also the only case where saying that the record
+    /// is left alone tells the user something.
+    private var hasLoggedEntries: Bool {
         !(food?.entries ?? []).isEmpty
+    }
+
+    private var isMeasureLocked: Bool {
+        hasLoggedEntries
     }
 
     var body: some View {
@@ -100,11 +106,11 @@ struct CustomFoodEditorView: View {
                             : "Type the values from the label, \(draft.measure.referenceText)"
                     )
                 } footer: {
-                    Text("Energy is required. Leave a value blank when it is not known; it is then not written to Health.")
+                    Text("A value left blank is not written to Health.")
                 }
-                PhotoPickerSection(photo: $draft.photo, footer: "Shown with the food and every entry logged from it.")
+                PhotoPickerSection(photo: $draft.photo, footer: "Shown on every entry logged from this food.")
                 TagSection(tags: $draft.tags)
-                if food != nil {
+                if hasLoggedEntries {
                     Section {
                         Text("Previously logged entries are unchanged.")
                             .font(.footnote)

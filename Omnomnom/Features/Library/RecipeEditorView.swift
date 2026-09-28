@@ -46,9 +46,9 @@ struct RecipeEditorView: View {
                         }
                     }
                 } footer: {
-                    Text("Servings are portions of the raw total, not of the cooked weight. Ingredients measured in grams and in millilitres are counted apart.")
+                    Text("Servings are portions of the raw total, not of the cooked weight.")
                 }
-                PhotoPickerSection(photo: $draft.photo, footer: "Shown with the recipe and every entry logged from it.")
+                PhotoPickerSection(photo: $draft.photo, footer: "Shown on every entry logged from this recipe.")
                 TagSection(tags: $draft.tags)
                 Section {
                     ForEach($draft.ingredients) { $ingredient in

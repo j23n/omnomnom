@@ -81,8 +81,6 @@ struct SearchResultsList: View {
                     }
                 } header: {
                     Text("Products")
-                } footer: {
-                    Text("From Open Food Facts. Choosing one fetches its values and keeps them here.")
                 }
             }
         }
