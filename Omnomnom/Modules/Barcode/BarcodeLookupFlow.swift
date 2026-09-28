@@ -3,7 +3,7 @@ import Observation
 import os
 import SwiftData
 
-/// The Settings key shared by the toggle, the Add sheet and the flow.
+/// The Settings key shared by the toggle, the food search screen and the flow.
 nonisolated enum BarcodeModule {
     static let enabledKey = "barcodeScanningEnabled"
 }

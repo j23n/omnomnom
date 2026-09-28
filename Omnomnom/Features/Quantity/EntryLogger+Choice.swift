@@ -2,7 +2,7 @@ import Foundation
 import os
 import SwiftData
 
-/// Why a choice from the Add sheet could not be logged.
+/// Why a choice from the food search screen could not be logged.
 nonisolated enum EntryLoggerError: Error, Equatable, Sendable, LocalizedError {
     /// The custom food or recipe was deleted while the sheet was open.
     case sourceMissing
@@ -18,7 +18,7 @@ nonisolated enum EntryLoggerError: Error, Equatable, Sendable, LocalizedError {
 }
 
 extension EntryLogger {
-    /// Logs what was picked in the Add sheet. `amount` is the food's own unit, grams or
+    /// Logs what was picked in the food search screen. `amount` is the food's own unit, grams or
     /// millilitres, and servings for a recipe. The unit is frozen onto the entry beside
     /// the amount. A bundled food's snapshot comes from the live choice and refreshes
     /// the stored copy; a custom food, a product and a recipe are read from their stored

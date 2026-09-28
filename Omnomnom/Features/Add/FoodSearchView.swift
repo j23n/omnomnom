@@ -3,19 +3,25 @@ import os
 import SwiftData
 import SwiftUI
 
-/// What the Add sheet does with a tapped row.
+/// What the food search screen does with a tapped row.
 enum AddFoodMode {
-    /// Open the Quantity sheet for `day`; a completed log dismisses both sheets. An
+    /// Open the Quantity sheet for `day`; a completed log closes the screen. An
     /// estimate logs several entries at once and reports through `onMessage` instead.
     case log(day: Date, onLogged: (LogResult) -> Void, onMessage: (String) -> Void)
-    /// Hand the choice back at once, as the recipe builder needs. Recipes are hidden.
-    case pick(onPick: (FoodChoice) -> Void)
+    /// Hand the choice back at once. With `multiple`, the screen stays open and keeps
+    /// taking foods until Done, which is how a recipe's ingredients are gathered.
+    /// Recipes are hidden either way: recipes do not nest.
+    case pick(multiple: Bool, onPick: (FoodChoice) -> Void)
 }
 
-/// Search over the Library and the bundled database, with recents before any typing.
-/// In log mode, and with the module on, a Scan button in the list leads to the barcode
-/// flow and an Estimate button to the on-device estimation sheet.
-struct AddFoodSheet: View {
+/// A screen for finding a food: the Library and the bundled database under one search
+/// field, with recents before any typing. In log mode, and with the module on, a Scan
+/// button leads to the barcode flow and an Estimate button to on-device estimation.
+///
+/// Presented full screen rather than as a sheet. Finding a food is the longest task in
+/// the app, and it deserves the whole display and a search field that is there from the
+/// first frame instead of arriving after the list.
+struct FoodSearchView: View {
     let mode: AddFoodMode
 
     @Environment(\.dismiss) private var dismiss
@@ -23,13 +29,17 @@ struct AddFoodSheet: View {
     @Environment(\.modelContext) private var context
 
     @State private var searchText = ""
-    @State private var searchPresented = true
     @State private var local: [FoodChoice] = []
     @State private var results: [BundledFood] = []
     @State private var searchError: String?
     @State private var choice: FoodChoice?
     @State private var scanRequested = false
     @State private var estimateRequested = false
+    /// How many foods have gone back to the caller in a multiple pick, and the last of
+    /// them, so the bottom bar can say what happened without anything else moving.
+    @State private var pickedCount = 0
+    @State private var lastPicked: String?
+    @FocusState private var fieldFocused: Bool
 
     private var isSearching: Bool {
         !searchText.trimmingCharacters(in: .whitespaces).isEmpty
@@ -38,6 +48,18 @@ struct AddFoodSheet: View {
     private var includesRecipes: Bool {
         if case .log = mode { return true }
         return false
+    }
+
+    private var picksSeveral: Bool {
+        if case .pick(let multiple, _) = mode { return multiple }
+        return false
+    }
+
+    private var title: String {
+        switch mode {
+        case .log: "Add food"
+        case .pick(let multiple, _): multiple ? "Add ingredients" : "Choose a food"
+        }
     }
 
     /// The day being logged into; `nil` in pick mode, which has no estimation.
@@ -54,7 +76,8 @@ struct AddFoodSheet: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            VStack(spacing: 0) {
+                FoodSearchField(text: $searchText, prompt: "Search foods", isFocused: $fieldFocused)
                 if isSearching {
                     SearchResultsList(local: local, results: results, errorMessage: searchError, modules: modules) {
                         present($0)
@@ -63,13 +86,18 @@ struct AddFoodSheet: View {
                     RecentsList(includesRecipes: includesRecipes, modules: modules) { present($0) }
                 }
             }
-            .navigationTitle(includesRecipes ? "Add food" : "Add ingredient")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $searchText, isPresented: $searchPresented, prompt: "Search foods")
+            .task { fieldFocused = true }
             .task(id: searchText) { await search() }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(pickedCount > 0 ? "Done" : "Cancel") { dismiss() }
+                }
+            }
+            .safeAreaBar(edge: .bottom) {
+                if pickedCount > 0 {
+                    pickedBar
                 }
             }
             .sheet(item: $choice) { choice in
@@ -87,12 +115,46 @@ struct AddFoodSheet: View {
         }
     }
 
-    /// In pick mode the choice goes straight back. Otherwise a bundled hit, which knows
-    /// nothing of past use, gets `lastAmount` from its stored row before the sheet opens.
+    /// What a multiple pick has gathered so far, with the way out of the screen.
+    private var pickedBar: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(pickedCount == 1 ? "1 ingredient added" : "\(pickedCount) ingredients added")
+                    .font(.subheadline.weight(.medium))
+                if let lastPicked {
+                    Text(lastPicked)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+            Button("Done") { dismiss() }
+                .buttonStyle(.glassProminent)
+                .controlSize(.large)
+                .buttonBorderShape(.capsule)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .animation(.default, value: pickedCount)
+    }
+
+    /// In pick mode the choice goes straight back, and a multiple pick stays open with
+    /// the field cleared and focused, so the next ingredient is one word away.
+    /// Otherwise a bundled hit, which knows nothing of past use, gets `lastAmount` from
+    /// its stored row before the Quantity sheet opens.
     private func present(_ choice: FoodChoice) {
-        if case .pick(let onPick) = mode {
+        if case .pick(let multiple, let onPick) = mode {
             onPick(choice)
-            dismiss()
+            guard multiple else {
+                dismiss()
+                return
+            }
+            pickedCount += 1
+            lastPicked = choice.name
+            searchText = ""
+            fieldFocused = true
             return
         }
         var prepared = choice
@@ -108,7 +170,7 @@ struct AddFoodSheet: View {
         self.choice = prepared
     }
 
-    /// An estimate was logged: Today gets the banner text and both sheets close.
+    /// An estimate was logged: Today gets the banner text and the screen closes.
     private func estimated(_ message: String) {
         if case .log(_, _, let onMessage) = mode {
             onMessage(message)
@@ -156,32 +218,37 @@ struct AddFoodSheet: View {
 
 #if DEBUG
 #Preview("Log mode, recents") {
-    AddFoodSheet(mode: .log(day: .now, onLogged: { _ in }, onMessage: { _ in }))
+    FoodSearchView(mode: .log(day: .now, onLogged: { _ in }, onMessage: { _ in }))
         .previewEnvironment(seed: .typicalDay)
 }
 
 #Preview("Log mode, nothing logged yet") {
-    AddFoodSheet(mode: .log(day: .now, onLogged: { _ in }, onMessage: { _ in }))
+    FoodSearchView(mode: .log(day: .now, onLogged: { _ in }, onMessage: { _ in }))
         .previewEnvironment(seed: .empty)
 }
 
 #Preview("Log mode, modules on") {
-    AddFoodSheet(mode: .log(day: .now, onLogged: { _ in }, onMessage: { _ in }))
+    FoodSearchView(mode: .log(day: .now, onLogged: { _ in }, onMessage: { _ in }))
         .previewEnvironment(seed: .library, defaults: PreviewDefaults.modulesOn)
 }
 
 #Preview("Log mode, modules on, nothing logged yet") {
-    AddFoodSheet(mode: .log(day: .now, onLogged: { _ in }, onMessage: { _ in }))
+    FoodSearchView(mode: .log(day: .now, onLogged: { _ in }, onMessage: { _ in }))
         .previewEnvironment(seed: .empty, defaults: PreviewDefaults.modulesOn)
 }
 
-#Preview("Pick mode") {
-    AddFoodSheet(mode: .pick(onPick: { _ in }))
+#Preview("Picking one food") {
+    FoodSearchView(mode: .pick(multiple: false, onPick: { _ in }))
+        .previewEnvironment(seed: .library)
+}
+
+#Preview("Picking ingredients") {
+    FoodSearchView(mode: .pick(multiple: true, onPick: { _ in }))
         .previewEnvironment(seed: .library)
 }
 
 #Preview("Log mode, accessibility 5") {
-    AddFoodSheet(mode: .log(day: .now, onLogged: { _ in }, onMessage: { _ in }))
+    FoodSearchView(mode: .log(day: .now, onLogged: { _ in }, onMessage: { _ in }))
         .previewEnvironment(seed: .typicalDay)
         .environment(\.dynamicTypeSize, .accessibility5)
 }

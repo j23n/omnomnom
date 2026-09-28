@@ -14,7 +14,7 @@ private nonisolated enum BarcodeStage: Identifiable, Sendable {
     }
 }
 
-/// The barcode flow behind the Add sheet's Scan button: the scanner, then either the
+/// The barcode flow behind the food search screen's Scan button: the scanner, then either the
 /// Quantity sheet through `onFound` or, after a miss, the food editor prefilled with
 /// the barcode, whose saved food ends in `onFound` too. The button itself lives in
 /// `ModuleButtonsRow`, which sets `isRequested`; the flow starts only in log mode with

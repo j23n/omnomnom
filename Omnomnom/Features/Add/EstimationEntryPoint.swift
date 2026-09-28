@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-/// The estimation sheet behind the Add sheet's Estimate button, which lives in
+/// The estimation sheet behind the food search screen's Estimate button, which lives in
 /// `ModuleButtonsRow` and sets `isRequested`. Opens only in log mode (`day` set) with
 /// the module turned on, and checks the model first: when it cannot answer, an alert
 /// says why instead of opening a sheet that could do nothing.

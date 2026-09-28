@@ -1,10 +1,10 @@
 import DeveloperToolsSupport
 import SwiftUI
 
-/// Scan and Estimate as list content on the Add sheet: the navigation bar is hidden
-/// while search is active, which is from the moment the sheet opens, so toolbar items
-/// would never be seen. Each button shows only while its module is on; with neither
-/// on, the row takes no space. The buttons sit side by side and stack at large type.
+/// Scan and Estimate as list content on the food search screen, where they sit under
+/// the search field in reach of a thumb rather than in a navigation bar the eye never
+/// visits while typing. Each button shows only while its module is on; with neither on,
+/// the row takes no space. The buttons sit side by side and stack at large type.
 /// Tapping one flips its trigger; the entry-point modifier that owns the sheet reacts.
 struct ModuleButtonsRow: View {
     @Binding var scanRequested: Bool

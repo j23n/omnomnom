@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-/// Fetches shared by the Add sheet, the logger, the recipe builder and the barcode flow.
+/// Fetches shared by the food search screen, the logger, the recipe builder and the barcode flow.
 extension Food {
     /// The stored row for a bundled food, if it was ever logged or used in a recipe.
     /// Filters on the kind too, so a custom food can never answer for a bundled id.

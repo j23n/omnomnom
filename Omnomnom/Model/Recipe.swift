@@ -64,7 +64,7 @@ final class Recipe {
 
     /// The choice that opens this recipe in the Quantity sheet, with per-serving values.
     /// The total is walked once here: `perServing` and `amountPerServing` each fetch and
-    /// sum every ingredient row, and this is built for every row of the Add sheet.
+    /// sum every ingredient row, and this is built for every row of the food search screen.
     var choice: FoodChoice {
         let total = self.total
         return FoodChoice(
@@ -91,7 +91,7 @@ final class Recipe {
         return try context.fetch(descriptor).first
     }
 
-    /// Recipes whose name contains `text`, by name, for the Add sheet's "Yours" results.
+    /// Recipes whose name contains `text`, by name, for the food search screen's "Yours" results.
     static func matching(_ text: String, in context: ModelContext) throws -> [Recipe] {
         let descriptor = FetchDescriptor<Recipe>(
             predicate: #Predicate<Recipe> { $0.name.localizedStandardContains(text) },
