@@ -15,7 +15,7 @@ The motivating target is the redesigned Health app's Longevity tab, which scores
 | Storage | Local only, no CloudKit, no account; schema kept CloudKit-compatible |
 | Dependencies | None. No third-party packages in the app target |
 | Nutrients | Energy, protein, carbohydrates, total fat, saturated fat, fiber, sugar, sodium |
-| Food data | Bundled generic database from USDA FoodData Central; other sources when internationalizing |
+| Food data | Bundled generic database from Ciqual and the Bundeslebensmittelschlüssel; FDC readable but not built in |
 | Barcodes | Opt-in; Open Food Facts online lookup with local cache |
 | AI estimation | Opt-in; on-device Foundation Models |
 | Recipes | Raw ingredient weights, no yield factors |
@@ -99,35 +99,41 @@ On iOS 27 the user photographs a plate. On iOS 26 the user types a description (
 
 The app ships a read-only `foods.sqlite` built offline by a Python script in `Tools/fooddb/`. The app never generates or mutates it. The script is idempotent, takes the raw source downloads as input, and writes the database plus a `sources.json` attribution manifest that the Settings screen renders.
 
-v1 bundles one source: USDA FoodData Central, Foundation Foods plus SR Legacy. It is CC0, English, analytically grounded, and around 9,000 generic foods, which removes cross-source deduplication from milestone 1 entirely. The pipeline is still written per source, with one mapping table each, so adding a second source later is a table and a dedup rule rather than a rewrite.
+The bundle is built from Ciqual and the BLS: two European tables of generic foods, analytically measured, that between them describe what is eaten here. FDC remains readable and tested, and is left out of the build because its names are US-shaped and its composite dishes are not the ones on a European plate. It is one flag away from coming back.
 
-Only permissively licensed sources go in the bundle, now or later. Open Food Facts stays out, which keeps the shipped artifact free of share-alike obligations entirely.
+Only permissively licensed sources go in the bundle, now or later. Open Food Facts stays out, which keeps the shipped artifact free of share-alike obligations entirely — and is why no branded product is in the bundle, since a generic composition table has never held one.
 
 | Source | Foods | Licence | Status |
 | --- | --- | --- | --- |
-| [FDC Foundation + SR Legacy](https://fdc.nal.usda.gov/) (USDA) | \~9,000 | CC0 1.0 | v1. Citation requested, not required |
-| [CIQUAL 2025](https://ciqual.anses.fr/) (ANSES, France) | 3,484 | Licence Ouverte / Etalab | Internationalization. French names with an English edition |
-| [BLS 4.0](https://www.blsdb.de/) (MRI, Germany) | 7,140 | CC BY 4.0, attribution to Max Rubner-Institut | Internationalization. German names, strong on composite dishes. Licence reported on GovData, confirm on the download page once |
+| [Ciqual](https://ciqual.anses.fr/) (ANSES, France) | 3,484 | Licence Ouverte / Etalab | Bundled. French and English names, both indexed |
+| [BLS 4.0](https://www.blsdb.de/) (MRI, Germany) | 7,140 | CC BY 4.0, attribution to Max Rubner-Institut | Bundled. German names, strong on composite dishes |
+| [FDC Foundation + SR Legacy](https://fdc.nal.usda.gov/) (USDA) | \~9,000 | CC0 1.0 | Readable, not built in. Citation requested, not required |
 
-After pruning to eight nutrients and removing the Foundation and SR Legacy overlap, expect roughly 8,000 rows, well under 5 MB including an FTS5 index.
+Expect roughly 10,000 rows, well under 5 MB including an FTS5 index.
+
+A source is named on the command line, so which ones ship is a build decision rather than a code change: `--ciqual`, `--bls`, `--fdc`, any combination, at least one.
 
 ### Schema
 
 ```
 meta(key, value)                   -- schema_version, built_at, source versions, counts
-foods(id, name, name_locale, source, source_ref, category,
+foods(id, name, name_locale, alt_names, source, source_ref, category,
       kcal_100g, protein_100g, carb_100g, fat_100g,
       satfat_100g, fiber_100g, sugar_100g, sodium_mg_100g,
       is_estimated, popularity)
-foods_fts(name)                    -- FTS5 external content, unicode61, diacritics removed
+foods_fts(name, alt_names)         -- FTS5 external content, unicode61, diacritics removed
 portions(id, food_id, label, grams, seq)   -- "1 medium", "1 slice"
 ```
 
-`id` is assigned by the build, never the source's own identifier; `source_ref` carries that. `kcal_100g` is the only nutrient that must be present, the rest are null when the source lacks them, never zero. `popularity` is the curated ranking boost. The `source` column exists for attribution, so the UI can name where a value came from. The full DDL lives in `Tools/fooddb/fooddb/schema.sql` and is the reference; this block is a summary.
+`alt_names` holds the same food's names in the source's other languages, newline separated, indexed for search and never displayed: typing "pomme" finds the row that reads "Apple, pulp and skin, raw", and typing "Apfel" finds "Apfel roh". `id` is assigned by the build, never the source's own identifier; `source_ref` carries that. `kcal_100g` is the only nutrient that must be present, the rest are null when the source lacks them, never zero. `popularity` is the curated ranking boost. The `source` column exists for attribution, so the UI can name where a value came from. The full DDL lives in `Tools/fooddb/fooddb/schema.sql` and is the reference; this block is a summary.
 
 ### Column mapping
 
-The pipeline reads one column per nutrient per source. These are the decisions; the first run verifies the identifiers against the downloaded files and the script fails loudly on a missing one.
+The pipeline reads one column per nutrient per source. These are the decisions; every build verifies the identifiers against the downloaded files and fails loudly on a missing one. `python3 -m fooddb inspect <folder>` prints what a download actually contains, which is how a renamed column is diagnosed rather than guessed at.
+
+Ciqual is keyed by constituent code, and the unit is written into the constituent's own name, so a renumbering or a unit change fails the build: energy 328 (kcal), protein 25000, carbohydrates 31000, fat 40000, saturated fat 40302, fibre 34100, sugars 32000, sodium 10110 (mg).
+
+The BLS is one wide table keyed by the short mnemonics it has always used: GCAL, ZE, ZK, ZF, FS, ZB, KMD, MNA, with spelled-out German names accepted as alternatives. It does not say what unit a column is in, so the unit is measured rather than assumed: no food holds more than 100 g of a macronutrient in 100 g, so a table whose macronutrients run past that is in milligrams. The decision is taken once for the whole group from the ninetieth percentile, so neither a corrupt row nor a low-valued column can move it, and the converted values are checked against the same ceiling afterwards.
 
 | Nutrient | FDC nutrient id | Unit at source |
 | --- | --- | --- |
@@ -432,7 +438,7 @@ Keep the bundled tables physically separate from anything Open Food Facts derive
 
 ### Attribution
 
-A Sources screen naming every database, its licence and a link, rendered from the `sources.json` the pipeline emits so the two never drift. USDA asks for a citation; give it even though CC0 does not require it. Open Food Facts additionally asks for attribution on product screens sourced from them, with clickable links to the site and the licence, and maintains a public non-compliance list worth checking against. BLS, when added, requires naming the Max Rubner-Institut as publisher.
+A Sources screen naming every database, its licence and a link, rendered from the `sources.json` the pipeline emits so the two never drift. The BLS requires naming the Max Rubner-Institut as publisher, which the manifest does. USDA asks for a citation; give it even though CC0 does not require it. Open Food Facts additionally asks for attribution on product screens sourced from them, with clickable links to the site and the licence, and maintains a public non-compliance list worth checking against.
 
 Skip Open Food Facts product images entirely: they are CC BY-SA and may carry packaging artwork and trademark rights beyond the photo itself.
 
@@ -456,7 +462,7 @@ Ordered by dependency, not by visibility. The first two milestones carry the mos
 4. **Recipes.** Ingredient rows, servings, snapshot on log.
 5. **Barcode.** Scanner, lookup, cache, attribution, manual fallback.
 6. **AI estimation.** Availability gate, image prompt, generable struct, editable draft.
-7. **Internationalization.** Localised UI, then CIQUAL and BLS as second and third bundled sources with the user's language ranked first in search, and cross-source deduplication by one primary source per food group.
+7. **Internationalization.** Localised UI, and the user's language ranked first in search. The sources themselves are already bundled.
 
 Steps 1 to 4 are the shippable app. Steps 5 to 7 are additive and can slip without blocking a release.
 
@@ -464,11 +470,10 @@ Steps 1 to 4 are the shippable app. Steps 5 to 7 are additive and can slip witho
 
 Kept here so the v1 pipeline does not paint itself into a corner.
 
-- `name_locale` is populated from day one, `en` for every FDC row, so search can filter or rank by language later without a schema change.
+- `name_locale` says which language a row's display name is in, so search can rank the user's own language first without a schema change.
 - `source` and `source_ref` stay per row, so a later source never overwrites an FDC row's provenance.
-- CIQUAL publishes values as strings with markers such as `<` and `traces`; map both to zero and set `is_estimated`. CIQUAL reports sodium in mg.
-- CIQUAL constituent codes for the eight nutrients: energy 328 (EU Regulation 1169/2011 kcal), protein 25000, carbohydrates 31000, fat 40000, saturated fat 40302, fiber 34100, sugar 32000, sodium 10110. Verify against the 2025 file on first use.
-- Cross-source overlap, CIQUAL's "Pomme, pulpe, crue" against FDC's "Apples, raw, with skin", is handled at build time by picking one primary source per food group, never at runtime.
+- Ciqual publishes values as strings with markers such as `<` and `traces`; both are stored as zero with `is_estimated` set, so a sum never silently omits them.
+- Cross-source overlap is settled at build time by name: the first source to claim a normalised name keeps it, in the order the sources are listed. Across languages there is almost nothing to settle, which is why Ciqual and the BLS coexist without a curation pass.
 
 ### Milestone 2 device checks
 
@@ -489,11 +494,11 @@ Each is a behaviour this plan assumes but Apple does not document. Run them on a
 
 **Apple Intelligence availability varies.** Region, device and OS gating means the photo tier will be unavailable for a large share of a worldwide audience: everyone on iOS 26, everyone without a supported device, and everyone in a region or language Apple Intelligence does not yet cover. The text tier narrows this but does not close it. The module must read as optional rather than broken, and the UI should name the actual reason rather than hiding the feature.
 
-**The v1 bundle is English only and US-shaped.** FDC covers generic foods well but is thin on European composite dishes, and a German or French user searching in their own language finds nothing in the bundle until milestone 7. Acceptable for an English-first launch; it is the reason the app should not be marketed outside English-speaking storefronts before then.
+**The bundle holds no branded products.** Ciqual, the BLS and FDC are composition tables of generic foods; none of them has ever held a Kinder Bueno or a bottle of Coca-Cola, and no permissively licensed table does. A branded product reaches the app by barcode, from Open Food Facts, or is typed once and kept in the Library. A user who expects to search a brand name and find it will be disappointed until there is a product search to match the product scanner.
 
 **Nutrient identifiers are unverified against the current FDC files.** The column mapping table is from the published FDC identifier list; the pipeline's first run confirms it and fails loudly otherwise.
 
-**Cross-source overlap is deferred with milestone 7.** The size of the CIQUAL and FDC duplicate set is not knowable in advance. If the primary-source-per-group rule produces poor coverage, the fallback is manual curation of the top few hundred foods, which is a day of work rather than a redesign.
+**The curated popularity list is FDC-shaped.** It ranks foods by their FDC descriptions, so with FDC out of the build it matches nothing and search falls back to relevance alone. Rewriting it against the Ciqual and BLS names is a sitting's work once their real names are in front of us.
 
 **Open Food Facts data quality is uneven.** Crowdsourced records vary by market and completeness. The manual-entry fallback is what keeps that from becoming a user-facing failure.
 
@@ -503,7 +508,7 @@ Each is a behaviour this plan assumes but Apple does not document. Run them on a
 - [Open Food Facts terms of use](https://world.openfoodfacts.org/terms-of-use)
 - [ODbL 1.0 summary](https://opendatacommons.org/licenses/odbl/summary/)
 - [OpenStreetMap Foundation licence FAQ](https://osmfoundation.org/wiki/Licence/Licence_and_Legal_FAQ) — derivative database versus produced work
-- [CIQUAL 2025](https://entrepot.recherche.data.gouv.fr/dataset.xhtml?persistentId=doi%3A10.57745%2FRDMHWY)
+- [Ciqual 2025](https://entrepot.recherche.data.gouv.fr/dataset.xhtml?persistentId=doi%3A10.57745%2FRDMHWY)
 - [FoodData Central API guide](https://fdc.nal.usda.gov/api-guide) — CC0 licensing
 - [BLS 4.0 on GovData](https://www.govdata.de/suche/daten/bundeslebensmittelschlussel-bls-version-4-0-deutsche-nahrstoffdatenbank?ids=93533564-6f65-4dfc-b435-43a92421ccc4) — CC BY 4.0
 - [BLS 4.0 released free of charge](https://heise.de/-11123877)
