@@ -45,16 +45,16 @@ nonisolated struct ProductRecord: Hashable, Sendable, Decodable {
 
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        code = try container.decodeIfPresent(String.self, forKey: .code) ?? ""
-        name = Self.trimmed(try container.decodeIfPresent(String.self, forKey: .productName))
-        let brands = try container.decodeIfPresent(String.self, forKey: .brands) ?? ""
+        code = try container.decodeIfPresent(LooseText.self, forKey: .code)?.value ?? ""
+        name = Self.trimmed(try container.decodeIfPresent(LooseText.self, forKey: .productName)?.value)
+        let brands = try container.decodeIfPresent(LooseText.self, forKey: .brands)?.value ?? ""
         brand = Self.trimmed(brands.split(separator: ",", maxSplits: 1).first.map(String.init))
         per100g = try container.decodeIfPresent(Nutriments.self, forKey: .nutriments)?.per100g ?? .empty
         // Either field may arrive as a number rather than a string; a value that is not
         // text says nothing about the unit, so it reads as absent.
         measure = Self.inferredMeasure(
-            quantityUnit: try? container.decodeIfPresent(String.self, forKey: .quantityUnit),
-            quantity: try? container.decodeIfPresent(String.self, forKey: .quantity)
+            quantityUnit: try? container.decodeIfPresent(LooseText.self, forKey: .quantityUnit)?.value,
+            quantity: try? container.decodeIfPresent(LooseText.self, forKey: .quantity)?.value
         )
     }
 
@@ -110,6 +110,9 @@ nonisolated struct ProductResponse: Sendable, Decodable {
 /// A hit without a barcode is dropped: there would be no way to ask about it again.
 nonisolated struct ProductSearchResponse: Sendable, Decodable {
     let products: [ProductRecord]
+    /// Hits that could not be read at all, so a body full of them is still reported
+    /// as an empty search rather than as a broken one.
+    let skipped: Int
 
     private enum CodingKeys: String, CodingKey {
         case hits
@@ -118,10 +121,22 @@ nonisolated struct ProductSearchResponse: Sendable, Decodable {
 
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        let found = try container.decodeIfPresent([ProductRecord].self, forKey: .hits)
-            ?? container.decodeIfPresent([ProductRecord].self, forKey: .products)
+        let found = try container.decodeIfPresent([FailableProduct].self, forKey: .hits)
+            ?? container.decodeIfPresent([FailableProduct].self, forKey: .products)
             ?? []
-        products = found.filter { !$0.code.isEmpty && $0.name?.isEmpty == false }
+        let records = found.compactMap(\.record)
+        skipped = found.count - records.count
+        products = records.filter { !$0.code.isEmpty && $0.name?.isEmpty == false }
+    }
+}
+
+/// One hit, which may be a shape this app does not understand. A search answers with
+/// twenty of them and one being odd is no reason to lose the other nineteen.
+private nonisolated struct FailableProduct: Decodable {
+    let record: ProductRecord?
+
+    init(from decoder: any Decoder) throws {
+        record = try? ProductRecord(from: decoder)
     }
 }
 
@@ -165,6 +180,54 @@ private nonisolated struct Nutriments: Decodable {
             sugar: try value(.sugars),
             sodium: sodiumGrams.map { $0 * 1000 }
         )
+    }
+}
+
+/// Text Open Food Facts may serialise in several shapes.
+///
+/// The product endpoint sends a plain string. The search index does not: a name is
+/// held per language, so `product_name` arrives as an object keyed by language code,
+/// and a barcode can arrive as a number. Anything that yields no text decodes as
+/// `nil` rather than failing the product, and a product that fails is skipped rather
+/// than failing the search.
+private nonisolated struct LooseText: Decodable {
+    let value: String?
+
+    /// Which language wins when the field is an object: the one the index marks as the
+    /// product's own, then English, then the first code in sorted order, so the same
+    /// document always reads the same way.
+    private static let preferredLanguages = ["main", "en"]
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let text = try? container.decode(String.self) {
+            value = Self.clean(text)
+        } else if let whole = try? container.decode(Int64.self) {
+            // A barcode sent as a number: format it as digits, never in exponent form.
+            value = String(whole)
+        } else if let byLanguage = try? container.decode([String: String].self) {
+            value = Self.clean(Self.preferred(in: byLanguage))
+        } else if let list = try? container.decode([String].self) {
+            value = Self.clean(list.first)
+        } else {
+            value = nil
+        }
+    }
+
+    private static func preferred(in byLanguage: [String: String]) -> String? {
+        for language in preferredLanguages {
+            if let text = byLanguage[language], !text.trimmingCharacters(in: .whitespaces).isEmpty {
+                return text
+            }
+        }
+        return byLanguage.keys.sorted().lazy.compactMap { byLanguage[$0] }
+            .first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
+
+    private static func clean(_ text: String?) -> String? {
+        guard let text else { return nil }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
 
