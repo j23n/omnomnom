@@ -4,14 +4,20 @@ import SwiftData
 import SwiftUI
 
 /// The estimate as rows to check, the totals, the meal slot and time, then Log. Every
-/// value comes from the food on its row, which can be changed or the row removed; a row
-/// without a food cannot be logged at all. Nothing reaches the store or Health until the
-/// button is tapped. When the estimate came from a photo, a toggle decides whether the
-/// photo is kept with the entries; it is on by default.
+/// value comes from the food on its row, which can be changed, removed, or joined by one
+/// the model missed; a row without a food cannot be logged at all. Nothing reaches the
+/// store or Health until the button is tapped. When the estimate came from a photo, a
+/// toggle decides whether the photo is kept with the entries; it is on by default.
+///
+/// A meal worth estimating twice is worth keeping, so the rows can also be saved as a
+/// recipe, which opens the recipe editor with them already filled in.
 struct EstimateDraftView: View {
     let day: Date
     /// The stored-size photo the estimate was made from; `nil` for a text estimate.
     let photo: Data?
+    /// What the user typed to get this estimate, offered as the recipe's name; empty
+    /// for a photo with no words.
+    let suggestedName: String
     let onLogged: (String) -> Void
 
     @Environment(\.modelContext) private var context
@@ -25,17 +31,35 @@ struct EstimateDraftView: View {
     @State private var saveError: String?
     /// The row whose food is being chosen; the sheet lives here so only one is ever open.
     @State private var picking: EstimateDraftRow?
+    @State private var isAddingItems = false
+    @State private var isSavingRecipe = false
 
     /// - Parameter day: the day shown on Today; the entries default to that day at the current time.
-    init(draft: EstimateDraft, day: Date, photo: Data? = nil, onLogged: @escaping (String) -> Void) {
+    init(
+        draft: EstimateDraft, day: Date, photo: Data? = nil, suggestedName: String = "",
+        onLogged: @escaping (String) -> Void
+    ) {
         self.day = day
         self.photo = photo
+        self.suggestedName = suggestedName
         self.onLogged = onLogged
         _draft = State(initialValue: draft)
         let timestamp = QuantitySheet.defaultTimestamp(on: day)
         _timestamp = State(initialValue: timestamp)
         _mealSlot = State(initialValue: MealSlot.inferred(from: timestamp))
     }
+
+    /// The name the recipe editor opens with: what the user typed, cut at a word before
+    /// it stops being a name. They retype it there if it is not what they meant.
+    private var recipeName: String {
+        let typed = suggestedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard typed.count > Self.longestSuggestedName else { return typed }
+        let cut = typed.prefix(Self.longestSuggestedName)
+        let end = cut.lastIndex(of: " ") ?? cut.endIndex
+        return String(cut[..<end]).trimmingCharacters(in: .whitespaces)
+    }
+
+    private static let longestSuggestedName = 60
 
     private var logTitle: String {
         let count = draft.rows.count
@@ -57,6 +81,7 @@ struct EstimateDraftView: View {
                         onRemove: { draft.remove(id: row.id) }
                     )
                 }
+                Button("Add an item", systemImage: "plus") { isAddingItems = true }
             } header: {
                 Text("Items")
             } footer: {
@@ -68,6 +93,14 @@ struct EstimateDraftView: View {
             }
             Section("Totals") {
                 NutritionPreview(nutrition: draft.totals)
+            }
+            Section {
+                Button("Save as a recipe", systemImage: "list.bullet.rectangle") {
+                    isSavingRecipe = true
+                }
+                .disabled(!draft.canBecomeRecipe)
+            } footer: {
+                Text("Keeps these items as a recipe you can log again. Rows without a food are left out.")
             }
             Section {
                 Picker("Meal", selection: $mealSlot) {
@@ -108,6 +141,15 @@ struct EstimateDraftView: View {
         }
         .fullScreenCover(item: $picking) { row in
             FoodSearchView(mode: .pick(multiple: false, onPick: { choose($0, for: row.id) }))
+        }
+        .fullScreenCover(isPresented: $isAddingItems) {
+            FoodSearchView(mode: .pick(multiple: true, onPick: { draft.add($0) }))
+        }
+        .sheet(isPresented: $isSavingRecipe) {
+            RecipeEditorView(
+                recipe: nil,
+                draft: draft.recipeDraft(named: recipeName, photo: keepsPhoto ? photo : nil)
+            )
         }
     }
 

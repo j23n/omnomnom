@@ -5,6 +5,9 @@ import SwiftUI
 
 /// Builds or edits one recipe on a value-type draft. Done applies the draft to the
 /// model; Cancel discards it. Ingredients come from the food search screen in pick mode.
+///
+/// A `draft` may be handed in instead of a recipe, which is how an estimate becomes a
+/// recipe: the rows arrive filled in and the user only names and divides them.
 struct RecipeEditorView: View {
     /// The recipe being edited, or `nil` to create one.
     let recipe: Recipe?
@@ -15,9 +18,9 @@ struct RecipeEditorView: View {
     @State private var isPicking = false
     @State private var saveError: String?
 
-    init(recipe: Recipe?) {
+    init(recipe: Recipe?, draft: RecipeDraft? = nil) {
         self.recipe = recipe
-        _draft = State(initialValue: recipe.map { RecipeWriter.draft(of: $0) } ?? RecipeDraft())
+        _draft = State(initialValue: draft ?? recipe.map { RecipeWriter.draft(of: $0) } ?? RecipeDraft())
     }
 
     private var hasLoggedEntries: Bool {
