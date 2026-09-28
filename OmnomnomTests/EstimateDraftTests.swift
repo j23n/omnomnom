@@ -101,3 +101,82 @@ struct EstimateDraftTests {
         #expect(worse.bannerMessage == "Logged 1 estimated item. 2 items could not be logged. The photo could not be kept.")
     }
 }
+
+/// Adding a food the model missed, and keeping the whole thing as a recipe.
+struct EstimateDraftRecipeTests {
+    private let eggs = FoodChoice(
+        source: .bundled(id: 1), name: "Eggs, scrambled, cooked", perUnit: Nutrition(energy: 149, protein: 10)
+    )
+    private let bread = FoodChoice(
+        source: .bundled(id: 2), name: "Bread, rye", perUnit: Nutrition(energy: 260, carbohydrates: 48)
+    )
+    private let stock = FoodChoice(
+        source: .custom(foodID: UUID()), name: "Vegetable stock",
+        perUnit: Nutrition(energy: 4), measure: .volume
+    )
+
+    private func draft(_ items: [ResolvedEstimateItem]) -> EstimateDraft {
+        EstimateDraft(note: "", items: items)
+    }
+
+    private func item(_ name: String, grams: Double, choice: FoodChoice?) -> ResolvedEstimateItem {
+        ResolvedEstimateItem(name: name, grams: grams, choice: choice)
+    }
+
+    @Test func addingAFoodAppendsARowAtTheDefaultAmount() {
+        var draft = draft([item("Scrambled eggs", grams: 100, choice: eggs)])
+        draft.add(bread)
+        #expect(draft.rows.count == 2)
+        #expect(draft.rows[1].name == "Bread, rye")
+        #expect(draft.rows[1].choice == bread)
+        #expect(draft.rows[1].amount == EstimateDraft.defaultAmount)
+        #expect(draft.hasUnmatchedRows == false)
+    }
+
+    @Test func addingKeepsTheFoodsOwnUnit() {
+        var draft = draft([])
+        draft.add(stock)
+        #expect(draft.rows[0].measure == .volume)
+    }
+
+    @Test func aRecipeCannotBecomeARow() {
+        var draft = draft([])
+        draft.add(FoodChoice(source: .recipe(id: UUID()), name: "Lentil soup", perUnit: Nutrition(energy: 90)))
+        #expect(draft.rows.isEmpty)
+    }
+
+    @Test func theRecipeDraftCarriesEveryMatchedRow() {
+        var draft = draft([item("Scrambled eggs", grams: 100, choice: eggs)])
+        draft.add(stock)
+        let recipe = draft.recipeDraft(named: "Breakfast", photo: nil)
+        #expect(recipe.name == "Breakfast")
+        #expect(recipe.servings == 1)
+        #expect(recipe.ingredients.map(\.name) == ["Eggs, scrambled, cooked", "Vegetable stock"])
+        #expect(recipe.ingredients[0].amount == 100)
+        #expect(recipe.ingredients[1].measure == .volume)
+        #expect(recipe.isValid)
+    }
+
+    @Test func anUnmatchedRowIsLeftOutOfTheRecipe() {
+        let draft = draft([
+            item("Scrambled eggs", grams: 100, choice: eggs),
+            item("Sauce", grams: 30, choice: nil),
+        ])
+        let recipe = draft.recipeDraft(named: "Breakfast")
+        #expect(recipe.ingredients.map(\.name) == ["Eggs, scrambled, cooked"])
+        #expect(draft.canBecomeRecipe)
+    }
+
+    @Test func nothingMatchedMeansNothingToKeep() {
+        let draft = draft([item("Sauce", grams: 30, choice: nil)])
+        #expect(draft.canBecomeRecipe == false)
+        #expect(draft.recipeDraft(named: "Sauce").isValid == false)
+    }
+
+    @Test func theRecipeTakesTheKeptPhoto() {
+        let photo = Data([0xFF, 0xD8, 0x01])
+        let draft = draft([item("Scrambled eggs", grams: 100, choice: eggs)])
+        #expect(draft.recipeDraft(named: "Breakfast", photo: photo).photo == photo)
+        #expect(draft.recipeDraft(named: "Breakfast").photo == nil)
+    }
+}

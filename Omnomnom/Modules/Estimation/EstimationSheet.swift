@@ -90,7 +90,10 @@ struct EstimationSheet: View {
                 }
             }
             .navigationDestination(item: $draft) { draft in
-                EstimateDraftView(draft: draft, day: day, photo: photo, onLogged: onLogged)
+                EstimateDraftView(
+                    draft: draft, day: day, photo: photo,
+                    suggestedName: EstimationPrompt.clean(description), onLogged: onLogged
+                )
             }
             .task { availability = fixedAvailability ?? EstimationAvailability.current() }
             .onDisappear { task?.cancel() }

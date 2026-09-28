@@ -17,6 +17,15 @@ nonisolated struct EstimateDraftRow: Identifiable, Hashable, Sendable {
         choice = item.choice
     }
 
+    /// A row the user added themselves, which is a food before it is a name, so the
+    /// food's own name stands for both.
+    init(choice: FoodChoice, amount: Double) {
+        id = UUID()
+        name = choice.name
+        amountText = Formatters.fieldText(amount)
+        self.choice = choice
+    }
+
     var trimmedName: String {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -85,7 +94,17 @@ nonisolated struct EstimateDraft: Hashable, Sendable {
         EstimateConversion.totals(of: rows.compactMap(\.item))
     }
 
+    /// The amount a row the user adds starts at, in the food's own unit.
+    static let defaultAmount = 100.0
+
     mutating func remove(id: UUID) {
         rows.removeAll { $0.id == id }
+    }
+
+    /// Appends a food the user picked. A recipe is refused: a row's number is an amount
+    /// of one food, which a recipe would read as servings.
+    mutating func add(_ choice: FoodChoice) {
+        guard !choice.isRecipe else { return }
+        rows.append(EstimateDraftRow(choice: choice, amount: Self.defaultAmount))
     }
 }
