@@ -1,0 +1,8 @@
+BLS Code	Lebensmittelbezeichnung	Food name	ENERCJ Energie (Kilojoule) [kJ/100g]	ENERCJ Datenherkunft	ENERCC Energie (Kilokalorien) [kcal/100g]	ENERCC Referenz	PROT625 Protein (Nx6,25) [g/100g]	FAT Fett [g/100g]	CHO Kohlenhydrate, verfügbar [g/100g]	FIBT Ballaststoffe, gesamt [g/100g]	SUGAR Zucker (Mono- und Disaccharide), gesamt [g/100g]	FASAT Fettsäuren, gesättigt, gesamt [g/100g]	NA Natrium [mg/100g]	Hinweis
+C131000	Hafer ganzes Korn, roh	Oat whole grain, raw	1443	Formelberechnung	345	-	12,6	7,1	55,7	9,7	1,2	1,2	8	-
+F110100	Apfel roh	Apple raw	226	Formelberechnung	54	-	0,3	0,4	11,4	2,0	10,3	0,1	1	-
+M120100	Butter	Butter	3063	Analyse	741	-	0,6	82,5	0,6	0,0	0,6	51,0	11	-
+D100000	Sonderfall mit Markern		400	Formelberechnung	95	-	-	n.v.	20,0	.	5,0	0,5	3	-
+N100000	Unlesbarer Wert	Unreadable value	300	Analyse	70	-	1,0	1,0	10,0	1,0	1,0	0,1	ca. 3	-
+X999999			100	-	24	-	1,0	1,0	1,0	0	0	0	0	-
+W100100	Leitungswasser	Tap water	0	Analyse		-	0	0	0	0	0	0	6	-

@@ -213,37 +213,36 @@ def load_ciqual_bundle(bundle: Bundle, summary: BuildSummary) -> list[FoodRow]:
 
 
 def load_bls_bundle(bundle: Bundle, summary: BuildSummary) -> list[FoodRow]:
-    """Read the BLS table into FoodRows. Names are German; an English column is
-    indexed for search when the edition carries one."""
+    """Read the BLS table into FoodRows.
+
+    Version 4.0 names every food in English as well as German, so a row reads in
+    English and is found by typing either, the same bargain Ciqual offers.
+    """
     source = bundle.source
     published, blank, where = bls.read(bundle.root, bundle.sheet)
     rows: list[FoodRow] = []
     no_energy = 0
     for entry in published:
-        name = str(entry["name"])
-        published_values = entry["values"]
-        assert isinstance(published_values, dict)
         values: dict[str, float | None] = {
-            column: published_values.get(column) for column in mapping.NUTRIENT_COLUMNS
+            column: entry.values.get(column) for column in mapping.NUTRIENT_COLUMNS
         }
+        name, locale, others = bls.names_for(entry)
         if values[mapping.ENERGY_COLUMN] is None:
             no_energy += 1
             log.debug("dropping %s %s: no energy", source, name)
             continue
-        key = str(entry["key"])
-        check_plausible(values, source, key)
-        english = str(entry["english"]).strip()
+        check_plausible(values, source, entry.key)
         rows.append(
             FoodRow(
                 name=name,
                 key=normalise_description(name),
                 source=source,
-                source_ref=key,
-                category=entry["category"] if isinstance(entry["category"], str) else None,
+                source_ref=entry.key,
+                category=entry.category,
                 nutrients=values,
                 portions=(),
-                name_locale=bls.NAME_LOCALE,
-                alt_names=(english,) if english and english != name else (),
+                name_locale=locale,
+                alt_names=tuple(other for other in others if other and other != name),
             )
         )
     return _finish(rows, summary, source, Path(where), no_energy, blank)

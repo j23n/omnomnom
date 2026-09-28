@@ -106,7 +106,7 @@ Only permissively licensed sources go in the bundle, now or later. Open Food Fac
 | Source | Foods | Licence | Status |
 | --- | --- | --- | --- |
 | [Ciqual](https://ciqual.anses.fr/) (ANSES, France) | 3,484 | Licence Ouverte / Etalab | Bundled. French and English names, both indexed |
-| [BLS 4.0](https://www.blsdb.de/) (MRI, Germany) | 7,140 | CC BY 4.0, attribution to Max Rubner-Institut | Bundled. German names, strong on composite dishes |
+| [BLS 4.0](https://www.blsdb.de/) (MRI, Germany) | 7,140 | CC BY 4.0, attribution to Max Rubner-Institut | Bundled. German and English names, both indexed; strong on composite dishes |
 | [FDC Foundation + SR Legacy](https://fdc.nal.usda.gov/) (USDA) | \~9,000 | CC0 1.0 | Readable, not built in. Citation requested, not required |
 
 Expect roughly 10,000 rows, well under 5 MB including an FTS5 index.
@@ -133,7 +133,7 @@ The pipeline reads one column per nutrient per source. These are the decisions; 
 
 Ciqual is keyed by constituent code, and the unit is written into the constituent's own name, so a renumbering or a unit change fails the build: energy 328 (kcal), protein 25000, carbohydrates 31000, fat 40000, saturated fat 40302, fibre 34100, sugars 32000, sodium 10110 (mg).
 
-The BLS is one wide table keyed by the short mnemonics it has always used: GCAL, ZE, ZK, ZF, FS, ZB, KMD, MNA, with spelled-out German names accepted as alternatives. It does not say what unit a column is in, so the unit is measured rather than assumed: no food holds more than 100 g of a macronutrient in 100 g, so a table whose macronutrients run past that is in milligrams. The decision is taken once for the whole group from the ninetieth percentile, so neither a corrupt row nor a low-valued column can move it, and the converted values are checked against the same ceiling afterwards.
+The BLS is one wide table with three columns per component — the value, where it came from, and its reference — and every value column states its own unit in its header, as in `NA Natrium [mg/100g]`. Columns are matched on the component code alone, which is the part of a header that does not move and the part that tells a value apart from its provenance, since only a value carries a unit. The unit is then read rather than assumed and converted by a stated factor; a component published in a unit the pipeline does not know stops the build. Codes read: energy ENERCC (kcal), protein PROT625, carbohydrates CHO, fat FAT, saturated fat FASAT, fibre FIBT, sugars SUGAR, sodium NA (mg).
 
 | Nutrient | FDC nutrient id | Unit at source |
 | --- | --- | --- |
@@ -470,7 +470,7 @@ Steps 1 to 4 are the shippable app. Steps 5 to 7 are additive and can slip witho
 
 Kept here so the v1 pipeline does not paint itself into a corner.
 
-- `name_locale` says which language a row's display name is in, so search can rank the user's own language first without a schema change.
+- `name_locale` says which language a row's display name is in, so search can rank the user's own language first without a schema change. Ciqual and the BLS both publish English names beside their own, so most rows read in English and are found in French or German through `alt_names`.
 - `source` and `source_ref` stay per row, so a later source never overwrites an FDC row's provenance.
 - Ciqual publishes values as strings with markers such as `<` and `traces`; both are stored as zero with `is_estimated` set, so a sum never silently omits them.
 - Cross-source overlap is settled at build time by name: the first source to claim a normalised name keeps it, in the order the sources are listed. Across languages there is almost nothing to settle, which is why Ciqual and the BLS coexist without a curation pass.
