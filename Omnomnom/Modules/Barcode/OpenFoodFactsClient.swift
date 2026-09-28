@@ -34,6 +34,8 @@ nonisolated struct URLSessionTransport: HTTPTransport {
 nonisolated enum OpenFoodFactsError: Error, Sendable {
     /// The code is not all digits, so no request was made.
     case invalidBarcode
+    /// The search text was blank or could not be put in a URL, so no request was made.
+    case invalidQuery
     /// A non-2xx status other than 404.
     case http(Int)
     /// The body was not the JSON envelope expected, or too large to be one.
@@ -47,8 +49,14 @@ nonisolated enum OpenFoodFactsError: Error, Sendable {
 actor OpenFoodFactsClient {
     nonisolated static let fields = "code,product_name,brands,nutriments,quantity,product_quantity_unit"
     nonisolated static let endpoint = "https://world.openfoodfacts.org/api/v2/product/"
+    /// Full-text search lives on its own host; the product endpoint has never done it.
+    nonisolated static let searchEndpoint = "https://search.openfoodfacts.org/search"
+    /// A screenful. More would be a scroll through other people's guesses at a name.
+    nonisolated static let searchPageSize = 20
     /// A product with only the requested fields is a few kilobytes; anything above this is not one.
     nonisolated static let maximumBodySize = 1 << 20
+    /// A page of products is larger than one, but not by much.
+    nonisolated static let maximumSearchBodySize = 4 << 20
 
     private let transport: any HTTPTransport
     private let userAgent: String
@@ -81,6 +89,52 @@ actor OpenFoodFactsClient {
         }
         guard envelope.isFound, let record = envelope.product else { return nil }
         return record
+    }
+
+    /// Products whose name or brand matches `text`, most relevant first, at most
+    /// `searchPageSize` of them.
+    ///
+    /// A hit is a starting point, not a record: it carries whatever the search index
+    /// holds, which may be a name and no nutrition at all. The caller resolves the one
+    /// the user picks through `product(for:)`, which is the endpoint that answers for a
+    /// product properly.
+    func products(matching text: String) async throws -> [ProductRecord] {
+        let request = try Self.searchRequest(for: text, userAgent: userAgent)
+        let (data, response) = try await fetch(request)
+        guard (200..<300).contains(response.statusCode) else {
+            AppLog.barcode.error("product search answered \(response.statusCode)")
+            throw OpenFoodFactsError.http(response.statusCode)
+        }
+        guard data.count <= Self.maximumSearchBodySize else {
+            AppLog.barcode.error("product search body too large: \(data.count) bytes")
+            throw OpenFoodFactsError.decoding
+        }
+        do {
+            return try JSONDecoder().decode(ProductSearchResponse.self, from: data).products
+        } catch {
+            AppLog.barcode.error("search body not decodable: \(error.localizedDescription, privacy: .private)")
+            throw OpenFoodFactsError.decoding
+        }
+    }
+
+    /// The GET for a search: the same fields as a product lookup, one page of them.
+    /// The text is the user's, so it is percent-encoded as a query item rather than
+    /// pasted into the URL.
+    nonisolated static func searchRequest(for text: String, userAgent: String) throws -> URLRequest {
+        let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty, var components = URLComponents(string: searchEndpoint) else {
+            throw OpenFoodFactsError.invalidQuery
+        }
+        components.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "fields", value: fields),
+            URLQueryItem(name: "page_size", value: String(searchPageSize)),
+        ]
+        guard let url = components.url else { throw OpenFoodFactsError.invalidQuery }
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        return request
     }
 
     /// The GET for one barcode: the v2 product endpoint restricted to the fields read,

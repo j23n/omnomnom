@@ -16,7 +16,7 @@ The motivating target is the redesigned Health app's Longevity tab, which scores
 | Dependencies | None. No third-party packages in the app target |
 | Nutrients | Energy, protein, carbohydrates, total fat, saturated fat, fiber, sugar, sodium |
 | Food data | Bundled generic database from Ciqual and the Bundeslebensmittelschlüssel; FDC readable but not built in |
-| Barcodes | Opt-in; Open Food Facts online lookup with local cache |
+| Products | Opt-in; Open Food Facts looked up by barcode or searched by name, cached locally |
 | AI estimation | Opt-in; on-device Foundation Models |
 | Recipes | Raw ingredient weights, no yield factors |
 
@@ -402,7 +402,7 @@ Both are off until the user turns them on, and the app is complete without eithe
 
 Detection runs on-device through VisionKit's `DataScannerViewController`, so the scan itself needs no network. The lookup does.
 
-Query `https://world.openfoodfacts.org/api/v2/product/{barcode}.json` and cache the result locally and permanently. Send a descriptive `User-Agent` carrying the app name and a contact URL; Open Food Facts asks for this and rate-limits requests without one.
+Query `https://world.openfoodfacts.org/api/v2/product/{barcode}.json` and cache the result locally and permanently. A name search is a second, separate opt-in against `https://search.openfoodfacts.org/search`, the only Open Food Facts service that does full text; a hit there is a starting point, so the product the user picks is then fetched by its barcode through the endpoint above and cached like any other. Send a descriptive `User-Agent` carrying the app name and a contact URL; Open Food Facts asks for this and rate-limits requests without one.
 
 Request only the eight nutrient fields plus product name and brand. Note that Open Food Facts reports sodium in grams, and many products carry `salt_100g` instead, which is not the same number: sodium is salt divided by 2.5.
 
@@ -444,7 +444,7 @@ Skip Open Food Facts product images entirely: they are CC BY-SA and may carry pa
 
 ### Privacy and regulatory
 
-No data leaves the device except barcode lookups to Open Food Facts, which is French-hosted. That keeps the GDPR position short and the App Store privacy labels nearly empty. Fill in the privacy manifest to match.
+No data leaves the device except lookups to Open Food Facts, which is French-hosted: a barcode when the scanner is on, and the typed query when product search is on. Each is its own opt-in, because a number off a packet and a sentence the user typed are not the same disclosure. That keeps the GDPR position short and the App Store privacy labels nearly empty. Fill in the privacy manifest to match.
 
 Position the app strictly as a logging tool with no interpretation, scores or recommendations. That keeps it clear of the EU MDR boundary for software as a medical device, which the longevity framing could otherwise drift toward.
 
@@ -494,7 +494,7 @@ Each is a behaviour this plan assumes but Apple does not document. Run them on a
 
 **Apple Intelligence availability varies.** Region, device and OS gating means the photo tier will be unavailable for a large share of a worldwide audience: everyone on iOS 26, everyone without a supported device, and everyone in a region or language Apple Intelligence does not yet cover. The text tier narrows this but does not close it. The module must read as optional rather than broken, and the UI should name the actual reason rather than hiding the feature.
 
-**The bundle holds no branded products.** Ciqual, the BLS and FDC are composition tables of generic foods; none of them has ever held a Kinder Bueno or a bottle of Coca-Cola, and no permissively licensed table does. A branded product reaches the app by barcode, from Open Food Facts, or is typed once and kept in the Library. A user who expects to search a brand name and find it will be disappointed until there is a product search to match the product scanner.
+**The bundle holds no branded products.** Ciqual, the BLS and FDC are composition tables of generic foods; none of them has ever held a Kinder Bueno or a bottle of Coca-Cola, and no permissively licensed table does. A branded product reaches the app from Open Food Facts, by barcode or by name, or is typed once and kept in the Library. Both ways out are opt-in and both are online, so the app is honest rather than complete when they are off.
 
 **Nutrient identifiers are unverified against the current FDC files.** The column mapping table is from the published FDC identifier list; the pipeline's first run confirms it and fails loudly otherwise.
 

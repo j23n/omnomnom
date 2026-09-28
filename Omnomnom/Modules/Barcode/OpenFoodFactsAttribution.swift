@@ -10,7 +10,7 @@ nonisolated enum OpenFoodFactsSource {
     static let licence = "Open Database License 1.0"
     static let licenceURL = "https://opendatacommons.org/licenses/odbl/1-0/"
     static let websiteURL = "https://world.openfoodfacts.org"
-    static let note = "Used only for barcode lookups; results are cached on this device."
+    static let note = "Used to look a product up by its barcode or find one by name; results are cached on this device."
 
     /// The public page of one product, for the attribution link.
     static func productURL(barcode: String) -> URL? {

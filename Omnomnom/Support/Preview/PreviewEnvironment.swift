@@ -55,18 +55,23 @@ extension View {
 /// `UserDefaults` suites for `@AppStorage` in previews, one per combination of flags,
 /// so an onboarding preview and a main-tabs preview in the same canvas never share.
 nonisolated enum PreviewDefaults {
-    static func make(onboardingComplete: Bool = true, barcode: Bool = false, estimation: Bool = false) -> UserDefaults {
-        let name = "com.j23n.omnomnom.preview.onboarding\(onboardingComplete).barcode\(barcode).estimation\(estimation)"
+    static func make(
+        onboardingComplete: Bool = true, barcode: Bool = false,
+        estimation: Bool = false, productSearch: Bool = false
+    ) -> UserDefaults {
+        let name = "com.j23n.omnomnom.preview.onboarding\(onboardingComplete).barcode\(barcode)"
+            + ".estimation\(estimation).products\(productSearch)"
         guard let defaults = UserDefaults(suiteName: name) else { return .standard }
         defaults.set(onboardingComplete, forKey: AppServices.onboardingKey)
         defaults.set(barcode, forKey: BarcodeModule.enabledKey)
         defaults.set(estimation, forKey: EstimationModule.enabledKey)
+        defaults.set(productSearch, forKey: BarcodeModule.productSearchKey)
         return defaults
     }
 
-    /// Both opt-in modules switched on.
+    /// Every opt-in switched on.
     static var modulesOn: UserDefaults {
-        make(barcode: true, estimation: true)
+        make(barcode: true, estimation: true, productSearch: true)
     }
 
     /// Fresh install: onboarding not done.

@@ -7,11 +7,13 @@ import SwiftUI
 /// product, the name when Open Food Facts had one, the unit its label counts in, and
 /// the sentence saying why. The unit is `mass` when nothing was found to say otherwise,
 /// which is where a food typed from scratch starts too.
-nonisolated struct ProductPrefill: Hashable, Sendable {
+nonisolated struct ProductPrefill: Hashable, Identifiable, Sendable {
     let barcode: String
     let name: String?
     let measure: FoodMeasure
     let reason: String
+
+    var id: String { barcode }
 }
 
 /// Creates or edits a custom food, or creates a product typed from its label after a
