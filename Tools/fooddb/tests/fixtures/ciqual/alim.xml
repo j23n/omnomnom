@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TABLE>
+  <ALIM>
+    <alim_grp_code>13</alim_grp_code>
+    <alim_ssgrp_code>1302</alim_ssgrp_code>
+    <alim_ssssgrp_code>130201</alim_ssssgrp_code>
+    <alim_code>13001</alim_code>
+    <alim_nom_fr>Pomme, pulpe et peau, crue</alim_nom_fr>
+    <alim_nom_index_fr>Pomme crue</alim_nom_index_fr>
+    <alim_nom_eng>Apple, pulp and skin, raw</alim_nom_eng>
+    <alim_nom_index_eng>Apple raw</alim_nom_index_eng>
+  </ALIM>
+  <ALIM>
+    <alim_grp_code>09</alim_grp_code>
+    <alim_ssgrp_code>0901</alim_ssgrp_code>
+    <alim_code>20001</alim_code>
+    <alim_nom_fr>Pain de mie</alim_nom_fr>
+    <alim_nom_index_fr>Pain de mie</alim_nom_index_fr>
+    <alim_nom_eng>Sandwich bread</alim_nom_eng>
+    <alim_nom_index_eng>Sandwich bread</alim_nom_index_eng>
+  </ALIM>
+  <ALIM>
+    <alim_grp_code>18</alim_grp_code>
+    <alim_ssgrp_code>1801</alim_ssgrp_code>
+    <alim_code>99001</alim_code>
+    <alim_nom_fr>Eau du robinet</alim_nom_fr>
+    <alim_nom_eng>Tap water</alim_nom_eng>
+  </ALIM>
+  <ALIM>
+    <alim_grp_code>18</alim_grp_code>
+    <alim_ssgrp_code>1801</alim_ssgrp_code>
+    <alim_code>99002</alim_code>
+    <alim_nom_fr>   </alim_nom_fr>
+    <alim_nom_eng></alim_nom_eng>
+  </ALIM>
+</TABLE>

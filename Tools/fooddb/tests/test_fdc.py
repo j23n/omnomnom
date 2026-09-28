@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from fooddb import fdc
+from fooddb.bundles import FOUNDATION, SR_LEGACY, version_from_path
 from fooddb.errors import InputError
 
 FIXTURES = Path(__file__).parent / "fixtures" / "fdc"
@@ -37,21 +38,22 @@ class FixtureCopyTests(unittest.TestCase):
 class DiscoveryTests(FixtureCopyTests):
     def test_finds_both_bundles_in_order(self) -> None:
         bundles = fdc.find_bundles(FIXTURES)
-        self.assertEqual([x.source for x in bundles], [fdc.FOUNDATION, fdc.SR_LEGACY])
+        self.assertEqual([x.source for x in bundles], [FOUNDATION, SR_LEGACY])
         self.assertEqual([x.version for x in bundles], ["unknown", "unknown"])
 
     def test_nested_bundle_dir_and_version(self) -> None:
         root = self.tmp / "nested" / "FoodData_Central_sr_legacy_food_csv_2018-04" / "inner"
         shutil.copytree(FIXTURES / "sr_legacy", root)
         bundles = fdc.find_bundles(root.parent)
-        self.assertEqual([(x.source, x.version) for x in bundles], [(fdc.SR_LEGACY, "unknown")])
+        self.assertEqual([(x.source, x.version) for x in bundles], [(SR_LEGACY, "unknown")])
         bundles = fdc.find_bundles(self.tmp / "nested")
-        self.assertEqual([(x.source, x.version) for x in bundles], [(fdc.SR_LEGACY, "2018-04")])
+        self.assertEqual([(x.source, x.version) for x in bundles], [(SR_LEGACY, "2018-04")])
 
     def test_version_from_path_ignores_stop_dir(self) -> None:
-        self.assertEqual(fdc.version_from_path(Path("a/x_2025-04-24/b"), Path("a")), "2025-04-24")
-        self.assertEqual(fdc.version_from_path(Path("a_2025-01/b"), Path("a_2025-01")), "unknown")
-        self.assertEqual(fdc.version_from_path(Path("a_2025-01"), Path("a_2025-01")), "unknown")
+        version = version_from_path
+        self.assertEqual(version(Path("a/x_2025-04-24/b"), Path("a")), "2025-04-24")
+        self.assertEqual(version(Path("a_2025-01/b"), Path("a_2025-01")), "unknown")
+        self.assertEqual(version(Path("a_2025-01"), Path("a_2025-01")), "unknown")
 
     def test_missing_dir_raises(self) -> None:
         with self.assertRaises(InputError):

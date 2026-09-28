@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TABLE>
+  <ALIM_GRP>
+    <alim_grp_code>13</alim_grp_code>
+    <alim_grp_nom_fr>fruits, légumes, légumineuses et oléagineux</alim_grp_nom_fr>
+    <alim_grp_nom_eng>fruits, vegetables, legumes and nuts</alim_grp_nom_eng>
+    <alim_ssgrp_code>1302</alim_ssgrp_code>
+    <alim_ssgrp_nom_fr>fruits</alim_ssgrp_nom_fr>
+    <alim_ssgrp_nom_eng>fruits</alim_ssgrp_nom_eng>
+  </ALIM_GRP>
+  <ALIM_GRP>
+    <alim_grp_code>09</alim_grp_code>
+    <alim_grp_nom_fr>produits céréaliers</alim_grp_nom_fr>
+    <alim_grp_nom_eng>cereal products</alim_grp_nom_eng>
+    <alim_ssgrp_code>0901</alim_ssgrp_code>
+    <alim_ssgrp_nom_fr>pains et assimilés</alim_ssgrp_nom_fr>
+    <alim_ssgrp_nom_eng>breads and similar</alim_ssgrp_nom_eng>
+  </ALIM_GRP>
+  <ALIM_GRP>
+    <alim_grp_code>18</alim_grp_code>
+    <alim_grp_nom_fr>eaux et autres boissons</alim_grp_nom_fr>
+    <alim_grp_nom_eng>waters and other drinks</alim_grp_nom_eng>
+    <alim_ssgrp_code>1801</alim_ssgrp_code>
+    <alim_ssgrp_nom_fr>eaux</alim_ssgrp_nom_fr>
+    <alim_ssgrp_nom_eng>waters</alim_ssgrp_nom_eng>
+  </ALIM_GRP>
+</TABLE>
