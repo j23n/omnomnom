@@ -1,4 +1,5 @@
 import DeveloperToolsSupport
+import Foundation
 import SwiftUI
 
 /// What the food search screen knows about the product half of a search: whether it is

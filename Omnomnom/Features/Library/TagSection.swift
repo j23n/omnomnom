@@ -1,4 +1,5 @@
 import DeveloperToolsSupport
+import Foundation
 import SwiftData
 import SwiftUI
 
