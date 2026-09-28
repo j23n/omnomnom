@@ -133,4 +133,27 @@ struct ProductRecordTests {
         #expect(record.per100g.protein == nil)
         #expect(record.per100g.fiber == 2)
     }
+    @Test func aBarcodeNeedsOnlyEnergyWhileASearchHitNeedsTheMacros() throws {
+        // A scanned packet with a bare energy figure is still worth logging: the user
+        // is holding it. The same record in a list of twenty search results is not.
+        let energyOnly = ProductRecord(
+            code: "1", name: "Mystery", brand: nil, per100g: Nutrition(energy: 250)
+        )
+        #expect(energyOnly.isUsable)
+        #expect(!energyOnly.hasMacros)
+
+        let complete = ProductRecord(
+            code: "2", name: "Kinder Bueno", brand: "Ferrero",
+            per100g: Nutrition(energy: 571, protein: 8.6, carbohydrates: 49.5, fatTotal: 37.3)
+        )
+        #expect(complete.hasMacros)
+    }
+
+    @Test func aMacronutrientOfZeroIsAValueAndNotAGap() throws {
+        let cola = ProductRecord(
+            code: "3", name: "Cola", brand: nil,
+            per100g: Nutrition(energy: 42, protein: 0, carbohydrates: 10.6, fatTotal: 0)
+        )
+        #expect(cola.hasMacros)
+    }
 }

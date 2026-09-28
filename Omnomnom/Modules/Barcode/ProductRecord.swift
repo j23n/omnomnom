@@ -26,6 +26,18 @@ nonisolated struct ProductRecord: Hashable, Sendable, Decodable {
         per100g.energy != nil
     }
 
+    /// Whether the record is worth offering in a list of search results: energy and
+    /// all three macronutrients.
+    ///
+    /// Open Food Facts is crowdsourced, and a great many of its records hold a name, a
+    /// brand and nothing else. A scanned barcode with no values is still worth keeping,
+    /// because the user is holding the packet and can type the label; a name in a list
+    /// of twenty is not, because choosing it leads nowhere they asked to go.
+    var hasMacros: Bool {
+        per100g.energy != nil && per100g.protein != nil
+            && per100g.carbohydrates != nil && per100g.fatTotal != nil
+    }
+
     init(code: String, name: String?, brand: String?, per100g: Nutrition, measure: FoodMeasure = .mass) {
         self.code = code
         self.name = name
@@ -107,12 +119,16 @@ nonisolated struct ProductResponse: Sendable, Decodable {
 /// Search-a-licious, the service that answers `search.openfoodfacts.org`, returns its
 /// matches under `hits`; the older endpoint on the main site returns them under
 /// `products`. Both are read, so moving between them is a URL and nothing else.
-/// A hit without a barcode is dropped: there would be no way to ask about it again.
+/// A hit is dropped unless it carries a barcode, a name and complete macronutrients:
+/// there would be no way to ask about it again, nothing to call it, or nothing to log.
 nonisolated struct ProductSearchResponse: Sendable, Decodable {
     let products: [ProductRecord]
     /// Hits that could not be read at all, so a body full of them is still reported
     /// as an empty search rather than as a broken one.
     let skipped: Int
+    /// Hits that were read but hold too little to offer, which is most of what a
+    /// broad query returns.
+    let incomplete: Int
 
     private enum CodingKeys: String, CodingKey {
         case hits
@@ -126,7 +142,9 @@ nonisolated struct ProductSearchResponse: Sendable, Decodable {
             ?? []
         let records = found.compactMap(\.record)
         skipped = found.count - records.count
-        products = records.filter { !$0.code.isEmpty && $0.name?.isEmpty == false }
+        let named = records.filter { !$0.code.isEmpty && $0.name?.isEmpty == false }
+        products = named.filter(\.hasMacros)
+        incomplete = named.count - products.count
     }
 }
 

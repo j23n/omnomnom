@@ -141,13 +141,20 @@ struct OpenFoodFactsClientTests {
 /// Searching Open Food Facts by name, which is a different host and a different envelope.
 struct OpenFoodFactsSearchTests {
     private let userAgent = "Omnomnom/0.1 (https://github.com/j23n/omnomnom)"
+    /// Complete macronutrients, which a hit needs before it is offered at all.
+    private let macros = #""nutriments":{"energy-kcal_100g":571,"proteins_100g":8.6,"carbohydrates_100g":49.5,"fat_100g":37.3}"#
     private let hits = #"""
     {"count":2,"page":1,"hits":[
-      {"code":"8000500037560","product_name":"Kinder Bueno","brands":"Ferrero","nutriments":{"energy-kcal_100g":571}},
-      {"code":"5449000000996","product_name":"Coca-Cola","brands":"Coca-Cola","quantity":"33 cl","nutriments":{"energy-kcal_100g":42}}
+      {"code":"8000500037560","product_name":"Kinder Bueno","brands":"Ferrero",
+       "nutriments":{"energy-kcal_100g":571,"proteins_100g":8.6,"carbohydrates_100g":49.5,"fat_100g":37.3}},
+      {"code":"5449000000996","product_name":"Coca-Cola","brands":"Coca-Cola","quantity":"33 cl",
+       "nutriments":{"energy-kcal_100g":42,"proteins_100g":0,"carbohydrates_100g":10.6,"fat_100g":0}}
     ]}
     """#
-    private let legacy = #"{"count":1,"products":[{"code":"8000500037560","product_name":"Kinder Bueno","brands":"Ferrero","nutriments":{"energy-kcal_100g":571}}]}"#
+    private let legacy = #"""
+    {"count":1,"products":[{"code":"8000500037560","product_name":"Kinder Bueno","brands":"Ferrero",
+      "nutriments":{"energy-kcal_100g":571,"proteins_100g":8.6,"carbohydrates_100g":49.5,"fat_100g":37.3}}]}
+    """#
 
     private func makeClient(_ reply: FakeReply) -> (OpenFoodFactsClient, FakeTransport) {
         let transport = FakeTransport(reply: reply)
@@ -197,7 +204,10 @@ struct OpenFoodFactsSearchTests {
     }
 
     @Test func aHitWithoutACodeOrANameIsDropped() async throws {
-        let body = #"{"hits":[{"product_name":"No code"},{"code":"123"},{"code":"456","product_name":"Kept"}]}"#
+        let body = #"""
+        {"hits":[{"product_name":"No code",\#(macros)},{"code":"123",\#(macros)},
+                 {"code":"456","product_name":"Kept",\#(macros)}]}
+        """#
         let (client, _) = makeClient(.response(status: 200, body: body))
         #expect(try await client.products(matching: "x").map(\.code) == ["456"])
     }
@@ -233,7 +243,8 @@ struct OpenFoodFactsSearchTests {
     @Test func theLiveResponseIsRead() async throws {
         let (client, _) = makeClient(.response(status: 200, body: live))
         let found = try await client.products(matching: "kinder bueno")
-        #expect(found.map(\.code) == ["80960270", "04749442"])
+        // The second hit of the live answer holds a name, a brand and nothing else.
+        #expect(found.map(\.code) == ["80960270"])
         let bueno = try #require(found.first)
         #expect(bueno.name == "Kinder Bueno Coconut")
         // brands is a list; the first of them is the one worth showing.
@@ -248,13 +259,42 @@ struct OpenFoodFactsSearchTests {
         #expect(bueno.isUsable)
     }
 
-    @Test func aHitWithoutNutrimentsIsStillOffered() async throws {
+    @Test func aHitWithoutNutrimentsIsNotOffered() async throws {
         let (client, _) = makeClient(.response(status: 200, body: live))
-        let plain = try #require(try await client.products(matching: "kinder bueno").last)
-        #expect(plain.name == "kinder bueno")
-        #expect(plain.per100g.energy == nil)
-        // Not usable on its own, which is why choosing one fetches it by barcode.
-        #expect(!plain.isUsable)
+        // The second hit of the live answer is a name, a brand and nothing else.
+        #expect(try await client.products(matching: "kinder bueno").map(\.code) == ["80960270"])
+    }
+
+    @Test func aHitMissingOneMacronutrientIsNotOffered() async throws {
+        let body = #"""
+        {"hits":[
+          {"code":"1","product_name":"No fat figure",
+           "nutriments":{"energy-kcal_100g":571,"proteins_100g":8.6,"carbohydrates_100g":49.5}},
+          {"code":"2","product_name":"Complete",\#(macros)}]}
+        """#
+        let (client, _) = makeClient(.response(status: 200, body: body))
+        #expect(try await client.products(matching: "x").map(\.code) == ["2"])
+    }
+
+    @Test func aMacronutrientOfZeroCounts() async throws {
+        let body = #"""
+        {"hits":[{"code":"1","product_name":"Cola",
+          "nutriments":{"energy-kcal_100g":42,"proteins_100g":0,"carbohydrates_100g":10.6,"fat_100g":0}}]}
+        """#
+        let (client, _) = makeClient(.response(status: 200, body: body))
+        #expect(try await client.products(matching: "cola").map(\.code) == ["1"])
+    }
+
+    @Test func moreAreAskedForThanAreShown() async throws {
+        #expect(OpenFoodFactsClient.searchPageSize > OpenFoodFactsClient.maximumResults)
+        let listed = (1...OpenFoodFactsClient.searchPageSize).map { index in
+            #"{"code":"\#(index)","product_name":"Product \#(index)",\#(macros)}"#
+        }
+        let body = #"{"hits":[\#(listed.joined(separator: ","))]}"#
+        let (client, _) = makeClient(.response(status: 200, body: body))
+        let found = try await client.products(matching: "product")
+        #expect(found.count == OpenFoodFactsClient.maximumResults)
+        #expect(found.first?.code == "1")
     }
 
     @Test func aNameHeldPerLanguageIsRead() async throws {
@@ -269,25 +309,25 @@ struct OpenFoodFactsSearchTests {
     }
 
     @Test func aNameHeldPerLanguageWithoutAMainFallsBackToEnglish() async throws {
-        let body = #"{"hits":[{"code":"1","product_name":{"fr":"Pomme","en":"Apple"}}]}"#
+        let body = #"{"hits":[{"code":"1","product_name":{"fr":"Pomme","en":"Apple"},\#(macros)}]}"#
         let (client, _) = makeClient(.response(status: 200, body: body))
         #expect(try await client.products(matching: "apple").map(\.name) == ["Apple"])
     }
 
     @Test func aBarcodeSentAsANumberKeepsItsDigits() async throws {
-        let body = #"{"hits":[{"code":8000500037560,"product_name":"Kinder Bueno"}]}"#
+        let body = #"{"hits":[{"code":8000500037560,"product_name":"Kinder Bueno",\#(macros)}]}"#
         let (client, _) = makeClient(.response(status: 200, body: body))
         #expect(try await client.products(matching: "kinder").map(\.code) == ["8000500037560"])
     }
 
     @Test func brandsSentAsAListAreRead() async throws {
-        let body = #"{"hits":[{"code":"1","product_name":"Cola","brands":["Coca-Cola","Other"]}]}"#
+        let body = #"{"hits":[{"code":"1","product_name":"Cola","brands":["Coca-Cola","Other"],\#(macros)}]}"#
         let (client, _) = makeClient(.response(status: 200, body: body))
         #expect(try await client.products(matching: "cola").map(\.brand) == ["Coca-Cola"])
     }
 
     @Test func oneUnreadableHitDoesNotLoseTheRest() async throws {
-        let body = #"{"hits":["not a product",{"code":"1","product_name":"Kept"},42]}"#
+        let body = #"{"hits":["not a product",{"code":"1","product_name":"Kept",\#(macros)},42]}"#
         let (client, _) = makeClient(.response(status: 200, body: body))
         #expect(try await client.products(matching: "x").map(\.name) == ["Kept"])
     }

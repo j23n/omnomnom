@@ -51,8 +51,11 @@ actor OpenFoodFactsClient {
     nonisolated static let endpoint = "https://world.openfoodfacts.org/api/v2/product/"
     /// Full-text search lives on its own host; the product endpoint has never done it.
     nonisolated static let searchEndpoint = "https://search.openfoodfacts.org/search"
-    /// A screenful. More would be a scroll through other people's guesses at a name.
-    nonisolated static let searchPageSize = 20
+    /// Asked for, not shown: most of a broad query's hits hold no values at all, so
+    /// the page is wide enough that filtering it still leaves a screenful.
+    nonisolated static let searchPageSize = 50
+    /// Shown. More than this is a scroll through other people's guesses at a name.
+    nonisolated static let maximumResults = 20
     /// A product with only the requested fields is a few kilobytes; anything above this is not one.
     nonisolated static let maximumBodySize = 1 << 20
     /// A page of products is larger than one, but not by much.
@@ -92,12 +95,13 @@ actor OpenFoodFactsClient {
     }
 
     /// Products whose name or brand matches `text`, most relevant first, at most
-    /// `searchPageSize` of them.
+    /// `maximumResults` of them.
     ///
     /// A hit is a starting point, not a record: it carries whatever the search index
-    /// holds, which may be a name and no nutrition at all. The caller resolves the one
-    /// the user picks through `product(for:)`, which is the endpoint that answers for a
-    /// product properly.
+    /// holds, and a great many entries hold a name and nothing else. Those are dropped
+    /// here rather than offered, since choosing one leads nowhere. The caller resolves
+    /// the one the user picks through `product(for:)`, which is the endpoint that
+    /// answers for a product properly.
     func products(matching text: String) async throws -> [ProductRecord] {
         let request = try Self.searchRequest(for: text, userAgent: userAgent)
         let (data, response) = try await fetch(request)
@@ -114,7 +118,10 @@ actor OpenFoodFactsClient {
             if envelope.skipped > 0 {
                 AppLog.barcode.error("product search: \(envelope.skipped) hits in a shape this app does not read")
             }
-            return envelope.products
+            if envelope.incomplete > 0 {
+                AppLog.barcode.debug("product search: \(envelope.incomplete) hits dropped for missing macronutrients")
+            }
+            return Array(envelope.products.prefix(Self.maximumResults))
         } catch {
             // The body is the only thing that says why, and a search answer is public
             // data, so a prefix of it goes in the log where the next run can use it.

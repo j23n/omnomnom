@@ -61,6 +61,10 @@ struct FoodSearchView: View {
     @FocusState private var fieldFocused: Bool
     @AppStorage(BarcodeModule.productSearchKey) private var productSearchEnabled = false
 
+    /// How long a keystroke is given to be followed by another before the Library and
+    /// the bundled database are searched. Both are on this device, so it is short.
+    private static let localDebounce = Duration.milliseconds(150)
+
     private var isSearching: Bool {
         !searchText.trimmingCharacters(in: .whitespaces).isEmpty
     }
@@ -244,7 +248,7 @@ struct FoodSearchView: View {
             products.clear()
             return
         }
-        try? await Task.sleep(for: .milliseconds(150))
+        try? await Task.sleep(for: Self.localDebounce)
         guard !Task.isCancelled else { return }
         local = localMatches(for: text)
         do {
@@ -261,19 +265,22 @@ struct FoodSearchView: View {
         await searchProducts(text)
     }
 
-    /// The product half, which leaves the device, so it waits longer than the local
-    /// half and only for a query worth sending. The local results are already on screen
-    /// by then; these arrive under them.
+    /// The product half, which leaves the device, so it waits for the typist to stop
+    /// and only asks about a query worth sending. The local results are already on
+    /// screen by then; these arrive under them.
+    ///
+    /// Last query's products are cleared first: they are not results for this query,
+    /// and showing Kinder Bueno under a search for cola is worse than showing nothing.
     private func searchProducts(_ text: String) async {
         products.isEnabled = productSearchEnabled
         guard productSearchEnabled, ProductResults.isWorthSearching(text) else {
             products.clear()
             return
         }
-        products.isSearching = true
-        products.errorMessage = nil
-        try? await Task.sleep(for: .milliseconds(350))
+        products.clear()
+        try? await Task.sleep(for: ProductResults.quietPeriod - Self.localDebounce)
         guard !Task.isCancelled else { return }
+        products.isSearching = true
         let client = OpenFoodFactsClient(transport: URLSessionTransport(), userAgent: UserAgent.current())
         do {
             let found = try await client.products(matching: text)
