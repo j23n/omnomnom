@@ -9,18 +9,15 @@ from __future__ import annotations
 import csv
 import logging
 import math
-import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TypeVar
 
+from .bundles import FOUNDATION, SR_LEGACY, Bundle, version_from_path
 from .errors import InputError
 
 log = logging.getLogger(__name__)
-
-FOUNDATION = "fdc_foundation"
-SR_LEGACY = "fdc_sr_legacy"
 
 # Marker file -> source id. A folder is a bundle when it holds food.csv plus one marker.
 MARKERS: dict[str, str] = {
@@ -38,19 +35,8 @@ REQUIRED_FILES: tuple[str, ...] = (
     "food_category.csv",
 )
 
-_DATE_RE = re.compile(r"\d{4}-\d{2}(?:-\d{2})?")
-
 Row = dict[str, str]
 T = TypeVar("T")
-
-
-@dataclass(frozen=True)
-class Bundle:
-    """One unzipped FDC dataset."""
-
-    source: str
-    root: Path
-    version: str
 
 
 @dataclass(frozen=True)
@@ -70,17 +56,6 @@ class FdcPortion:
     portion_description: str
     modifier: str
     gram_weight: float | None
-
-
-def version_from_path(path: Path, stop: Path) -> str:
-    """Date in the folder name or its ancestors below `stop`; `stop` itself is never used."""
-    for candidate in (path, *path.parents):
-        if candidate == stop:
-            break
-        match = _DATE_RE.search(candidate.name)
-        if match:
-            return match.group(0)
-    return "unknown"
 
 
 def find_bundles(fdc_dir: Path) -> list[Bundle]:

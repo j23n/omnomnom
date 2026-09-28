@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TABLE>
+  <COMPO><alim_code>13001</alim_code><const_code>328</const_code><teneur>54,3</teneur></COMPO>
+  <COMPO><alim_code>13001</alim_code><const_code>25000</const_code><teneur>0,3</teneur></COMPO>
+  <COMPO><alim_code>13001</alim_code><const_code>31000</const_code><teneur>11,4</teneur></COMPO>
+  <COMPO><alim_code>13001</alim_code><const_code>32000</const_code><teneur>10,3</teneur></COMPO>
+  <COMPO><alim_code>13001</alim_code><const_code>34100</const_code><teneur>2,0</teneur></COMPO>
+  <COMPO><alim_code>13001</alim_code><const_code>40000</const_code><teneur>0,35</teneur></COMPO>
+  <COMPO><alim_code>13001</alim_code><const_code>40302</const_code><teneur>traces</teneur></COMPO>
+  <COMPO><alim_code>13001</alim_code><const_code>10110</const_code><teneur>1,2</teneur></COMPO>
+  <COMPO><alim_code>13001</alim_code><const_code>327</const_code><teneur>230</teneur></COMPO>
+  <COMPO><alim_code>20001</alim_code><const_code>328</const_code><teneur>272</teneur></COMPO>
+  <COMPO><alim_code>20001</alim_code><const_code>25000</const_code><teneur>8,4</teneur></COMPO>
+  <COMPO><alim_code>20001</alim_code><const_code>31000</const_code><teneur>48,2</teneur></COMPO>
+  <COMPO><alim_code>20001</alim_code><const_code>32000</const_code><teneur>&lt; 0,5</teneur></COMPO>
+  <COMPO><alim_code>20001</alim_code><const_code>34100</const_code><teneur>-</teneur></COMPO>
+  <COMPO><alim_code>20001</alim_code><const_code>40000</const_code><teneur>3,5</teneur></COMPO>
+  <COMPO><alim_code>20001</alim_code><const_code>10110</const_code><teneur>480</teneur></COMPO>
+  <COMPO><alim_code>99001</alim_code><const_code>328</const_code><teneur>-</teneur></COMPO>
+  <COMPO><alim_code>99001</alim_code><const_code>10110</const_code><teneur>6,1</teneur></COMPO>
+  <COMPO><alim_code>99002</alim_code><const_code>328</const_code><teneur>12</teneur></COMPO>
+</TABLE>

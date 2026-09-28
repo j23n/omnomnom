@@ -14,8 +14,9 @@ from unittest import mock
 from fooddb import build as b
 from fooddb import output
 from fooddb.__main__ import main
+from fooddb.bundles import FOUNDATION, SR_LEGACY
 from fooddb.errors import InputError
-from fooddb.fdc import FOUNDATION, SR_LEGACY, find_bundles
+from fooddb.fdc import find_bundles
 from fooddb.portions import PortionRow
 from tests.test_fdc import FixtureCopyTests, rewrite
 
@@ -92,7 +93,7 @@ class LoadBundleTests(FixtureCopyTests):
         rewrite(self.sr_legacy / "food.csv", '"Egg, whole, raw, fresh"', '"   "')
         summary = b.BuildSummary()
         with self.assertLogs("fooddb.build", level="WARNING") as logs:
-            rows = b.load_bundle(find_bundles(self.fdc)[1], summary)
+            rows = b.load_fdc_bundle(find_bundles(self.fdc)[1], summary)
         self.assertEqual(len(rows), 3)
         self.assertEqual(summary.dropped_blank_name, {SR_LEGACY: 1})
         self.assertIn("2004: blank description", logs.output[0])
@@ -101,12 +102,12 @@ class LoadBundleTests(FixtureCopyTests):
     def test_bundle_without_usable_foods_raises(self) -> None:
         (self.sr_legacy / "food.csv").write_text('"fdc_id","data_type","description"\n')
         with self.assertRaisesRegex(InputError, "yielded no usable foods"):
-            b.load_bundle(find_bundles(self.fdc)[1], b.BuildSummary())
+            b.load_fdc_bundle(find_bundles(self.fdc)[1], b.BuildSummary())
 
     def test_implausible_value_warns_in_context(self) -> None:
         self.set_rice_energy("950")
         with self.assertLogs("fooddb.build", level="WARNING") as logs:
-            rows = b.load_bundle(find_bundles(self.fdc)[1], b.BuildSummary())
+            rows = b.load_fdc_bundle(find_bundles(self.fdc)[1], b.BuildSummary())
         self.assertEqual(len(rows), 4)
         self.assertIn("fdc_sr_legacy 2002: implausible kcal_100g=950.0", logs.output[0])
 
@@ -215,7 +216,7 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(labels("2004"), [("1 large", 50.0, 1)])
 
         meta = dict(conn.execute("SELECT key, value FROM meta").fetchall())
-        self.assertEqual(meta["schema_version"], "1")
+        self.assertEqual(meta["schema_version"], "2")
         self.assertEqual(meta["food_count"], "7")
         self.assertEqual(meta["portion_count"], "10")
         self.assertEqual(meta["fdc_foundation_version"], "unknown")

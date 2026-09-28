@@ -1,4 +1,8 @@
-"""Assembling output rows from FDC bundles: mapping, dedup, popularity."""
+"""Assembling output rows from every source: mapping, dedup, popularity.
+
+Each source has its own reader module; this one turns what they yield into the
+rows the database is written from, drops what cannot be logged (a food with no
+energy value), and settles overlap between sources by name."""
 
 from __future__ import annotations
 
@@ -9,9 +13,9 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import fdc, mapping
+from . import bls, ciqual, fdc, mapping
+from .bundles import BLS, CIQUAL, FOUNDATION, SR_LEGACY, Bundle
 from .errors import InputError
-from .fdc import Bundle
 from .portions import PortionRow, build_portions
 
 log = logging.getLogger(__name__)
@@ -40,6 +44,10 @@ class FoodRow:
     popularity: int = 0
     name_locale: str = NAME_LOCALE
     is_estimated: int = 0
+    # The same food's names in the other languages the source publishes, indexed
+    # for search but never displayed: a French speaker finds "Pomme, pulpe, crue"
+    # and reads "Apple, pulp, raw".
+    alt_names: tuple[str, ...] = ()
 
 
 @dataclass
@@ -60,7 +68,7 @@ class BuildSummary:
                 f"{self.dropped_no_energy.get(source, 0)} dropped (no energy), "
                 f"{self.dropped_blank_name.get(source, 0)} dropped (blank name)"
             )
-        lines.append(f"  SR Legacy duplicates of Foundation dropped: {self.dropped_duplicates}")
+        lines.append(f"  duplicate names dropped: {self.dropped_duplicates}")
         lines.append(f"  portions: {self.portions}")
         lines.append(f"  unmatched popular entries: {len(self.unmatched_popular)}")
         return "\n".join(lines)
@@ -117,8 +125,8 @@ def check_plausible(values: dict[str, float | None], source: str, ref: str) -> N
             )
 
 
-def load_bundle(bundle: Bundle, summary: BuildSummary) -> list[FoodRow]:
-    """Read one bundle into FoodRows, dropping foods without energy or a name."""
+def load_fdc_bundle(bundle: Bundle, summary: BuildSummary) -> list[FoodRow]:
+    """Read one FDC bundle into FoodRows, dropping foods without energy or a name."""
     root, source = bundle.root, bundle.source
     mapping.validate_units(fdc.read_nutrient_units(root), source)
     nutrients = fdc.read_food_nutrients(root)
@@ -153,12 +161,105 @@ def load_bundle(bundle: Bundle, summary: BuildSummary) -> list[FoodRow]:
                 portions=tuple(build_portions(portions.get(food.fdc_id, []), unit_names)),
             )
         )
+    return _finish(rows, summary, source, root, no_energy, blank)
+
+
+def load_ciqual_bundle(bundle: Bundle, summary: BuildSummary) -> list[FoodRow]:
+    """Read the Ciqual export into FoodRows.
+
+    Ciqual publishes English names beside the French ones; when this edition has
+    them the English name is what the app shows and the French one is indexed for
+    search, so the same build serves both languages.
+    """
+    source = bundle.source
+    files = ciqual.locate_files(bundle.root)
+    ciqual.validate_units(ciqual.read_constituent_units(files["const"]))
+    foods = ciqual.read_foods(files["foods"])
+    composition = ciqual.read_composition(files["compo"])
+    prefer_english = any(food.name_eng.strip() for food in foods)
+    if not prefer_english:
+        log.warning("%s: this export has no English names; French names will be shown", source)
+    groups = ciqual.read_groups(files["groups"], prefer_english)
+    rows: list[FoodRow] = []
+    no_energy = blank = 0
+    for food in foods:
+        name, locale, others = ciqual.names_for(food, prefer_english)
+        if not name:
+            blank += 1
+            log.warning("%s %s: no name in either language, dropped", source, food.code)
+            continue
+        values, estimated = ciqual.map_nutrients(composition.get(food.code, {}))
+        if values[mapping.ENERGY_COLUMN] is None:
+            no_energy += 1
+            log.debug("dropping %s %s: no energy", source, name)
+            continue
+        check_plausible(values, source, food.code)
+        category = groups.get(food.subgroup_code) or groups.get(food.group_code)
+        rows.append(
+            FoodRow(
+                name=name,
+                key=normalise_description(name),
+                source=source,
+                source_ref=food.code,
+                category=category,
+                nutrients=values,
+                portions=(),
+                name_locale=locale,
+                is_estimated=1 if estimated else 0,
+                alt_names=tuple(others),
+            )
+        )
+    return _finish(rows, summary, source, bundle.root, no_energy, blank)
+
+
+def load_bls_bundle(bundle: Bundle, summary: BuildSummary) -> list[FoodRow]:
+    """Read the BLS table into FoodRows. Names are German; an English column is
+    indexed for search when the edition carries one."""
+    source = bundle.source
+    published, blank, where = bls.read(bundle.root, bundle.sheet)
+    rows: list[FoodRow] = []
+    no_energy = 0
+    for entry in published:
+        name = str(entry["name"])
+        published_values = entry["values"]
+        assert isinstance(published_values, dict)
+        values: dict[str, float | None] = {
+            column: published_values.get(column) for column in mapping.NUTRIENT_COLUMNS
+        }
+        if values[mapping.ENERGY_COLUMN] is None:
+            no_energy += 1
+            log.debug("dropping %s %s: no energy", source, name)
+            continue
+        key = str(entry["key"])
+        check_plausible(values, source, key)
+        english = str(entry["english"]).strip()
+        rows.append(
+            FoodRow(
+                name=name,
+                key=normalise_description(name),
+                source=source,
+                source_ref=key,
+                category=entry["category"] if isinstance(entry["category"], str) else None,
+                nutrients=values,
+                portions=(),
+                name_locale=bls.NAME_LOCALE,
+                alt_names=(english,) if english and english != name else (),
+            )
+        )
+    return _finish(rows, summary, source, Path(where), no_energy, blank)
+
+
+def _finish(
+    rows: list[FoodRow], summary: BuildSummary, source: str, where: Path,
+    no_energy: int, blank: int,
+) -> list[FoodRow]:
+    """Record what one source dropped and refuse a source that yielded nothing."""
     summary.dropped_no_energy[source] = no_energy
     summary.dropped_blank_name[source] = blank
     log.info("%s: %d foods read, %d dropped for missing energy, %d for blank name",
              source, len(rows) + no_energy + blank, no_energy, blank)
     if not rows:
-        raise InputError(f"{root} ({source}) yielded no usable foods")
+        raise InputError(f"{where} ({source}) yielded no usable foods")
     return rows
 
 
@@ -183,18 +284,34 @@ def dedup(rows: Iterable[FoodRow], summary: BuildSummary) -> list[FoodRow]:
 def apply_popularity(
     rows: Sequence[FoodRow], entries: Sequence[str], summary: BuildSummary
 ) -> list[FoodRow]:
+    """Score each row by the curated list, matching its display name or any of its
+    other names, so one list can rank foods across sources and languages."""
     scores = popularity_scores(entries)
     matched: set[str] = set()
     result: list[FoodRow] = []
     for row in rows:
-        score = scores.get(popular_key(row.name), 0)
+        keys = [popular_key(name) for name in (row.name, *row.alt_names)]
+        score = max((scores.get(key, 0) for key in keys), default=0)
         if score:
-            matched.add(popular_key(row.name))
+            matched.update(key for key in keys if key in scores)
         result.append(dataclasses.replace(row, popularity=score))
     summary.unmatched_popular = [entry for entry in entries if entry not in matched]
-    for entry in summary.unmatched_popular:
-        log.warning("popular entry not found in any bundle: %r", entry)
+    if summary.unmatched_popular:
+        log.warning(
+            "%d of %d curated popular entries match no food in these sources; "
+            "run with -v to list them", len(summary.unmatched_popular), len(entries)
+        )
+        for entry in summary.unmatched_popular:
+            log.debug("popular entry not found: %r", entry)
     return result
+
+
+LOADERS = {
+    FOUNDATION: load_fdc_bundle,
+    SR_LEGACY: load_fdc_bundle,
+    CIQUAL: load_ciqual_bundle,
+    BLS: load_bls_bundle,
+}
 
 
 def assemble(
@@ -204,7 +321,10 @@ def assemble(
     summary = BuildSummary()
     rows: list[FoodRow] = []
     for bundle in bundles:
-        rows.extend(load_bundle(bundle, summary))
+        loader = LOADERS.get(bundle.source)
+        if loader is None:
+            raise InputError(f"no reader for source {bundle.source!r}")
+        rows.extend(loader(bundle, summary))
     rows = dedup(rows, summary)
     rows = apply_popularity(rows, read_popular(popular_path), summary)
     for row in rows:

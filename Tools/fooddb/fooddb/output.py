@@ -9,21 +9,22 @@ import os
 import re
 import sqlite3
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 from .build import FoodRow
+from .bundles import BLS, CIQUAL, FOUNDATION, SR_LEGACY
 from .errors import InputError
-from .fdc import FOUNDATION, SR_LEGACY
 from .fsutil import publish, temp_beside
 from .mapping import NUTRIENT_COLUMNS
 
 log = logging.getLogger(__name__)
 
-SCHEMA_VERSION = "1"
+SCHEMA_VERSION = "2"
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 _FOOD_COLUMNS = (
-    "name", "name_locale", "source", "source_ref", "category",
+    "name", "name_locale", "alt_names", "source", "source_ref", "category",
     *NUTRIENT_COLUMNS, "is_estimated", "popularity",
 )
 _INSERT_FOOD = (
@@ -55,6 +56,7 @@ def _food_params(row: FoodRow) -> tuple[object, ...]:
     return (
         row.name,
         row.name_locale,
+        "\n".join(row.alt_names) or None,
         row.source,
         row.source_ref,
         row.category,
@@ -109,33 +111,90 @@ def write_sqlite(target: Path, rows: Sequence[FoodRow], meta: Mapping[str, str])
     log.info("wrote %s (%d foods)", target, len(rows))
 
 
+@dataclass(frozen=True)
+class Source:
+    """One publisher's entry in the attribution manifest.
+
+    `datasets` are the build's own source ids paired with the names a reader would
+    recognise; a source whose datasets are all absent from this build is left out
+    of the manifest entirely, so the Sources screen names only what shipped.
+    """
+
+    id: str
+    name: str
+    publisher: str
+    datasets: tuple[tuple[str, str], ...]
+    licence: str
+    licence_url: str
+    url: str
+    citation: str  # {year} is the newest dataset year, {version} the first version
+
+
+SOURCES: tuple[Source, ...] = (
+    Source(
+        id="ciqual",
+        name="Ciqual",
+        publisher="ANSES, Agence nationale de sécurité sanitaire de l'alimentation, "
+                  "de l'environnement et du travail",
+        datasets=((CIQUAL, "Ciqual food composition table"),),
+        licence="Licence Ouverte / Open Licence (Etalab)",
+        licence_url="https://www.etalab.gouv.fr/licence-ouverte-open-licence/",
+        url="https://ciqual.anses.fr/",
+        citation="ANSES. Ciqual French food composition table, {year}. ciqual.anses.fr.",
+    ),
+    Source(
+        id="bls",
+        name="Bundeslebensmittelschlüssel",
+        publisher="Max Rubner-Institut, Bundesforschungsinstitut für Ernährung und Lebensmittel",
+        datasets=((BLS, "Bundeslebensmittelschlüssel (BLS)"),),
+        licence="CC BY 4.0",
+        licence_url="https://creativecommons.org/licenses/by/4.0/",
+        url="https://www.blsdb.de/",
+        citation="Max Rubner-Institut. Bundeslebensmittelschlüssel (BLS), "
+                 "Version {version}. blsdb.de.",
+    ),
+    Source(
+        id="fdc",
+        name="USDA FoodData Central",
+        publisher="U.S. Department of Agriculture, Agricultural Research Service",
+        datasets=((FOUNDATION, "Foundation Foods"), (SR_LEGACY, "SR Legacy")),
+        licence="CC0 1.0",
+        licence_url="https://creativecommons.org/publicdomain/zero/1.0/",
+        url="https://fdc.nal.usda.gov/",
+        citation="U.S. Department of Agriculture, Agricultural Research Service. "
+                 "FoodData Central, {year}. fdc.nal.usda.gov.",
+    ),
+)
+
+
 def sources_manifest(versions: Mapping[str, str]) -> list[dict[str, object]]:
-    return [
-        {
-            "id": "fdc",
-            "name": "USDA FoodData Central",
-            "publisher": "U.S. Department of Agriculture, Agricultural Research Service",
-            "datasets": [
-                {
-                    "id": FOUNDATION,
-                    "name": "Foundation Foods",
-                    "version": versions.get(FOUNDATION, "unknown"),
-                },
-                {
-                    "id": SR_LEGACY,
-                    "name": "SR Legacy",
-                    "version": versions.get(SR_LEGACY, "unknown"),
-                },
-            ],
-            "licence": "CC0 1.0",
-            "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
-            "url": "https://fdc.nal.usda.gov/",
-            "citation": (
-                "U.S. Department of Agriculture, Agricultural Research Service. "
-                f"FoodData Central, {citation_year(versions)}. fdc.nal.usda.gov."
+    """The manifest for what this build actually read, in source order."""
+    manifest: list[dict[str, object]] = []
+    for source in SOURCES:
+        datasets = [
+            {"id": dataset_id, "name": name, "version": versions[dataset_id]}
+            for dataset_id, name in source.datasets
+            if dataset_id in versions
+        ]
+        if not datasets:
+            continue
+        own = {dataset_id: versions[dataset_id] for dataset_id, _ in source.datasets
+               if dataset_id in versions}
+        manifest.append({
+            "id": source.id,
+            "name": source.name,
+            "publisher": source.publisher,
+            "datasets": datasets,
+            "licence": source.licence,
+            "licence_url": source.licence_url,
+            "url": source.url,
+            "citation": source.citation.format(
+                year=citation_year(own), version=next(iter(own.values()))
             ),
-        }
-    ]
+        })
+    if not manifest:
+        raise InputError("no source in this build has an attribution entry")
+    return manifest
 
 
 def write_sources_json(target: Path, versions: Mapping[str, str]) -> None:
