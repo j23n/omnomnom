@@ -4,6 +4,7 @@ import SwiftUI
 /// with the mark, the wordmark and the version.
 struct SettingsView: View {
     @AppStorage(BarcodeModule.enabledKey) private var barcodeScanningEnabled = false
+    @AppStorage(BarcodeModule.productSearchKey) private var productSearchEnabled = false
     @AppStorage(EstimationModule.enabledKey) private var mealEstimationEnabled = false
     @Environment(\.health) private var health
     @Environment(\.scenePhase) private var scenePhase
@@ -33,6 +34,7 @@ struct SettingsView: View {
                 }
                 Section {
                     Toggle("Barcode scanning", isOn: $barcodeScanningEnabled)
+                    Toggle("Product search", isOn: $productSearchEnabled)
                     Toggle("Meal estimation", isOn: $mealEstimationEnabled)
                     if let estimation, !estimation.isAvailable {
                         Text(estimation.message)
@@ -79,6 +81,8 @@ struct SettingsView: View {
     /// so the choice is remembered for when it is.
     private static let modulesFooter = """
         Barcode scans run on this device. Looking up a product sends its barcode to Open Food Facts; results are kept on this device.
+
+        Product search sends what you type to Open Food Facts, so branded products can be found by name. The bundled database holds generic foods only and never a brand.
 
         Estimates are produced on this device by Apple Intelligence. Nothing is sent anywhere. They are rough and you confirm every value before it is logged.
         """

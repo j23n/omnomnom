@@ -3,6 +3,21 @@ import os
 import SwiftData
 import SwiftUI
 
+/// Which sheet the food search screen has up. One slot, so two can never fight over it.
+private nonisolated enum FoodSearchSheet: Identifiable, Sendable {
+    /// A food picked in log mode, on its way to being logged.
+    case quantity(FoodChoice)
+    /// A product Open Food Facts knows by name but not by its values, to type from the label.
+    case product(ProductPrefill)
+
+    var id: String {
+        switch self {
+        case .quantity(let choice): "quantity-\(choice.id)"
+        case .product(let prefill): "product-\(prefill.barcode)"
+        }
+    }
+}
+
 /// What the food search screen does with a tapped row.
 enum AddFoodMode {
     /// Open the Quantity sheet for `day`; a completed log closes the screen. An
@@ -32,7 +47,11 @@ struct FoodSearchView: View {
     @State private var local: [FoodChoice] = []
     @State private var results: [BundledFood] = []
     @State private var searchError: String?
-    @State private var choice: FoodChoice?
+    @State private var products = ProductResults()
+    @State private var sheet: FoodSearchSheet?
+    /// A food to open once the sheet in front of it has gone. Presenting from inside a
+    /// sheet's own callback loses the second presentation, so it waits for `onDismiss`.
+    @State private var pendingChoice: FoodChoice?
     @State private var scanRequested = false
     @State private var estimateRequested = false
     /// How many foods have gone back to the caller in a multiple pick, and the last of
@@ -40,6 +59,7 @@ struct FoodSearchView: View {
     @State private var pickedCount = 0
     @State private var lastPicked: String?
     @FocusState private var fieldFocused: Bool
+    @AppStorage(BarcodeModule.productSearchKey) private var productSearchEnabled = false
 
     private var isSearching: Bool {
         !searchText.trimmingCharacters(in: .whitespaces).isEmpty
@@ -79,9 +99,12 @@ struct FoodSearchView: View {
             VStack(spacing: 0) {
                 FoodSearchField(text: $searchText, prompt: "Search foods", isFocused: $fieldFocused)
                 if isSearching {
-                    SearchResultsList(local: local, results: results, errorMessage: searchError, modules: modules) {
-                        present($0)
-                    }
+                    SearchResultsList(
+                        local: local, results: results, errorMessage: searchError,
+                        modules: modules, products: products,
+                        onSelect: { present($0) },
+                        onSelectProduct: { record in Task { await choose(product: record) } }
+                    )
                 } else {
                     RecentsList(includesRecipes: includesRecipes, modules: modules) { present($0) }
                 }
@@ -100,14 +123,21 @@ struct FoodSearchView: View {
                     pickedBar
                 }
             }
-            .sheet(item: $choice) { choice in
-                if case .log(let day, let onLogged, _) = mode {
-                    QuantitySheet(choice: choice, day: day) { result in
-                        self.choice = nil
-                        onLogged(result)
-                        dismiss()
+            .sheet(item: $sheet, onDismiss: { advance() }) { sheet in
+                switch sheet {
+                case .quantity(let choice):
+                    if case .log(let day, let onLogged, _) = mode {
+                        QuantitySheet(choice: choice, day: day) { result in
+                            self.sheet = nil
+                            onLogged(result)
+                            dismiss()
+                        }
+                        .presentationDetents([.medium, .large])
                     }
-                    .presentationDetents([.medium, .large])
+                case .product(let prefill):
+                    CustomFoodEditorView(food: nil, product: prefill) { food in
+                        pendingChoice = food.choice
+                    }
                 }
             }
             .modifier(BarcodeEntryPoint(isActive: includesRecipes, isRequested: $scanRequested) { present($0) })
@@ -167,7 +197,31 @@ struct FoodSearchView: View {
                 AppLog.store.error("food lookup failed: \(error.localizedDescription, privacy: .public)")
             }
         }
-        self.choice = prepared
+        sheet = .quantity(prepared)
+    }
+
+    /// Runs once a sheet is gone: a product typed from its label carries on as any
+    /// other food would. Nothing is pending after a log, so this does nothing then.
+    private func advance() {
+        guard let choice = pendingChoice else { return }
+        pendingChoice = nil
+        present(choice)
+    }
+
+    /// A product from the search results. Its values are fetched by barcode through the
+    /// same flow a scan uses, which caches it here for good; a product the fetch cannot
+    /// answer for opens the editor with what the search did know, to type from the label.
+    private func choose(product record: ProductRecord) async {
+        let client = OpenFoodFactsClient(transport: URLSessionTransport(), userAgent: UserAgent.current())
+        let flow = BarcodeLookupFlow(context: context, client: client)
+        switch await flow.resolve(code: record.code) {
+        case .found(let choice):
+            present(choice)
+        case .manual(let barcode, let prefillName, let measure, let reason):
+            sheet = .product(ProductPrefill(
+                barcode: barcode, name: prefillName ?? record.name, measure: measure, reason: reason
+            ))
+        }
     }
 
     /// An estimate was logged: Today gets the banner text and the screen closes.
@@ -187,6 +241,7 @@ struct FoodSearchView: View {
             local = []
             results = []
             searchError = nil
+            products.clear()
             return
         }
         try? await Task.sleep(for: .milliseconds(150))
@@ -202,6 +257,35 @@ struct FoodSearchView: View {
             AppLog.foodDB.error("search failed: \(error.localizedDescription, privacy: .private)")
             results = []
             searchError = error.localizedDescription
+        }
+        await searchProducts(text)
+    }
+
+    /// The product half, which leaves the device, so it waits longer than the local
+    /// half and only for a query worth sending. The local results are already on screen
+    /// by then; these arrive under them.
+    private func searchProducts(_ text: String) async {
+        products.isEnabled = productSearchEnabled
+        guard productSearchEnabled, ProductResults.isWorthSearching(text) else {
+            products.clear()
+            return
+        }
+        products.isSearching = true
+        products.errorMessage = nil
+        try? await Task.sleep(for: .milliseconds(350))
+        guard !Task.isCancelled else { return }
+        let client = OpenFoodFactsClient(transport: URLSessionTransport(), userAgent: UserAgent.current())
+        do {
+            let found = try await client.products(matching: text)
+            guard !Task.isCancelled else { return }
+            products.records = found
+            products.isSearching = false
+        } catch {
+            guard !Task.isCancelled else { return }
+            AppLog.barcode.error("product search failed: \(error.localizedDescription, privacy: .private)")
+            products.records = []
+            products.isSearching = false
+            products.errorMessage = "Open Food Facts could not be reached."
         }
     }
 

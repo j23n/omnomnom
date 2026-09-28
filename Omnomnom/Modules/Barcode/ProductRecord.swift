@@ -102,6 +102,29 @@ nonisolated struct ProductResponse: Sendable, Decodable {
     }
 }
 
+/// The envelope of a full-text search.
+///
+/// Search-a-licious, the service that answers `search.openfoodfacts.org`, returns its
+/// matches under `hits`; the older endpoint on the main site returns them under
+/// `products`. Both are read, so moving between them is a URL and nothing else.
+/// A hit without a barcode is dropped: there would be no way to ask about it again.
+nonisolated struct ProductSearchResponse: Sendable, Decodable {
+    let products: [ProductRecord]
+
+    private enum CodingKeys: String, CodingKey {
+        case hits
+        case products
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let found = try container.decodeIfPresent([ProductRecord].self, forKey: .hits)
+            ?? container.decodeIfPresent([ProductRecord].self, forKey: .products)
+            ?? []
+        products = found.filter { !$0.code.isEmpty && $0.name?.isEmpty == false }
+    }
+}
+
 /// The `nutriments` object, read for the eight per-100 keys only; upstream spells them
 /// `_100g` whether the product is sold by mass or by volume. Open Food Facts
 /// reports energy in kcal and kJ (kJ alone is divided by 4.184) and sodium in grams,

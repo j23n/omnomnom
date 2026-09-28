@@ -3,9 +3,19 @@ import Observation
 import os
 import SwiftData
 
-/// The Settings key shared by the toggle, the food search screen and the flow.
+/// The Settings keys shared by the toggles, the food search screen and the flow.
+///
+/// Scanning a barcode and searching for a product by name are separate opt-ins because
+/// they send different things: a scan sends a number off the packet, a search sends
+/// whatever the user typed. Either one being on allows a lookup.
 nonisolated enum BarcodeModule {
     static let enabledKey = "barcodeScanningEnabled"
+    static let productSearchKey = "productSearchEnabled"
+
+    /// Whether this app may ask Open Food Facts anything at all.
+    static func lookupsAllowed(in defaults: UserDefaults) -> Bool {
+        defaults.bool(forKey: enabledKey) || defaults.bool(forKey: productSearchKey)
+    }
 }
 
 /// Where a resolved barcode sends the user next.
@@ -46,7 +56,7 @@ final class BarcodeLookupFlow {
     func resolve(code: String) async -> BarcodeLookupOutcome {
         let cached = cachedChoice(for: code)
         var lookup: Lookup?
-        if cached == nil, defaults.bool(forKey: BarcodeModule.enabledKey) {
+        if cached == nil, BarcodeModule.lookupsAllowed(in: defaults) {
             lookup = await lookUp(code)
         }
         switch Self.step(code: code, cached: cached, lookup: lookup) {
@@ -67,7 +77,7 @@ final class BarcodeLookupFlow {
     nonisolated static func step(code: String, cached: FoodChoice?, lookup: Lookup?) -> Step {
         if let cached { return .found(cached) }
         guard let lookup else {
-            return .manual(barcode: code, prefillName: nil, measure: .mass, reason: "Barcode lookup is off")
+            return .manual(barcode: code, prefillName: nil, measure: .mass, reason: "Product lookup is off")
         }
         switch lookup {
         case .success(let record?) where record.isUsable:
