@@ -31,6 +31,9 @@ final class Recipe {
     @Relationship(deleteRule: .cascade, inverse: \Photo.recipe)
     var photo: Photo?
 
+    /// The user's labels. The inverse is declared on `Tag`.
+    var tags: [Tag]?
+
     init(name: String, servings: Double) {
         self.id = UUID()
         self.name = name

@@ -35,7 +35,7 @@ nonisolated enum PreviewSeed: Hashable, Sendable {
 @MainActor
 enum PreviewStore {
     /// The same schema the app opens.
-    static let schema = Schema([Food.self, LogEntry.self, Recipe.self, RecipeIngredient.self, Photo.self])
+    static let schema = Schema([Food.self, LogEntry.self, Recipe.self, RecipeIngredient.self, Photo.self, Tag.self])
 
     static func container(seed: PreviewSeed = .typicalDay) -> ModelContainer {
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
@@ -292,9 +292,18 @@ private struct Seeder {
         yogurt.photo = photo()
         soup.photo = photo()
         food("Sourdough bread", kind: .custom, per100g: PreviewFoods.sourdough)
-        food("Homemade granola", kind: .custom, per100g: PreviewFoods.granola)
-        recipe("Overnight oats", servings: 2, ingredients: [(oats, 80), (milk, 200), (yogurt, 100), (banana, 120)])
-        recipe("Omelette", servings: 1, ingredients: [(egg, 120), (oil, 5), (milk, 30)])
+        let granola = food("Homemade granola", kind: .custom, per100g: PreviewFoods.granola)
+        let breakfast = tag("breakfast")
+        let mealPrep = tag("meal prep")
+        let porridge = recipe(
+            "Overnight oats", servings: 2,
+            ingredients: [(oats, 80), (milk, 200), (yogurt, 100), (banana, 120)]
+        )
+        let omelette = recipe("Omelette", servings: 1, ingredients: [(egg, 120), (oil, 5), (milk, 30)])
+        porridge.tags = [breakfast, mealPrep]
+        omelette.tags = [breakfast]
+        soup.tags = [mealPrep]
+        granola.tags = [breakfast]
         product(
             "Smooth peanut butter", brand: "Whole Earth", barcode: "5013665111818",
             source: .openFoodFacts, per100g: PreviewFoods.peanutButter
@@ -347,6 +356,13 @@ private struct Seeder {
             food.fetchedAt = calendar.date(byAdding: .day, value: -3, to: Date.now)
         }
         return food
+    }
+
+    @discardableResult
+    private func tag(_ name: String) -> Tag {
+        let tag = Tag(name: name)
+        context.insert(tag)
+        return tag
     }
 
     @discardableResult

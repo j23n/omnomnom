@@ -46,6 +46,7 @@ struct RecipeEditorView: View {
                     Text("Servings are portions of the raw total, not of the cooked weight. Ingredients measured in grams and in millilitres are counted apart.")
                 }
                 PhotoPickerSection(photo: $draft.photo, footer: "Shown with the recipe and every entry logged from it.")
+                TagSection(tags: $draft.tags)
                 Section {
                     ForEach($draft.ingredients) { $ingredient in
                         IngredientRow(ingredient: $ingredient)

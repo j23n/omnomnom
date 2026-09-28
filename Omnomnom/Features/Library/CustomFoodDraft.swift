@@ -1,23 +1,29 @@
 import Foundation
 
 /// Value-type state of the custom food editor: a name, the unit the food is measured
-/// in, the typed per-100 text for each nutrient and the photo. Energy is required; a
-/// blank field means the value is unknown.
+/// in, the typed per-100 text for each nutrient, the photo and the tags. Energy is
+/// required; a blank field means the value is unknown.
 nonisolated struct CustomFoodDraft: Hashable, Sendable {
     var name = ""
     /// Grams or millilitres. Every value typed here is per 100 of this unit.
     var measure: FoodMeasure = .mass
     /// The stored-size photo of the food; `nil` for none.
     var photo: Data?
+    /// Tag names as typed. Resolved to `Tag` rows when the editor saves.
+    var tags: [String] = []
     private var fields: [Nutrient: String] = [:]
 
     init() {}
 
     /// Prefilled from an existing food's values.
-    init(name: String, per100g: Nutrition, measure: FoodMeasure = .mass, photo: Data? = nil) {
+    init(
+        name: String, per100g: Nutrition, measure: FoodMeasure = .mass,
+        photo: Data? = nil, tags: [String] = []
+    ) {
         self.name = name
         self.measure = measure
         self.photo = photo
+        self.tags = tags
         for nutrient in Nutrient.allCases {
             if let value = per100g[nutrient] {
                 fields[nutrient] = Formatters.fieldText(value)

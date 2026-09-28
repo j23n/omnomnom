@@ -67,6 +67,9 @@ final class Food {
     @Relationship(deleteRule: .cascade, inverse: \Photo.food)
     var photo: Photo?
 
+    /// The user's labels on a custom food or product. The inverse is declared on `Tag`.
+    var tags: [Tag]?
+
     init(name: String, kind: FoodKind, bundledID: Int?, per100g: Nutrition, measure: FoodMeasure = .mass) {
         self.id = UUID()
         self.name = name
