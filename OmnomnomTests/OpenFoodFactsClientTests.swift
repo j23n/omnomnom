@@ -214,6 +214,48 @@ struct OpenFoodFactsSearchTests {
         }
     }
 
+    @Test func aNameHeldPerLanguageIsRead() async throws {
+        let body = #"""
+        {"hits":[{"code":"8000500037560",
+          "product_name":{"main":"Kinder Bueno","en":"Kinder Bueno bar","fr":"Kinder Bueno"},
+          "brands":"Ferrero","nutriments":{"energy-kcal_100g":571}}]}
+        """#
+        let (client, _) = makeClient(.response(status: 200, body: body))
+        let found = try await client.products(matching: "kinder")
+        #expect(found.map(\.name) == ["Kinder Bueno"])
+    }
+
+    @Test func aNameHeldPerLanguageWithoutAMainFallsBackToEnglish() async throws {
+        let body = #"{"hits":[{"code":"1","product_name":{"fr":"Pomme","en":"Apple"}}]}"#
+        let (client, _) = makeClient(.response(status: 200, body: body))
+        #expect(try await client.products(matching: "apple").map(\.name) == ["Apple"])
+    }
+
+    @Test func aBarcodeSentAsANumberKeepsItsDigits() async throws {
+        let body = #"{"hits":[{"code":8000500037560,"product_name":"Kinder Bueno"}]}"#
+        let (client, _) = makeClient(.response(status: 200, body: body))
+        #expect(try await client.products(matching: "kinder").map(\.code) == ["8000500037560"])
+    }
+
+    @Test func brandsSentAsAListAreRead() async throws {
+        let body = #"{"hits":[{"code":"1","product_name":"Cola","brands":["Coca-Cola","Other"]}]}"#
+        let (client, _) = makeClient(.response(status: 200, body: body))
+        #expect(try await client.products(matching: "cola").map(\.brand) == ["Coca-Cola"])
+    }
+
+    @Test func oneUnreadableHitDoesNotLoseTheRest() async throws {
+        let body = #"{"hits":["not a product",{"code":"1","product_name":"Kept"},42]}"#
+        let (client, _) = makeClient(.response(status: 200, body: body))
+        #expect(try await client.products(matching: "x").map(\.name) == ["Kept"])
+    }
+
+    @Test func aBodyPreviewIsShortAndOnOneLine() {
+        let data = Data(#"{"hits":\#n  [ {"code":"1"} ]}"#.utf8)
+        let preview = OpenFoodFactsClient.preview(of: data, limit: 20)
+        #expect(preview.count <= 20)
+        #expect(!preview.contains("\n"))
+    }
+
     @Test func aBodyThatIsNotTheEnvelopeIsADecodingError() async {
         let (client, _) = makeClient(.response(status: 200, body: "<html>nope</html>"))
         await #expect(throws: OpenFoodFactsError.self) {

@@ -110,11 +110,27 @@ actor OpenFoodFactsClient {
             throw OpenFoodFactsError.decoding
         }
         do {
-            return try JSONDecoder().decode(ProductSearchResponse.self, from: data).products
+            let envelope = try JSONDecoder().decode(ProductSearchResponse.self, from: data)
+            if envelope.skipped > 0 {
+                AppLog.barcode.error("product search: \(envelope.skipped) hits in a shape this app does not read")
+            }
+            return envelope.products
         } catch {
-            AppLog.barcode.error("search body not decodable: \(error.localizedDescription, privacy: .private)")
+            // The body is the only thing that says why, and a search answer is public
+            // data, so a prefix of it goes in the log where the next run can use it.
+            AppLog.barcode.error(
+                "search body not decodable: \(error.localizedDescription, privacy: .private); began: \(Self.preview(of: data), privacy: .private)"
+            )
             throw OpenFoodFactsError.decoding
         }
+    }
+
+    /// The first characters of a body, whitespace collapsed, for a log line that has to
+    /// explain a decoding failure without carrying the whole response.
+    nonisolated static func preview(of data: Data, limit: Int = 400) -> String {
+        let text = String(decoding: data.prefix(limit * 4), as: UTF8.self)
+        let collapsed = text.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        return String(collapsed.prefix(limit))
     }
 
     /// The GET for a search: the same fields as a product lookup, one page of them.
