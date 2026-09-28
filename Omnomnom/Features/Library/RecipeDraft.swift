@@ -23,14 +23,16 @@ nonisolated struct IngredientDraft: Identifiable, Hashable, Sendable {
     }
 }
 
-/// Value-type state of the recipe builder. Cancel drops it; Done applies it to the
-/// model through `RecipeWriter`, so nothing is stored while editing.
+/// Value-type state of the recipe builder, tags included. Cancel drops it; Done
+/// applies it to the model through `RecipeWriter`, so nothing is stored while editing.
 nonisolated struct RecipeDraft: Hashable, Sendable {
     var name = ""
     var servings = 1.0
     var ingredients: [IngredientDraft] = []
     /// The stored-size photo of the dish; `nil` for none.
     var photo: Data?
+    /// Tag names as typed. Resolved to `Tag` rows when the editor saves.
+    var tags: [String] = []
 
     /// The amount a freshly added ingredient starts with, in its own unit; edited inline.
     static let defaultAmount = 100.0

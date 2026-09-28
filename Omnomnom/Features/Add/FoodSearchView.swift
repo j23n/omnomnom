@@ -179,7 +179,8 @@ struct FoodSearchView: View {
     }
 
     /// Debounced 150 ms; `.task(id:)` cancels the previous run on every keystroke. The
-    /// Library is matched by name on the main context, the database by FTS in its actor.
+    /// Library is matched by name and tag on the main context, the database by FTS in
+    /// its actor.
     private func search() async {
         let text = searchText.trimmingCharacters(in: .whitespaces)
         guard isSearching else {
@@ -206,8 +207,10 @@ struct FoodSearchView: View {
 
     private func localMatches(for text: String) -> [FoodChoice] {
         do {
-            let foods = try Food.libraryMatching(text, in: context).compactMap(\.choice)
-            let recipes = includesRecipes ? try Recipe.matching(text, in: context).map(\.choice) : []
+            let foods = try LibrarySearch.foods(matching: text, in: context).compactMap(\.choice)
+            let recipes = includesRecipes
+                ? try LibrarySearch.recipes(matching: text, in: context).map(\.choice)
+                : []
             return recipes + foods
         } catch {
             AppLog.store.error("library search failed: \(error.localizedDescription, privacy: .private)")

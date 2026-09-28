@@ -9,7 +9,7 @@ struct PhotoTests {
     private let otherBytes = Data([0xFF, 0xD8, 0x09, 0x08])
 
     private func makeContext() throws -> ModelContext {
-        let schema = Schema([Food.self, LogEntry.self, Recipe.self, RecipeIngredient.self, Photo.self])
+        let schema = Schema([Food.self, LogEntry.self, Recipe.self, RecipeIngredient.self, Photo.self, Tag.self])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: schema, configurations: [configuration])
         return ModelContext(container)

@@ -35,8 +35,13 @@ struct CustomFoodEditorView: View {
         self.food = food
         self.product = product
         self.onSaved = onSaved
-        var draft = food.map {
-            CustomFoodDraft(name: $0.name, per100g: $0.per100g, measure: $0.measure, photo: $0.photo?.data)
+        var draft = food.map { food in
+            CustomFoodDraft(
+                name: food.name, per100g: food.per100g, measure: food.measure,
+                photo: food.photo?.data,
+                tags: (food.tags ?? []).map(\.name)
+                    .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+            )
         } ?? CustomFoodDraft()
         if food == nil, let product {
             draft.measure = product.measure
@@ -96,6 +101,7 @@ struct CustomFoodEditorView: View {
                     Text("Energy is required. Leave a value blank when it is not known; it is then not written to Health.")
                 }
                 PhotoPickerSection(photo: $draft.photo, footer: "Shown with the food and every entry logged from it.")
+                TagSection(tags: $draft.tags)
                 if food != nil {
                     Section {
                         Text("Previously logged entries are unchanged.")
@@ -157,6 +163,8 @@ struct CustomFoodEditorView: View {
         }
         saved.photo = Photo.replacing(saved.photo, with: draft.photo, in: context)
         do {
+            saved.tags = try draft.tags.compactMap { try Tag.named($0, in: context) }
+            try Tag.removeOrphans(in: context)
             try context.save()
             onSaved?(saved)
             dismiss()

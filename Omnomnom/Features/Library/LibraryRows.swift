@@ -16,8 +16,9 @@ enum LibraryEditor: Identifiable {
     }
 }
 
-/// Name, servings and energy per serving of one recipe, with its photo when it has one.
-/// The row opens the recipe editor, so it carries a chevron and reads as a button.
+/// Name, servings and energy per serving of one recipe, with its photo when it has one
+/// and its tags when it carries any. The row opens the recipe editor, so it carries a
+/// chevron and reads as a button.
 struct RecipeRow: View {
     let recipe: Recipe
 
@@ -37,6 +38,7 @@ struct RecipeRow: View {
                 ValueText(caption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                TagLine(tags: recipe.tags)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Image(systemName: "chevron.right")
@@ -52,8 +54,9 @@ struct RecipeRow: View {
 }
 
 /// Name and energy per 100 of one custom food or product, in the food's own unit, with
-/// the brand of a product and the user's photo when there is one. The row opens the
-/// food editor, so it carries a chevron and reads as a button.
+/// the brand of a product, the user's photo when there is one and the tags when it
+/// carries any. The row opens the food editor, so it carries a chevron and reads as a
+/// button.
 struct CustomFoodRow: View {
     let food: Food
 
@@ -75,6 +78,7 @@ struct CustomFoodRow: View {
                 ValueText(caption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                TagLine(tags: food.tags)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Image(systemName: "chevron.right")
@@ -86,6 +90,25 @@ struct CustomFoodRow: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityHint("Opens the food")
+    }
+}
+
+/// The tags on a row, one quiet line under the figures; nothing at all when there are
+/// none. Names only: chips here would compete with the row's own tap target.
+struct TagLine: View {
+    let tags: [Tag]?
+
+    private var names: [String] {
+        (tags ?? []).map(\.name).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
+    var body: some View {
+        if !names.isEmpty {
+            Text(names.joined(separator: " · "))
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .lineLimit(2)
+        }
     }
 }
 

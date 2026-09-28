@@ -15,6 +15,8 @@ struct RecipeWriter {
         draft.name = recipe.name
         draft.servings = recipe.servings
         draft.photo = recipe.photo?.data
+        draft.tags = (recipe.tags ?? []).map(\.name)
+            .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
         draft.ingredients = recipe.sortedIngredients.map { row in
             IngredientDraft(
                 id: row.id,
@@ -56,6 +58,8 @@ struct RecipeWriter {
                 ingredient.recipe = recipe
                 ingredient.food = try food(for: row)
             }
+            recipe.tags = try draft.tags.compactMap { try Tag.named($0, in: context) }
+            try Tag.removeOrphans(in: context)
             try context.save()
         } catch {
             context.rollback()
