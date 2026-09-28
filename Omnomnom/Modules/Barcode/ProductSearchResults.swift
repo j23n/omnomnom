@@ -14,6 +14,11 @@ nonisolated struct ProductResults: Hashable, Sendable {
     /// Nothing is asked of a service abroad until there is enough typed to ask about.
     static let shortestQuery = 3
 
+    /// How still the field has to be before anything leaves the device. The local
+    /// search answers while the typist is still going; this one waits for them to
+    /// stop, so a nine-letter product is one request rather than seven.
+    static let quietPeriod = Duration.seconds(1)
+
     /// Whether a query is worth sending.
     static func isWorthSearching(_ text: String) -> Bool {
         text.trimmingCharacters(in: .whitespacesAndNewlines).count >= shortestQuery
