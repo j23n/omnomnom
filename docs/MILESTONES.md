@@ -4,13 +4,13 @@ Status log for the build order in `PLAN.md`. Each milestone is planned, implemen
 
 | # | Milestone | Status | Sign-off |
 | --- | --- | --- | --- |
-| 1 | Data pipeline (FDC) | done | 2026-09-21 |
+| 1 | Data pipeline | done | 2026-09-21 |
 | 2 | Log to Health end-to-end | done, awaiting first build | 2026-09-21 |
 | 3 | Reconciliation | done, awaiting first build | 2026-09-21 |
 | 4 | Recipes | done, awaiting first build | 2026-09-21 |
 | 5 | Barcode | done, awaiting first build | 2026-09-21 |
 | 6 | AI estimation | done, awaiting first build | 2026-09-21 |
-| 7 | Internationalization | pending | |
+| 7 | Internationalization | sources bundled, UI pending | |
 
 ## Milestone 1: Data pipeline
 
@@ -250,3 +250,16 @@ Status log for the work after milestone 6, all on the same review loop (implemen
 ### Sign-off
 
 Signed off 2026-09-22 subject to the first build. Watch list: `nonisolated struct BiteMark: Shape` and `nonisolated struct FlowLayout: Layout` under default main-actor isolation; `TextField("0", text:selection:)` overload resolution and whether select-all survives programmatic focus; the bottom bar rising above the keyboard on the Quantity sheet at the medium detent; `Section` header `Label` styling; `ContentUnavailableView` honouring the 56 pt mark; the `Photo` schema validating at container creation (one-to-one cascade from recipe and food, inverse from `Photo.entries`); `PhotoData.stored(from:)` ImageIO bridging; the thumbnail button not swallowing the row tap; and the icon rendering with the system's glass treatment.
+
+## European sources
+
+The bundle moved from USDA FoodData Central to Ciqual and the Bundeslebensmittelschlüssel. FDC's names are US-shaped and its composite dishes are not the ones on a European plate; the reader, its pinned downloader and its tests stay, and `--fdc` puts it back in one flag.
+
+- Which sources ship is a command-line decision. `build` takes any combination of `--ciqual`, `--bls` and `--fdc`, at least one, and the attribution manifest names only what was read.
+- Ciqual is read from its XML export, keyed by constituent code, with the unit taken from each constituent's own name so a renumbering or a unit change fails the build. `traces` and a `< x` detection limit are stored as zero with the food marked estimated; `-` stays null.
+- The BLS is one wide table read through a new `table.py` that reads `.xlsx` (zip and XML, no third-party library) and delimited text alike, in either decimal convention and either common encoding. Columns are matched by the short mnemonics with spelled-out German names as alternatives.
+- The BLS does not say what unit a column is in. It is measured rather than assumed: no food holds more than 100 g of a macronutrient in 100 g, so a table running past that is in milligrams. The decision is taken once for the whole group from the ninetieth percentile, so neither a corrupt row nor a low-valued column can move it, and the converted values are checked against the same ceiling afterwards.
+- Schema 2 adds `foods.alt_names`, the same food's names in the source's other languages, and indexes it beside `name` in FTS5. Ciqual rows display their English name and are found by the French one; BLS rows display German and are found by English. Nothing else in the app changed: it selects named columns and matches without naming one.
+- `python3 -m fooddb inspect <folder>` prints what a download contains — files or sheets, every column name, first rows, and what each reader would make of them — so a renamed column is diagnosed rather than guessed at.
+
+Two things this environment cannot settle, both first on the watch list. The sandbox's egress policy blocks ciqual.anses.fr and blsdb.de, so the readers were written from each publisher's documented layout and tested against synthetic fixtures; `inspect` on the real downloads is the first thing to run, and a mismatch is one edit to `CONST_SPECS` or `COLUMN_SPECS`. And the curated popularity list is written against FDC's descriptions, so with FDC out of the build it matches nothing and search falls back to relevance alone until the list is rewritten against the real Ciqual and BLS names.
