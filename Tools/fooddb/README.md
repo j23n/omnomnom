@@ -18,10 +18,10 @@ None of these holds a branded product. They are composition tables of generic fo
 
 Nothing here is downloaded automatically except FDC, whose zips are pinned. The other two are behind a download page and are fetched by hand:
 
-- **Ciqual**: ciqual.anses.fr, the "Données XML" export. Unzip it into one folder. The build wants `alim*.xml`, `alim_grp*.xml`, `compo*.xml` and `const*.xml` together, at any depth. The Excel edition is not read; the XML one carries both French and English names.
-- **BLS**: blsdb.de, the data download, free since version 4.0 under CC BY 4.0. One table, `.xlsx` or a delimited export. The old binary `.xls` cannot be read without a third-party library, so save it as `.xlsx` first.
+- **Ciqual**: the XML export, on the French research data repository at <https://entrepot.recherche.data.gouv.fr/dataset.xhtml?persistentId=doi:10.57745/RDMHWY> (DOI 10.57745/RDMHWY). ANSES no longer puts a zip on ciqual.anses.fr; the files are listed individually, so download `alim*.xml`, `alim_grp*.xml`, `compo*.xml` and `const*.xml` into one folder. The build finds them at any depth. The Excel edition is not read; the XML one carries both French and English names. <https://ciqual.anses.fr/> is the table itself, for looking a food up by hand.
+- **BLS**: <https://www.blsdb.de/>, download area at <https://blsdb.de/download>, free since version 4.0 under CC BY 4.0. One table, `.xlsx` or a delimited export. The old binary `.xls` cannot be read without a third-party library, so save it as `.xlsx` first.
 
-Keep the folder name the download came with: the version recorded in `meta` and `sources.json` is read from it — a year for Ciqual, an edition number such as `4.0` for the BLS.
+The version recorded in `meta` and `sources.json` is read from the folder name, so name the folder after the edition: a year for Ciqual (`ciqual-2025`), an edition number for the BLS (`BLS 4.0`), which is what its zip already unpacks to. A folder with no version in its name records `unknown`, which is only a label — the build itself is unaffected.
 
 ```sh
 cd Tools/fooddb
