@@ -59,8 +59,6 @@ struct TagSection: View {
             }
         } header: {
             Text("Tags")
-        } footer: {
-            Text("Search the Library for a tag to see everything under it.")
         }
     }
 

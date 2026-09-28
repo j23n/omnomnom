@@ -22,6 +22,8 @@ A small kit, applied in a few fixed places, on top of the stock look.
 
 **Voice.** Plain, short, dry, second person. No exclamation marks, no praise, no judgement of what was eaten. A little warmer in two places only: the onboarding intro and the first-run empty day.
 
+**Explanatory text.** A sentence earns its place by changing what the user does or by preventing a surprise. Anything that describes what the screen already shows is cut. Anything the user agreed to once — what leaves the device, what is kept, what is sent to Health — is said where they agreed to it, in Settings, and not repeated at every use. A footer that appears only when it applies is worth more than one that is always there, so a caveat about an unmatched row shows only when there is one.
+
 **Deliberately plain.** Nutrient values, badges, Health states and provenance are never tinted and never carry the mark or the rounded face. The tint means "you can act on this" or "this is the app", nothing else.
 
 ## Yardstick
@@ -56,5 +58,7 @@ Filled in as the screen-by-screen pass settles each one.
 - The rounded system design at bold weight is used for the wordmark and the energy total, and for nothing else.
 - Photos are the user's own: taken or picked on the device, downscaled to 1024 px JPEG, kept with an estimate's entries, a recipe or a custom food, shown as a 44 pt thumbnail on Today, in the Library and in the Add sheet, and opened full size from Today. Never fetched from a database or from Open Food Facts, never written to Health, never sent anywhere. An entry logged from a recipe or food shows that photo.
 - Every food, recipe and entry shows a thumbnail; without a photo it is the mark on a tinted square, decorative only, so lists keep one left edge. At accessibility type sizes the placeholder gives way, since the name needs the width more than the list needs its edge; a real photo always stays.
-- Scan and Estimate live in the Add sheet's content, not its toolbar, because the navigation bar is hidden while search is active. Log on the Quantity sheet and Continue in onboarding use the same bottom glass capsule as Add food on Today.
+- Finding a food is a screen of its own, presented full width, with the search field in the layout from the first frame rather than a `.searchable` bar that arrives after the list. Scan and Estimate live in its content, under the field and in reach of a thumb, not in a navigation bar the eye does not visit while typing. `.searchable` stays on the Library, where the list is the point and the search is not. Log on the Quantity sheet and Continue in onboarding use the same bottom glass capsule as Add food on Today.
 - An estimate never carries invented nutrition: the model names the foods and the portions, every value comes from the bundled database, and the matched food is shown under each row and can be changed before logging. A row with no food cannot be logged.
+- Tags are flat and shared by recipes and foods, edited as chips in both editors, filtered by chips in the Library, and matched by search on both screens. No folders: a folder makes an item pick one home, and porridge is breakfast and meal prep at once. A tag is resolved by name when an editor saves and deleted when its last use goes.
+- Branded products come from Open Food Facts by name as well as by barcode, behind an opt-in of their own, because a barcode and a typed query are not the same disclosure. A search hit is resolved by its barcode before anything is logged, so a product reaches the Library through one path and carries one attribution.
