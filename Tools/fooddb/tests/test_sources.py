@@ -36,17 +36,19 @@ class MultiSourceBuildTests(unittest.TestCase):
         self.addCleanup(conn.close)
 
         counts = dict(conn.execute("SELECT source, count(*) FROM foods GROUP BY source").fetchall())
-        self.assertEqual(counts, {"ciqual": 2, "bls": 3})
+        self.assertEqual(counts, {"ciqual": 2, "bls": 5})
 
-        locales = dict(
-            conn.execute("SELECT source, group_concat(DISTINCT name_locale) FROM foods "
-                         "GROUP BY source").fetchall()
-        )
-        self.assertEqual(locales, {"ciqual": "en", "bls": "de"})
+        # Both sources publish English names beside their own, so a row reads in
+        # English wherever one exists and in the source's language where it does not.
+        locales = {
+            (source, locale)
+            for source, locale in conn.execute("SELECT DISTINCT source, name_locale FROM foods")
+        }
+        self.assertEqual(locales, {("ciqual", "en"), ("bls", "en"), ("bls", "de")})
 
         meta = dict(conn.execute("SELECT key, value FROM meta").fetchall())
         self.assertEqual(meta["schema_version"], "2")
-        self.assertEqual(meta["food_count"], "5")
+        self.assertEqual(meta["food_count"], "7")
         self.assertEqual(meta["ciqual_version"], "unknown")
         self.assertEqual(meta["bls_version"], "4.0")
 
@@ -63,8 +65,10 @@ class MultiSourceBuildTests(unittest.TestCase):
             return [row[0] for row in rows]
 
         self.assertEqual(search("pomme"), ["Apple, pulp and skin, raw"])
-        self.assertEqual(search("apfel"), ["Apfel roh"])
-        self.assertEqual(search("bread"), ["Sandwich bread", "Weizenbrot"])
+        self.assertEqual(search("apfel"), ["Apple raw"])
+        self.assertEqual(search("hafer"), ["Oat whole grain, raw"])
+        self.assertEqual(search("bread"), ["Sandwich bread"])
+        self.assertEqual(search("apple"), ["Apple raw", "Apple, pulp and skin, raw"])
 
     def test_the_manifest_names_only_what_shipped(self) -> None:
         self.assertEqual(self.build(), 0)

@@ -63,6 +63,22 @@ class Table:
                 f"Columns present: {', '.join(self.headers) or '(none)'}"
             )
 
+    def index(self, column: str) -> int:
+        """Where a column sits, for reading a wide table without a dict per row.
+
+        The BLS is 418 columns and 7,140 rows; naming every cell of it would be
+        three million dictionary entries to reach eleven of them.
+        """
+        try:
+            return self.headers.index(column)
+        except ValueError:
+            raise InputError(f"{self.where}: no column named {column!r}") from None
+
+    @staticmethod
+    def cell(row: Sequence[str], index: int) -> str:
+        """One cell of a row, empty when the row stops short of it."""
+        return row[index] if 0 <= index < len(row) else ""
+
     def dicts(self) -> Iterator[tuple[int, dict[str, str]]]:
         """(line number, row by column name). Short rows pad with empty strings."""
         width = len(self.headers)

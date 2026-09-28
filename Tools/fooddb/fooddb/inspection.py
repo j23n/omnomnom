@@ -80,6 +80,8 @@ def _column_lines(headers: Sequence[str]) -> list[str]:
 
 def _bls_lines(table: Table) -> list[str]:
     lines = ["  read as a BLS table:"]
+    published = bls.value_columns(table)
+    lines.append(f"    {len(published)} components carry a unit in their header")
     try:
         columns = bls.resolve_columns(table)
     except FooddbError as error:
@@ -87,16 +89,25 @@ def _bls_lines(table: Table) -> list[str]:
         return lines
     lines.append(f"    code: {columns.key!r}, name: {columns.german_name!r}")
     lines.append(f"    English name: {columns.english_name!r}, category: {columns.category!r}")
-    for spec in bls.COLUMN_SPECS:
-        header = columns.nutrients.get(spec.column)
-        lines.append(f"    {spec.column}: {header!r}" if header
-                     else f"    {spec.column}: not found")
+    for spec in bls.COMPONENT_SPECS:
+        source = columns.nutrients.get(spec.column)
+        if source is None:
+            lines.append(f"    {spec.column}: not found (tried {', '.join(spec.codes)})")
+            continue
+        lines.append(
+            f"    {spec.column}: {source.header!r} in {source.published_unit!r} "
+            f"-> {spec.unit} (x{source.factor:g})"
+        )
     try:
         rows, blank, _ = bls.read(table.path, table.sheet)
     except FooddbError as error:
         lines.append(f"    values would fail: {error}")
         return lines
     lines.append(f"    {len(rows)} rows readable, {blank} without a name")
+    for row in rows[:_SAMPLE_ROWS]:
+        name, locale, others = bls.names_for(row)
+        lines.append(f"      {row.key}: {name!r} [{locale}] also {list(others)}")
+        lines.append(f"        {row.values}")
     return lines
 
 

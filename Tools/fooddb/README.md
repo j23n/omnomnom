@@ -19,9 +19,9 @@ None of these holds a branded product. They are composition tables of generic fo
 Nothing here is downloaded automatically except FDC, whose zips are pinned. The other two are behind a download page and are fetched by hand:
 
 - **Ciqual**: the XML export, on the French research data repository at <https://entrepot.recherche.data.gouv.fr/dataset.xhtml?persistentId=doi:10.57745/RDMHWY> (DOI 10.57745/RDMHWY). ANSES no longer puts a zip on ciqual.anses.fr; the files are listed individually, so download `alim*.xml`, `alim_grp*.xml`, `compo*.xml` and `const*.xml` into one folder. The build finds them at any depth. The Excel edition is not read; the XML one carries both French and English names. <https://ciqual.anses.fr/> is the table itself, for looking a food up by hand.
-- **BLS**: <https://www.blsdb.de/>, download area at <https://blsdb.de/download>, free since version 4.0 under CC BY 4.0. One table, `.xlsx` or a delimited export. The old binary `.xls` cannot be read without a third-party library, so save it as `.xlsx` first.
+- **BLS**: <https://www.blsdb.de/>, download area at <https://blsdb.de/download>, free since version 4.0 under CC BY 4.0. The download holds several files; the build reads the data table (`BLS_4_0_Daten_2025_DE.xlsx`) and finds it by name, so unzip the lot into one folder and leave it alone. The components file beside it is a legend and is not read. The old binary `.xls` cannot be read without a third-party library, so save it as `.xlsx` first.
 
-The version recorded in `meta` and `sources.json` is read from the folder name, so name the folder after the edition: a year for Ciqual (`ciqual-2025`), an edition number for the BLS (`BLS 4.0`), which is what its zip already unpacks to. A folder with no version in its name records `unknown`, which is only a label — the build itself is unaffected.
+The version recorded in `meta` and `sources.json` is read from the file or folder name, so keep the names the download came with: `BLS_4_0_2025_DE` records `4.0`. Ciqual's files arrive loose, so name their folder after the edition (`ciqual-2025`). A name with no version in it records `unknown`, which is only a label — the build itself is unaffected.
 
 ```sh
 cd Tools/fooddb
@@ -50,7 +50,7 @@ python3 -m fooddb inspect ~/downloads/ciqual
 python3 -m fooddb inspect ~/downloads/bls --sheet Daten
 ```
 
-It prints the files or sheets found, every column name, the first rows, and what each reader would make of them: which constituent codes carry which units for Ciqual, which header was matched to which nutrient for the BLS. Nothing is written. A wrong match is then one edit to `CONST_SPECS` in `fooddb/ciqual.py` or `COLUMN_SPECS` in `fooddb/bls.py`.
+It prints the files or sheets found, every column name, the first rows, and what each reader would make of them: which constituent codes carry which units for Ciqual, which component code was matched to which nutrient and in what unit for the BLS. Nothing is written. A wrong match is then one edit to `CONST_SPECS` in `fooddb/ciqual.py` or `COMPONENT_SPECS` in `fooddb/bls.py`.
 
 ## Build
 
@@ -98,14 +98,14 @@ The tests run against synthetic sources in `tests/fixtures/` that mirror each pu
 `foods.sqlite` (schema in `fooddb/schema.sql`, `journal_mode=DELETE`, vacuumed):
 
 - `foods`: one row per food. `id` is assigned by the build; `source` (`ciqual` / `bls` / `fdc_foundation` / `fdc_sr_legacy`) and `source_ref` (the source's own identifier) carry provenance. Nutrients are per 100 g; `kcal_100g` is never null, everything else is null when the source has no value (never 0). `is_estimated` marks a food whose value came from a marker rather than a measurement. `popularity` is a ranking boost from `fooddb/curated/popular.txt` (100 for the first line, decreasing, 0 for everything else).
-- `foods.alt_names`: the same food's names in the source's other languages, newline separated. Indexed, never displayed: typing "pomme" finds the row that reads "Apple, pulp and skin, raw".
+- `foods.alt_names`: the same food's names in the source's other languages, newline separated. Indexed, never displayed: typing "pomme" or "Apfel" finds rows that read "Apple, pulp and skin, raw" and "Oat whole grain, raw". Both Ciqual and the BLS publish English names, so most rows display in English.
 - `foods_fts`: FTS5 external-content index over `name` and `alt_names` (`unicode61`, diacritics removed). Query with `SELECT ... FROM foods_fts WHERE foods_fts MATCH ?`.
 - `portions`: household measures per food, `label` such as `1 cup, chopped` or `1 medium (3" dia)`, with `grams` and a display `seq`. FDC is the only source that publishes these.
 - `meta`: `schema_version`, `built_at`, one `<source>_version` per source built, `food_count`, `portion_count`.
 
 Rules applied while building: a food without any energy value is dropped, and so is one without a name. A row whose normalised name a previous source already claimed is dropped, in the order Ciqual, BLS, FDC Foundation, FDC SR Legacy. Names are stored as the source publishes them, whitespace-collapsed, never rewritten.
 
-Per source: Ciqual's `traces` and `< x` become zero with `is_estimated` set, `-` stays null, and the unit in each constituent's name is checked against the mapping table. The BLS carries no units, so they are measured from the data (see `fooddb/bls.py`) and the result is checked against the same ceiling. FDC prefers nutrient 1008 for energy, then 2047, then 2048; fiber 1079 then 2033; sugar 2000 then 1063.
+Per source: Ciqual's `traces` and `< x` become zero with `is_estimated` set, `-` stays null, and the unit in each constituent's name is checked against the mapping table. The BLS states each value column's unit in its header (`NA Natrium [mg/100g]`), which is read and converted by a stated factor; an unknown unit stops the build, and a cell that is neither a number nor a "not determined" marker is counted and read as unknown. FDC prefers nutrient 1008 for energy, then 2047, then 2048; fiber 1079 then 2033; sugar 2000 then 1063.
 
 `sources.json` is a JSON array of the sources this build actually read, with id, name, publisher, datasets and their versions, licence, URLs and a citation line. A source that was not built in does not appear.
 
