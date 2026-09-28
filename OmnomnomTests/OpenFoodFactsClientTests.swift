@@ -214,6 +214,49 @@ struct OpenFoodFactsSearchTests {
         }
     }
 
+    /// Trimmed from what search.openfoodfacts.org actually answered for "kinder bueno":
+    /// brands is a list, sodium is in grams, and the envelope carries a pile of keys
+    /// this app has no use for.
+    private let live = #"""
+    {"hits":[
+      {"code":"80960270","brands":["Kinder Bueno","Kinder"],
+       "nutriments":{"carbohydrates_100g":44.3,"energy-kcal_100g":592,"energy-kj_100g":2462,
+         "fat_100g":41.6,"proteins_100g":9,"salt_100g":0.343,"saturated-fat_100g":22.89999961853,
+         "sodium_100g":0.1372,"sugars_100g":35.2},
+       "product_name":"Kinder Bueno Coconut"},
+      {"code":"04749442","brands":["kinder"],"product_name":"kinder bueno"}],
+     "aggregations":null,"facets":{},"charts":{},"page":1,"page_size":2,"page_count":752,
+     "debug":{"query":{"size":2,"from":0}},"took":5,"timed_out":false,
+     "count":1504,"is_count_exact":true,"warnings":null}
+    """#
+
+    @Test func theLiveResponseIsRead() async throws {
+        let (client, _) = makeClient(.response(status: 200, body: live))
+        let found = try await client.products(matching: "kinder bueno")
+        #expect(found.map(\.code) == ["80960270", "04749442"])
+        let bueno = try #require(found.first)
+        #expect(bueno.name == "Kinder Bueno Coconut")
+        // brands is a list; the first of them is the one worth showing.
+        #expect(bueno.brand == "Kinder Bueno")
+        #expect(bueno.per100g.energy == 592)
+        #expect(bueno.per100g.carbohydrates == 44.3)
+        #expect(bueno.per100g.sugar == 35.2)
+        // Open Food Facts reports sodium in grams; the app keeps milligrams.
+        #expect(bueno.per100g.sodium == 137.2)
+        // Absent from this product, and never invented.
+        #expect(bueno.per100g.fiber == nil)
+        #expect(bueno.isUsable)
+    }
+
+    @Test func aHitWithoutNutrimentsIsStillOffered() async throws {
+        let (client, _) = makeClient(.response(status: 200, body: live))
+        let plain = try #require(try await client.products(matching: "kinder bueno").last)
+        #expect(plain.name == "kinder bueno")
+        #expect(plain.per100g.energy == nil)
+        // Not usable on its own, which is why choosing one fetches it by barcode.
+        #expect(!plain.isUsable)
+    }
+
     @Test func aNameHeldPerLanguageIsRead() async throws {
         let body = #"""
         {"hits":[{"code":"8000500037560",
