@@ -55,8 +55,8 @@ struct TodayView: View {
                 .safeAreaBar(edge: .bottom) {
                     TodayBottomBar(model: model)
                 }
-                .sheet(isPresented: $model.isAddPresented) {
-                    AddFoodSheet(mode: .log(
+                .fullScreenCover(isPresented: $model.isAddPresented) {
+                    FoodSearchView(mode: .log(
                         day: model.selectedDay,
                         onLogged: { model.handle($0) },
                         onMessage: { model.show(banner: $0) }

@@ -1,7 +1,7 @@
 import Foundation
 import FoundationModels
 
-/// The Settings key shared by the toggle, the Add sheet and the sheet.
+/// The Settings key shared by the toggle, the food search screen and the sheet.
 nonisolated enum EstimationModule {
     static let enabledKey = "mealEstimationEnabled"
 }

@@ -4,7 +4,7 @@ import SwiftData
 import SwiftUI
 
 /// Builds or edits one recipe on a value-type draft. Done applies the draft to the
-/// model; Cancel discards it. Ingredients come from the Add sheet in pick mode.
+/// model; Cancel discards it. Ingredients come from the food search screen in pick mode.
 struct RecipeEditorView: View {
     /// The recipe being edited, or `nil` to create one.
     let recipe: Recipe?
@@ -90,8 +90,8 @@ struct RecipeEditorView: View {
                         .disabled(!draft.isValid)
                 }
             }
-            .sheet(isPresented: $isPicking) {
-                AddFoodSheet(mode: .pick(onPick: { draft.add($0) }))
+            .fullScreenCover(isPresented: $isPicking) {
+                FoodSearchView(mode: .pick(multiple: true, onPick: { draft.add($0) }))
             }
         }
     }

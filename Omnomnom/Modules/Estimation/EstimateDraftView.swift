@@ -106,15 +106,15 @@ struct EstimateDraftView: View {
                 .disabled(draft.items == nil || isSaving)
             }
         }
-        .sheet(item: $picking) { row in
-            AddFoodSheet(mode: .pick(onPick: { choose($0, for: row.id) }))
+        .fullScreenCover(item: $picking) { row in
+            FoodSearchView(mode: .pick(multiple: false, onPick: { choose($0, for: row.id) }))
         }
     }
 
     /// The picked food becomes the row's source of values, and with it the unit the
     /// portion is read in; the number itself is left as typed. A recipe is refused: the
     /// row's number is an amount of one food, which a recipe would read as servings.
-    /// The Add sheet hides recipes in pick mode, so this is belt and braces.
+    /// The food search screen hides recipes in pick mode, so this is belt and braces.
     private func choose(_ choice: FoodChoice, for rowID: UUID) {
         guard !choice.isRecipe else { return }
         guard let index = draft.rows.firstIndex(where: { $0.id == rowID }) else { return }

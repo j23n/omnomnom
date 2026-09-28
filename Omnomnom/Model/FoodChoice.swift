@@ -12,7 +12,7 @@ nonisolated struct ProductAttribution: Hashable, Sendable {
     }
 }
 
-/// What the user picked in the Add sheet, reduced to the values the Quantity sheet
+/// What the user picked in the food search screen, reduced to the values the Quantity sheet
 /// needs. A food is measured in its own unit, grams or millilitres, and carries the
 /// per-100 values in that unit; a recipe is measured in servings and carries
 /// per-serving values plus the raw amount of one.
