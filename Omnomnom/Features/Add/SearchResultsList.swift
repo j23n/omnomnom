@@ -65,6 +65,7 @@ struct SearchResultsList: View {
             }
         }
         .listStyle(.plain)
+        .readableColumn()
         .animation(.default, value: sections.others.map(\.id))
     }
 
@@ -132,6 +133,13 @@ struct SearchResultsList: View {
         onSelect: { _ in }
     )
     .defaultAppStorage(PreviewDefaults.modulesOn)
+}
+
+#Preview("iPad width", traits: .fixedLayout(width: 1024, height: 768)) {
+    SearchResultsList(
+        sections: PreviewStore.searchSections, databaseError: nil,
+        products: ProductResults(isEnabled: true), modules: nil, onSelect: { _ in }
+    )
 }
 
 #Preview("Accessibility 5") {

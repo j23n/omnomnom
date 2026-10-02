@@ -40,6 +40,7 @@ struct FoodSearchField: View {
         .background(.fill.secondary, in: Capsule())
         .padding(.horizontal)
         .padding(.bottom, 8)
+        .readableColumn()
     }
 }
 
@@ -62,6 +63,10 @@ private struct FoodSearchFieldPreview: View {
 }
 
 #Preview("Typed", traits: .sizeThatFitsLayout) {
+    FoodSearchFieldPreview(text: "rolled oats")
+}
+
+#Preview("iPad width", traits: .fixedLayout(width: 1024, height: 120)) {
     FoodSearchFieldPreview(text: "rolled oats")
 }
 

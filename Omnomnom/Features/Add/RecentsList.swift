@@ -74,6 +74,7 @@ struct RecentsList: View {
             }
         }
         .listStyle(.plain)
+        .readableColumn()
     }
 
     private func rows(_ results: [SearchResult]) -> some View {
@@ -93,3 +94,26 @@ private nonisolated struct RecentItem: Hashable, Sendable {
     let result: SearchResult
     let lastUsed: Date
 }
+
+#if DEBUG
+#Preview("Recents and yours") {
+    RecentsList(includesRecipes: true, modules: nil) { _ in }
+        .previewEnvironment(seed: .typicalDay)
+}
+
+#Preview("Nothing logged yet") {
+    RecentsList(includesRecipes: true, modules: nil) { _ in }
+        .previewEnvironment(seed: .empty)
+}
+
+#Preview("iPad width", traits: .fixedLayout(width: 1024, height: 768)) {
+    RecentsList(includesRecipes: true, modules: nil) { _ in }
+        .previewEnvironment(seed: .typicalDay)
+}
+
+#Preview("Accessibility 5") {
+    RecentsList(includesRecipes: true, modules: nil) { _ in }
+        .previewEnvironment(seed: .typicalDay)
+        .environment(\.dynamicTypeSize, .accessibility5)
+}
+#endif
