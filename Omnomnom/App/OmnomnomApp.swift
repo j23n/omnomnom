@@ -1,3 +1,4 @@
+import AppIntents
 import Foundation
 import os
 import SwiftData
@@ -10,16 +11,24 @@ struct OmnomnomApp: App {
     /// One store serves both the write and the read surface.
     private let healthStore: HealthStore
     private let services: AppServices
+    /// Where an app intent leaves what it wants shown.
+    private let router: AppRouter
 
     /// Runs on the main actor during launch (`App` is main-actor isolated). Reconciliation
     /// starts here, before any scene exists, so a background Health launch registers its
     /// observer queries too; the work itself runs in a task and never blocks first paint.
+    ///
+    /// The app intents behind visual intelligence are given the same repository and
+    /// router the views use, so a food the system opens is the same food the app knows.
     init() {
         container = Self.makeContainer()
         foodRepository = FoodRepository.bundled()
         healthStore = HealthStore()
+        router = AppRouter()
         services = AppServices(container: container, observing: healthStore)
         services.startReconciliationIfNeeded()
+        AppDependencyManager.shared.add(dependency: foodRepository)
+        AppDependencyManager.shared.add(dependency: router)
     }
 
     var body: some Scene {
@@ -35,6 +44,7 @@ struct OmnomnomApp: App {
         .environment(\.health, healthStore)
         .environment(\.healthObserving, healthStore)
         .environment(\.appServices, services)
+        .environment(\.appRouter, router)
     }
 
     /// The on-disk store, or an in-memory one when that fails. Never crashes on launch.

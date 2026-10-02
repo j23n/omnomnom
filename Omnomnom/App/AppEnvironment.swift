@@ -14,4 +14,7 @@ extension EnvironmentValues {
 
     /// Launch-time services; the default has no store and never reconciles.
     @Entry var appServices: AppServices = AppServices(container: nil, observing: UnavailableHealth())
+
+    /// Where to go when something outside the app asked; empty unless it did.
+    @Entry var appRouter: AppRouter = AppRouter()
 }
