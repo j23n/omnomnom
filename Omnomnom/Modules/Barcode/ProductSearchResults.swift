@@ -1,10 +1,12 @@
-import DeveloperToolsSupport
 import Foundation
-import SwiftUI
 
 /// What the food search screen knows about the product half of a search: whether it is
 /// switched on at all, whether a request is in flight, what came back, and what went
 /// wrong. A value type, so the screen holds one piece of state rather than four.
+///
+/// The records are turned into `SearchResult` rows where they are shown, so a product
+/// ends up in the same ordered list as everything else rather than in a section of
+/// its own.
 nonisolated struct ProductResults: Hashable, Sendable {
     var isEnabled = false
     var isSearching = false
@@ -24,69 +26,9 @@ nonisolated struct ProductResults: Hashable, Sendable {
         text.trimmingCharacters(in: .whitespacesAndNewlines).count >= shortestQuery
     }
 
-    /// Whether the section has anything to show, including the reason it has not.
-    var hasSomethingToSay: Bool {
-        isEnabled && (isSearching || !records.isEmpty || errorMessage != nil)
-    }
-
     mutating func clear() {
         isSearching = false
         records = []
         errorMessage = nil
     }
 }
-
-/// One product from Open Food Facts in the search results: name, brand and the energy
-/// on its label when the index carries one. The thumbnail is the placeholder, because
-/// product images are never requested.
-struct ProductResultRow: View {
-    let record: ProductRecord
-
-    /// "Ferrero · 571 kcal per 100 g · Open Food Facts", wrapping as one line of text.
-    private var caption: String {
-        var parts: [String] = []
-        if let brand = record.brand {
-            parts.append(brand)
-        }
-        if let energy = record.per100g.energy {
-            parts.append("\(Formatters.amount(energy, unit: .kilocalorie)) \(record.measure.referenceText)")
-        }
-        parts.append("Open Food Facts")
-        return parts.joined(separator: " · ")
-    }
-
-    var body: some View {
-        HStack(spacing: 12) {
-            PhotoThumbnail(data: nil, size: 44)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(record.name ?? record.code)
-                ValueText(caption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-    }
-}
-
-#if DEBUG
-#Preview("Products", traits: .sizeThatFitsLayout) {
-    VStack(alignment: .leading, spacing: 16) {
-        ProductResultRow(record: ProductRecord(
-            code: "8000500037560", name: "Kinder Bueno", brand: "Ferrero",
-            per100g: Nutrition(energy: 571, protein: 8.6, carbohydrates: 49.5, fatTotal: 37.3)
-        ))
-        ProductResultRow(record: ProductRecord(
-            code: "5449000000996", name: "Coca-Cola", brand: "Coca-Cola",
-            per100g: Nutrition(energy: 42, carbohydrates: 10.6), measure: .volume
-        ))
-        ProductResultRow(record: ProductRecord(
-            code: "4006381333931", name: "A product the index knows only by name", brand: nil,
-            per100g: .empty
-        ))
-    }
-    .padding()
-}
-#endif

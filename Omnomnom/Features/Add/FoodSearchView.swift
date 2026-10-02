@@ -29,9 +29,10 @@ enum AddFoodMode {
     case pick(multiple: Bool, onPick: (FoodChoice) -> Void)
 }
 
-/// A screen for finding a food: the Library and the bundled database under one search
-/// field, with recents before any typing. In log mode, and with the module on, a Scan
-/// button leads to the barcode flow and an Estimate button to on-device estimation.
+/// A screen for finding a food: the Library, the bundled database and, when it is
+/// turned on, Open Food Facts, under one search field and in one list ordered by
+/// relevance. Recents show before any typing. In log mode, and with the module on, a
+/// Scan button leads to the barcode flow and an Estimate button to on-device estimation.
 ///
 /// Presented full screen rather than as a sheet. Finding a food is the longest task in
 /// the app, and it deserves the whole display and a search field that is there from the
@@ -44,9 +45,9 @@ struct FoodSearchView: View {
     @Environment(\.modelContext) private var context
 
     @State private var searchText = ""
-    @State private var local: [FoodChoice] = []
-    @State private var results: [BundledFood] = []
-    @State private var searchError: String?
+    @State private var local: [SearchResult] = []
+    @State private var database: [SearchResult] = []
+    @State private var databaseError: String?
     @State private var products = ProductResults()
     @State private var sheet: FoodSearchSheet?
     /// A food to open once the sheet in front of it has gone. Presenting from inside a
@@ -65,8 +66,12 @@ struct FoodSearchView: View {
     /// the bundled database are searched. Both are on this device, so it is short.
     private static let localDebounce = Duration.milliseconds(150)
 
+    private var query: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private var isSearching: Bool {
-        !searchText.trimmingCharacters(in: .whitespaces).isEmpty
+        !query.isEmpty
     }
 
     private var includesRecipes: Bool {
@@ -104,13 +109,12 @@ struct FoodSearchView: View {
                 FoodSearchField(text: $searchText, prompt: "Search foods", isFocused: $fieldFocused)
                 if isSearching {
                     SearchResultsList(
-                        local: local, results: results, errorMessage: searchError,
-                        modules: modules, products: products,
-                        onSelect: { present($0) },
-                        onSelectProduct: { record in Task { await choose(product: record) } }
+                        results: merged, databaseError: databaseError,
+                        products: products, modules: modules,
+                        onSelect: { select($0) }
                     )
                 } else {
-                    RecentsList(includesRecipes: includesRecipes, modules: modules) { present($0) }
+                    RecentsList(includesRecipes: includesRecipes, modules: modules) { select($0) }
                 }
             }
             .navigationTitle(title)
@@ -172,6 +176,26 @@ struct FoodSearchView: View {
         .padding(.horizontal)
         .padding(.vertical, 8)
         .animation(.default, value: pickedCount)
+    }
+
+    /// Everything found, in one order. The products are ranked here rather than when
+    /// they arrive, so a late answer lands in the right place rather than at the end.
+    private var merged: [SearchResult] {
+        SearchResults.merged(
+            local: local,
+            database: database,
+            products: products.records.map { SearchResult.make(product: $0, query: query) }
+        )
+    }
+
+    /// A tapped row: a food is ready to go, a product found by name is not.
+    private func select(_ result: SearchResult) {
+        switch result.action {
+        case .choice(let choice):
+            present(choice)
+        case .fetch(let record):
+            Task { await choose(product: record) }
+        }
     }
 
     /// In pick mode the choice goes straight back, and a multiple pick stays open with
@@ -240,11 +264,11 @@ struct FoodSearchView: View {
     /// Library is matched by name and tag on the main context, the database by FTS in
     /// its actor.
     private func search() async {
-        let text = searchText.trimmingCharacters(in: .whitespaces)
+        let text = query
         guard isSearching else {
             local = []
-            results = []
-            searchError = nil
+            database = []
+            databaseError = nil
             products.clear()
             return
         }
@@ -254,13 +278,13 @@ struct FoodSearchView: View {
         do {
             let found = try await foodRepository.search(text)
             guard !Task.isCancelled else { return }
-            results = found
-            searchError = nil
+            database = found.map { SearchResult.make(bundled: $0, query: text) }
+            databaseError = nil
         } catch {
             guard !Task.isCancelled else { return }
             AppLog.foodDB.error("search failed: \(error.localizedDescription, privacy: .private)")
-            results = []
-            searchError = error.localizedDescription
+            database = []
+            databaseError = error.localizedDescription
         }
         await searchProducts(text)
     }
@@ -277,10 +301,14 @@ struct FoodSearchView: View {
             products.clear()
             return
         }
+        // Cleared and immediately marked as searching, both before the wait: the last
+        // query's products go at once, and the row that says more are coming stays put
+        // across keystrokes instead of flickering, which also stops "no results"
+        // appearing for a second before the products arrive to contradict it.
         products.clear()
+        products.isSearching = true
         try? await Task.sleep(for: ProductResults.quietPeriod - Self.localDebounce)
         guard !Task.isCancelled else { return }
-        products.isSearching = true
         let client = OpenFoodFactsClient(transport: URLSessionTransport(), userAgent: UserAgent.current())
         do {
             let found = try await client.products(matching: text)
@@ -296,12 +324,16 @@ struct FoodSearchView: View {
         }
     }
 
-    private func localMatches(for text: String) -> [FoodChoice] {
+    /// The Library half. Rows are built from the stored models rather than from their
+    /// choices, because a recipe's tags are part of what it can be found by.
+    private func localMatches(for text: String) -> [SearchResult] {
         do {
-            let foods = try LibrarySearch.foods(matching: text, in: context).compactMap(\.choice)
             let recipes = includesRecipes
-                ? try LibrarySearch.recipes(matching: text, in: context).map(\.choice)
+                ? try LibrarySearch.recipes(matching: text, in: context)
+                    .map { SearchResult.make(recipe: $0, query: text) }
                 : []
+            let foods = try LibrarySearch.foods(matching: text, in: context)
+                .compactMap { SearchResult.make(food: $0, query: text) }
             return recipes + foods
         } catch {
             AppLog.store.error("library search failed: \(error.localizedDescription, privacy: .private)")
