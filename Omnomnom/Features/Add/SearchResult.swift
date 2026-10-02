@@ -3,10 +3,10 @@ import SwiftData
 
 /// One row of the search results, whatever it came from.
 ///
-/// The screen used to show three lists — the Library, then the bundled database, then
-/// the products — which asked the user to understand the app's plumbing before they
-/// could find porridge. There is one list now, ordered by `SearchRelevance`, and each
-/// row says where it came from on a pill. Provenance is a label, not a section.
+/// Two groups, not five. What the user owns comes first, ordered by what they last
+/// ate, because that is almost always the answer. Below it the bundled tables and Open
+/// Food Facts are read as one list ordered by `SearchRelevance`, where a pill per row
+/// says which of the two a figure came from — a question that only arises down there.
 nonisolated struct SearchResult: Identifiable, Hashable, Sendable {
     /// Where a row's numbers come from, which is what the pill says.
     nonisolated enum Provenance: Hashable, Sendable {
@@ -43,6 +43,9 @@ nonisolated struct SearchResult: Identifiable, Hashable, Sendable {
     let caption: String
     let photo: Data?
     let rank: Double
+    /// When the user last logged this, which orders their own matches; `nil` for a row
+    /// they have never eaten and for anything that is not theirs.
+    let lastUsed: Date?
     let action: Action
 }
 
@@ -61,10 +64,9 @@ extension SearchResult {
             rank: SearchRelevance.rank(
                 anyOf: [choice.name] + (recipe.tags ?? []).map(\.name),
                 query: query,
-                bonus: SearchRelevance.bonus(
-                    isLocal: true, isCrowdsourced: false, isFamiliar: recipe.lastUsed != nil
-                )
+                bonus: 0
             ),
+            lastUsed: recipe.lastUsed,
             action: .choice(choice)
         )
     }
@@ -84,10 +86,9 @@ extension SearchResult {
                 anyOf: [choice.name] + [choice.attribution?.brand].compactMap { $0 }
                     + (food.tags ?? []).map(\.name),
                 query: query,
-                bonus: SearchRelevance.bonus(
-                    isLocal: true, isCrowdsourced: crowdsourced, isFamiliar: food.lastUsed != nil
-                )
+                bonus: 0
             ),
+            lastUsed: food.lastUsed,
             action: .choice(choice)
         )
     }
@@ -113,8 +114,9 @@ extension SearchResult {
             photo: nil,
             rank: SearchRelevance.rank(
                 anyOf: [food.name], query: query,
-                bonus: SearchRelevance.bonus(isLocal: false, isCrowdsourced: false, isFamiliar: false)
+                bonus: SearchRelevance.bonus(isCrowdsourced: false)
             ),
+            lastUsed: nil,
             action: .choice(FoodChoice(bundled: food))
         )
     }
@@ -137,8 +139,9 @@ extension SearchResult {
             photo: nil,
             rank: SearchRelevance.rank(
                 anyOf: [record.name, record.brand].compactMap { $0 }, query: query,
-                bonus: SearchRelevance.bonus(isLocal: false, isCrowdsourced: true, isFamiliar: false)
+                bonus: SearchRelevance.bonus(isCrowdsourced: true)
             ),
+            lastUsed: nil,
             action: .fetch(record)
         )
     }
@@ -160,24 +163,47 @@ extension SearchResult {
     }
 }
 
-// MARK: - Merging
+// MARK: - Grouping
 
 nonisolated enum SearchResults {
-    /// The three halves in one order, best match first.
+    /// The two groups the results are shown in.
+    nonisolated struct Sections: Hashable, Sendable {
+        /// The user's own recipes, foods and saved products.
+        var yours: [SearchResult] = []
+        /// The bundled tables and Open Food Facts, read as one list.
+        var others: [SearchResult] = []
+
+        var isEmpty: Bool {
+            yours.isEmpty && others.isEmpty
+        }
+    }
+
+    /// Everything found, in the two groups and the order each is shown in.
     ///
     /// A product already in the Library is dropped from the network half: it is the
-    /// same product, and the saved copy knows what the user last logged of it. Rows
-    /// that score the same keep the order they were merged in — the Library, then the
-    /// database, then the products — so nothing shuffles between keystrokes.
-    static func merged(
+    /// same product, and the saved copy knows what the user last logged of it.
+    static func sections(
         local: [SearchResult], database: [SearchResult], products: [SearchResult]
-    ) -> [SearchResult] {
+    ) -> Sections {
         let saved = Set(local.compactMap(\.barcode))
         let remote = products.filter { result in
             guard let barcode = result.barcode else { return true }
             return !saved.contains(barcode)
         }
-        return ordered(local + database + remote)
+        return Sections(yours: yours(local), others: ordered(database + remote))
+    }
+
+    /// The user's own matches: what they have eaten, most recently eaten first, then
+    /// everything else by how well it matches.
+    ///
+    /// Recency beats relevance here and that is deliberate. Type "oat" with porridge
+    /// every morning and oatcakes once a year in the Library, and the better text match
+    /// is the oatcakes — the shorter name — while the answer is the porridge.
+    static func yours(_ results: [SearchResult]) -> [SearchResult] {
+        let eaten = results
+            .filter { $0.lastUsed != nil }
+            .sorted { ($0.lastUsed ?? .distantPast) > ($1.lastUsed ?? .distantPast) }
+        return eaten + ordered(results.filter { $0.lastUsed == nil })
     }
 
     /// Best match first; ties keep their position, which `sorted(by:)` alone does not

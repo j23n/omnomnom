@@ -4,12 +4,12 @@ import SwiftUI
 /// One food in a list: its photo or the mark, its name, the one line of figures, and
 /// where it came from when that is in question.
 ///
-/// It is in question in the search results, which mix three sources, and the pill
-/// answers it — neutral, like every other badge in the app, so it says where a number
-/// is from without implying that one source is better. It is not in question in the
-/// recents, where the heading already says that everything below it is yours or
-/// something you have eaten, so `showsSource` is off there. A label on every row of a
-/// list that cannot vary is not information.
+/// It is in question under "Other foods", which reads the bundled tables and Open Food
+/// Facts as one list, and the pill answers it — neutral, like every other badge in the
+/// app, so it says where a number is from without implying that one source is better.
+/// It is not in question among the user's own foods or in the recents, where the heading
+/// already says what everything below it is, so `showsSource` is off there. A label on
+/// every row of a list that cannot vary is not information.
 ///
 /// At accessibility type sizes the pill moves above the figures rather than squeezing
 /// them, since both are short and the name needs the width.
@@ -59,7 +59,7 @@ struct SearchResultRow: View {
 }
 
 #if DEBUG
-#Preview("Every source", traits: .sizeThatFitsLayout) {
+#Preview("With a pill, as Other foods show them", traits: .sizeThatFitsLayout) {
     VStack(alignment: .leading, spacing: 16) {
         ForEach(PreviewStore.searchResults) { result in
             SearchResultRow(result: result)
@@ -68,9 +68,9 @@ struct SearchResultRow: View {
     .padding()
 }
 
-#Preview("Without the pill, as the recents show them", traits: .sizeThatFitsLayout) {
+#Preview("The user's own, without a pill", traits: .sizeThatFitsLayout) {
     VStack(alignment: .leading, spacing: 16) {
-        ForEach(PreviewStore.searchResults.prefix(3)) { result in
+        ForEach(PreviewStore.yourResults) { result in
             SearchResultRow(result: result, showsSource: false)
         }
     }

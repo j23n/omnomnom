@@ -9,14 +9,8 @@ import Foundation
 /// instead, from the query and the row's own text, which is the only way one list can
 /// be honest about its order. Pure, so that order is testable.
 nonisolated enum SearchRelevance {
-    /// Match tiers, best first.
-    ///
-    /// At the same provenance a better match always wins. Across provenance the
-    /// bonuses below deliberately reorder: a recipe you make every week beats a
-    /// database row that merely starts with the same letters, which is the whole point
-    /// of weighting them. The one thing the bonuses must never do is invent a match —
-    /// a row whose place this app cannot explain stays under every row it can — and
-    /// `SearchRelevanceTests` holds the numbers to that.
+    /// Match tiers, best first. A better match always wins; the only weighting is the
+    /// crowdsourcing penalty below, which decides a tie and nothing more.
     static let exact = 1.0
     static let prefix = 0.8
     static let wordPrefix = 0.65
@@ -32,12 +26,9 @@ nonisolated enum SearchRelevance {
     /// from "Apple pie filling, canned" when both merely start with "apple".
     static let coverageWeight = 0.15
 
-    /// What the user's own recipes and foods are worth: enough to win a tie against a
-    /// stranger's row, never enough to beat a better match.
-    static let ownBonus = 0.12
-    /// What having logged something before is worth.
-    static let familiarBonus = 0.08
-    /// What a crowdsourced row costs against a measured one at the same match.
+    /// What a crowdsourced row costs against a measured one at the same match, so that
+    /// Open Food Facts and the bundled tables can be read as one list without a
+    /// stranger's entry edging out a measured one on a coin toss.
     static let crowdsourcedPenalty = 0.04
 
     /// 0 when nothing matches, up to 1 when the name is the query.
@@ -63,20 +54,14 @@ nonisolated enum SearchRelevance {
         max(score(anyOf: names, query: query), unexplained) + bonus
     }
 
-    /// What a row's provenance and the user's history with it are worth, added to the
-    /// match. A product saved in the Library counts as the user's own, however it got
-    /// there; only a row still out on the network pays the crowdsourcing penalty.
-    static func bonus(isLocal: Bool, isCrowdsourced: Bool, isFamiliar: Bool) -> Double {
-        var total = 0.0
-        if isLocal {
-            total += ownBonus
-        } else if isCrowdsourced {
-            total -= crowdsourcedPenalty
-        }
-        if isFamiliar {
-            total += familiarBonus
-        }
-        return total
+    /// What a row's provenance is worth, added to the match.
+    ///
+    /// Only the crowdsourcing penalty is left. The user's own foods used to carry a
+    /// bonus so they could hold their place in a list that mixed everything; they sit
+    /// in a section of their own now, so they never meet these rows and a boost would
+    /// move nothing.
+    static func bonus(isCrowdsourced: Bool) -> Double {
+        isCrowdsourced ? -crowdsourcedPenalty : 0
     }
 
     /// Casefolded, stripped of diacritics, whitespace collapsed — the same shape the

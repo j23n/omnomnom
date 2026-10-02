@@ -30,9 +30,10 @@ enum AddFoodMode {
 }
 
 /// A screen for finding a food: the Library, the bundled database and, when it is
-/// turned on, Open Food Facts, under one search field and in one list ordered by
-/// relevance. Recents show before any typing. In log mode, and with the module on, a
-/// Scan button leads to the barcode flow and an Estimate button to on-device estimation.
+/// turned on, Open Food Facts, under one search field. The user's own foods come first
+/// and the other two are read as one ranked list below them. Recents show before any
+/// typing. In log mode, and with the module on, a Scan button leads to the barcode
+/// flow and an Estimate button to on-device estimation.
 ///
 /// Presented full screen rather than as a sheet. Finding a food is the longest task in
 /// the app, and it deserves the whole display and a search field that is there from the
@@ -118,7 +119,7 @@ struct FoodSearchView: View {
                 FoodSearchField(text: $searchText, prompt: "Search foods", isFocused: $fieldFocused)
                 if isSearching {
                     SearchResultsList(
-                        results: merged, databaseError: databaseError,
+                        sections: sections, databaseError: databaseError,
                         products: products, modules: modules,
                         onSelect: { select($0) }
                     )
@@ -193,10 +194,11 @@ struct FoodSearchView: View {
         .animation(.default, value: pickedCount)
     }
 
-    /// Everything found, in one order. The products are ranked here rather than when
-    /// they arrive, so a late answer lands in the right place rather than at the end.
-    private var merged: [SearchResult] {
-        SearchResults.merged(
+    /// Everything found, in its two groups. The products are ranked here rather than
+    /// when they arrive, so a late answer lands in the right place rather than at the
+    /// end of the list.
+    private var sections: SearchResults.Sections {
+        SearchResults.sections(
             local: local,
             database: database,
             products: products.records.map { SearchResult.make(product: $0, query: query) }
