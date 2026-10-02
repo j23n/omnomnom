@@ -39,6 +39,15 @@ enum AddFoodMode {
 /// first frame instead of arriving after the list.
 struct FoodSearchView: View {
     let mode: AddFoodMode
+    /// A food to open the Quantity sheet on as soon as the screen appears, which is how
+    /// visual intelligence hands one over. The field is left unfocused in that case:
+    /// the food has already been chosen, and a keyboard under a sheet helps nobody.
+    let opening: FoodChoice?
+
+    init(mode: AddFoodMode, opening: FoodChoice? = nil) {
+        self.mode = mode
+        self.opening = opening
+    }
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.foodRepository) private var foodRepository
@@ -119,7 +128,13 @@ struct FoodSearchView: View {
             }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
-            .task { fieldFocused = true }
+            .task {
+                if let opening {
+                    sheet = .quantity(opening)
+                } else {
+                    fieldFocused = true
+                }
+            }
             .task(id: searchText) { await search() }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
