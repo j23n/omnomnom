@@ -131,15 +131,6 @@ enum PreviewStore {
         lastAmount: 1.5
     )
 
-    /// The lentil soup with the sample photo, as its Add-sheet row shows it.
-    static let photoRecipeChoice = FoodChoice(
-        source: .recipe(id: UUID()),
-        name: "Lentil soup",
-        perUnit: recipeChoice.perUnit,
-        amountPerServing: recipeChoice.amountPerServing,
-        lastAmount: 1.5,
-        photo: samplePhoto
-    )
 
     /// A product fetched from Open Food Facts, logged before at 30 g.
     static let productChoice = FoodChoice(
@@ -160,16 +151,64 @@ enum PreviewStore {
         attribution: ProductAttribution(barcode: "7394376616105", brand: "Oatly", source: .manual)
     )
 
-    /// Search hits from the bundled database, as the results list shows them.
-    static let bundledResults: [BundledFood] = [
-        PreviewFoods.apple,
-        BundledFood(id: 2, name: "Bananas, raw", category: "Fruits and Fruit Juices", per100g: PreviewFoods.banana, popularity: 99),
-        BundledFood(id: 6, name: "Apple juice, canned or bottled, unsweetened", category: "Fruits and Fruit Juices", per100g: Nutrition(energy: 46, protein: 0.1, carbohydrates: 11.3, fatTotal: 0.1, fatSaturated: 0.02, fiber: 0.2, sugar: 9.6, sodium: 4), popularity: 0),
-        BundledFood(id: 7, name: "Applesauce, canned, unsweetened", category: "Fruits and Fruit Juices", per100g: Nutrition(energy: 42, protein: 0.2, carbohydrates: 11.3, fatTotal: 0.1, fatSaturated: 0.01, fiber: 1.1, sugar: 9.4, sodium: 2), popularity: 0),
-    ]
 
-    /// Library matches for the "Yours" section of the results list.
-    static let localResults: [FoodChoice] = [recipeChoice, customChoice, productChoice, manualProductChoice]
+
+    /// A recipe of oats, logged once, for the merged search preview.
+    static let oatsChoice = FoodChoice(
+        source: .recipe(id: UUID()),
+        name: "Overnight oats",
+        perUnit: Nutrition(
+            energy: 352, protein: 14.1, carbohydrates: 48.6, fatTotal: 9.8,
+            fatSaturated: 2.4, fiber: 6.2, sugar: 18.3, sodium: 61
+        ),
+        amountPerServing: RawAmount(grams: 250),
+        lastAmount: 1,
+        photo: samplePhoto
+    )
+
+    /// One Open Food Facts hit that is not saved here, so it still has to be fetched.
+    static let oatProduct = ProductRecord(
+        code: "7394376615986", name: "Oatly Barista Edition", brand: "Oatly",
+        per100g: Nutrition(energy: 59, protein: 1, carbohydrates: 6.8, fatTotal: 3), measure: .volume
+    )
+
+    /// A search for "oat" with one row from each source, in the order the app puts
+    /// them. Built through the real scorer, so the preview shows the real ranking.
+    static let searchResults: [SearchResult] = SearchResults.merged(
+        local: [
+            searchResult(oatsChoice, provenance: .recipe, query: oatQuery, isFamiliar: true),
+            searchResult(manualProductChoice, provenance: .yours, query: oatQuery, isFamiliar: true),
+        ],
+        database: [
+            BundledFood(id: 9, name: "Oat whole grain, raw", category: "Cereal products", per100g: PreviewFoods.oats, popularity: 0),
+            BundledFood(id: 10, name: "Bread, oat bran", category: "Baked products", per100g: PreviewFoods.sourdough, popularity: 0),
+        ].map { SearchResult.make(bundled: $0, query: oatQuery) },
+        products: [SearchResult.make(product: oatProduct, query: oatQuery)]
+    )
+
+    private static let oatQuery = "oat"
+
+    /// A Library row as the merged list builds one, without needing a stored model.
+    private static func searchResult(
+        _ choice: FoodChoice, provenance: SearchResult.Provenance, query: String, isFamiliar: Bool
+    ) -> SearchResult {
+        SearchResult(
+            id: "preview-\(choice.name)",
+            provenance: provenance,
+            name: choice.name,
+            caption: SearchResult.caption(for: choice),
+            photo: choice.photo,
+            rank: SearchRelevance.rank(
+                anyOf: [choice.name, choice.attribution?.brand].compactMap { $0 },
+                query: query,
+                bonus: SearchRelevance.bonus(
+                    isLocal: true, isCrowdsourced: choice.attribution?.isFromOpenFoodFacts == true,
+                    isFamiliar: isFamiliar
+                )
+            ),
+            action: .choice(choice)
+        )
+    }
 }
 
 /// Per-100 values used across seeds and sample choices; USDA figures, rounded. Each is

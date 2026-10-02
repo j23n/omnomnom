@@ -1,0 +1,204 @@
+import Foundation
+import SwiftData
+
+/// One row of the search results, whatever it came from.
+///
+/// The screen used to show three lists — the Library, then the bundled database, then
+/// the products — which asked the user to understand the app's plumbing before they
+/// could find porridge. There is one list now, ordered by `SearchRelevance`, and each
+/// row says where it came from on a pill. Provenance is a label, not a section.
+nonisolated struct SearchResult: Identifiable, Hashable, Sendable {
+    /// Where a row's numbers come from, which is what the pill says.
+    nonisolated enum Provenance: Hashable, Sendable {
+        /// Built by the user out of other foods.
+        case recipe
+        /// Typed by the user, or corrected by them.
+        case yours
+        /// A measured row of the bundled tables.
+        case database
+        /// Crowdsourced, whether already saved here or still out on the network.
+        case openFoodFacts
+
+        var pill: String {
+            switch self {
+            case .recipe: "Recipe"
+            case .yours: "Yours"
+            case .database: "Database"
+            case .openFoodFacts: "Open Food Facts"
+            }
+        }
+    }
+
+    /// What tapping the row does. A product found by name has no values yet, so it is
+    /// fetched by its barcode first; everything else is ready to log.
+    nonisolated enum Action: Hashable, Sendable {
+        case choice(FoodChoice)
+        case fetch(ProductRecord)
+    }
+
+    let id: String
+    let provenance: Provenance
+    let name: String
+    /// The one line under the name, already composed; never repeats the pill.
+    let caption: String
+    let photo: Data?
+    let rank: Double
+    let action: Action
+}
+
+// MARK: - Building rows from the Library
+
+@MainActor
+extension SearchResult {
+    static func make(recipe: Recipe, query: String) -> SearchResult {
+        let choice = recipe.choice
+        return SearchResult(
+            id: "recipe-\(recipe.id.uuidString)",
+            provenance: .recipe,
+            name: choice.name,
+            caption: caption(for: choice),
+            photo: choice.photo,
+            rank: SearchRelevance.rank(
+                anyOf: [choice.name] + (recipe.tags ?? []).map(\.name),
+                query: query,
+                bonus: SearchRelevance.bonus(
+                    isLocal: true, isCrowdsourced: false, isFamiliar: recipe.lastUsed != nil
+                )
+            ),
+            action: .choice(choice)
+        )
+    }
+
+    /// `nil` for a food that cannot be turned into a choice, which is a bundled row
+    /// the Library holds only to remember an amount by.
+    static func make(food: Food, query: String) -> SearchResult? {
+        guard let choice = food.choice else { return nil }
+        let crowdsourced = food.source == .openFoodFacts
+        return SearchResult(
+            id: "food-\(food.id.uuidString)",
+            provenance: crowdsourced ? .openFoodFacts : .yours,
+            name: choice.name,
+            caption: caption(for: choice),
+            photo: choice.photo,
+            rank: SearchRelevance.rank(
+                anyOf: [choice.name] + [choice.attribution?.brand].compactMap { $0 }
+                    + (food.tags ?? []).map(\.name),
+                query: query,
+                bonus: SearchRelevance.bonus(
+                    isLocal: true, isCrowdsourced: crowdsourced, isFamiliar: food.lastUsed != nil
+                )
+            ),
+            action: .choice(choice)
+        )
+    }
+}
+
+// MARK: - Building rows from the database and the network
+
+extension SearchResult {
+    static func make(bundled food: BundledFood, query: String) -> SearchResult {
+        var parts: [String] = []
+        if let category = food.category {
+            parts.append(category)
+        }
+        // The bundled tables are per 100 g throughout, so the unit is settled here.
+        parts.append(
+            "\(Formatters.amount(food.per100g.energy, unit: .kilocalorie)) \(FoodMeasure.mass.referenceText)"
+        )
+        return SearchResult(
+            id: "bundled-\(food.id)",
+            provenance: .database,
+            name: food.name,
+            caption: parts.joined(separator: " · "),
+            photo: nil,
+            rank: SearchRelevance.rank(
+                anyOf: [food.name], query: query,
+                bonus: SearchRelevance.bonus(isLocal: false, isCrowdsourced: false, isFamiliar: false)
+            ),
+            action: .choice(FoodChoice(bundled: food))
+        )
+    }
+
+    static func make(product record: ProductRecord, query: String) -> SearchResult {
+        var parts: [String] = []
+        if let brand = record.brand {
+            parts.append(brand)
+        }
+        if let energy = record.per100g.energy {
+            parts.append(
+                "\(Formatters.amount(energy, unit: .kilocalorie)) \(record.measure.referenceText)"
+            )
+        }
+        return SearchResult(
+            id: "product-\(record.code)",
+            provenance: .openFoodFacts,
+            name: record.name ?? record.code,
+            caption: parts.joined(separator: " · "),
+            photo: nil,
+            rank: SearchRelevance.rank(
+                anyOf: [record.name, record.brand].compactMap { $0 }, query: query,
+                bonus: SearchRelevance.bonus(isLocal: false, isCrowdsourced: true, isFamiliar: false)
+            ),
+            action: .fetch(record)
+        )
+    }
+
+    /// "Whole Earth · Last 30 g · 588 kcal per 100 g". Where the numbers came from is
+    /// the pill's business, so it is not repeated here.
+    static func caption(for choice: FoodChoice) -> String {
+        var parts: [String] = []
+        if let brand = choice.attribution?.brand {
+            parts.append(brand)
+        }
+        if let last = choice.lastAmount {
+            parts.append("Last \(choice.amountText(last))")
+        }
+        parts.append(
+            "\(Formatters.amount(choice.perUnit.energy, unit: .kilocalorie)) per \(choice.unitText)"
+        )
+        return parts.joined(separator: " · ")
+    }
+}
+
+// MARK: - Merging
+
+nonisolated enum SearchResults {
+    /// The three halves in one order, best match first.
+    ///
+    /// A product already in the Library is dropped from the network half: it is the
+    /// same product, and the saved copy knows what the user last logged of it. Rows
+    /// that score the same keep the order they were merged in — the Library, then the
+    /// database, then the products — so nothing shuffles between keystrokes.
+    static func merged(
+        local: [SearchResult], database: [SearchResult], products: [SearchResult]
+    ) -> [SearchResult] {
+        let saved = Set(local.compactMap(\.barcode))
+        let remote = products.filter { result in
+            guard let barcode = result.barcode else { return true }
+            return !saved.contains(barcode)
+        }
+        return ordered(local + database + remote)
+    }
+
+    /// Best match first; ties keep their position, which `sorted(by:)` alone does not
+    /// promise.
+    static func ordered(_ results: [SearchResult]) -> [SearchResult] {
+        results.enumerated()
+            .sorted { left, right in
+                left.element.rank == right.element.rank
+                    ? left.offset < right.offset
+                    : left.element.rank > right.element.rank
+            }
+            .map(\.element)
+    }
+}
+
+extension SearchResult {
+    /// The barcode behind the row, saved or not, for matching one against the other.
+    var barcode: String? {
+        switch action {
+        case .choice(let choice): choice.attribution?.barcode
+        case .fetch(let record): record.code
+        }
+    }
+}

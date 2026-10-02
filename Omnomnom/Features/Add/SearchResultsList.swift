@@ -1,203 +1,118 @@
 import SwiftUI
 
-/// Name and tag matches from the Library first ("Yours"), then ranked FTS results from
-/// the bundled database, then branded products from Open Food Facts when that is turned
-/// on. Tapping a row hands a `FoodChoice` back, except a product, which has to be
-/// fetched first and goes through `onSelectProduct`. With nothing found, the module
-/// buttons offer the other ways in.
+/// One list of results, best match first, each row saying where it came from.
+///
+/// The three sources used to be three sections, which put the app's plumbing between
+/// the user and their porridge and buried a perfect Library match under a heading. The
+/// order is `SearchRelevance`'s now, and the only things that are not results sit at
+/// the bottom: whether more are still coming, and what went wrong if anything did.
+/// They sit there so that nothing already on screen moves when they appear.
 struct SearchResultsList: View {
-    let local: [FoodChoice]
-    let results: [BundledFood]
-    let errorMessage: String?
+    let results: [SearchResult]
+    /// Why the bundled database could not be read; `nil` when it was.
+    let databaseError: String?
+    let products: ProductResults
     /// The Scan and Estimate row for the no-results state; `nil` in pick mode.
     let modules: ModuleButtonsRow?
-    let products: ProductResults
-    let onSelect: (FoodChoice) -> Void
-    let onSelectProduct: (ProductRecord) -> Void
+    let onSelect: (SearchResult) -> Void
+
+    private var hasStatus: Bool {
+        products.isSearching || products.errorMessage != nil || databaseError != nil
+    }
 
     var body: some View {
         List {
-            if local.isEmpty, results.isEmpty, errorMessage == nil, !products.hasSomethingToSay {
+            if results.isEmpty, !hasStatus {
                 ContentUnavailableView.search
                     .listRowSeparator(.hidden)
                 if let modules {
                     modules
                 }
             }
-            if !local.isEmpty {
-                Section("Yours") {
-                    ForEach(local) { choice in
-                        Button {
-                            onSelect(choice)
-                        } label: {
-                            ChoiceRow(choice: choice)
-                        }
-                        .buttonStyle(.plain)
-                    }
+            ForEach(results) { result in
+                Button {
+                    onSelect(result)
+                } label: {
+                    SearchResultRow(result: result)
                 }
+                .buttonStyle(.plain)
             }
-            if let errorMessage {
-                Section("Database") {
-                    ContentUnavailableView(
-                        "Search unavailable",
-                        systemImage: "exclamationmark.triangle",
-                        description: Text(errorMessage)
-                    )
+            if products.isSearching {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("Searching Open Food Facts…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .listRowSeparator(.hidden)
+            }
+            if let message = products.errorMessage {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                     .listRowSeparator(.hidden)
-                }
-            } else if !results.isEmpty {
-                Section("Database") {
-                    ForEach(results) { food in
-                        Button {
-                            onSelect(FoodChoice(bundled: food))
-                        } label: {
-                            ResultRow(food: food)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
             }
-            if products.hasSomethingToSay {
-                Section {
-                    if let message = products.errorMessage {
-                        Text(message)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else if products.records.isEmpty {
-                        HStack(spacing: 8) {
-                            ProgressView()
-                            Text("Searching Open Food Facts…")
-                                .foregroundStyle(.secondary)
-                        }
-                    } else {
-                        ForEach(products.records, id: \.code) { record in
-                            Button {
-                                onSelectProduct(record)
-                            } label: {
-                                ProductResultRow(record: record)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                } header: {
-                    Text("Products")
-                }
+            if let databaseError {
+                Text(databaseError)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .listRowSeparator(.hidden)
             }
         }
         .listStyle(.plain)
-    }
-}
-
-private struct ResultRow: View {
-    let food: BundledFood
-
-    /// "Fruits and Fruit Juices · 52 kcal per 100 g", wrapping as one line of text. The
-    /// bundled database is per 100 g throughout, so the unit is settled here.
-    private var caption: String {
-        var parts: [String] = []
-        if let category = food.category {
-            parts.append(category)
-        }
-        parts.append("\(Formatters.amount(food.per100g.energy, unit: .kilocalorie)) \(FoodMeasure.mass.referenceText)")
-        return parts.joined(separator: " · ")
-    }
-
-    var body: some View {
-        HStack(spacing: 12) {
-            PhotoThumbnail(data: nil, size: 44)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(food.name)
-                ValueText(caption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
+        .animation(.default, value: results.map(\.id))
     }
 }
 
 #if DEBUG
-private let exampleProducts = ProductResults(
-    isEnabled: true,
-    records: [
-        ProductRecord(
-            code: "8000500037560", name: "Kinder Bueno", brand: "Ferrero",
-            per100g: Nutrition(energy: 571, protein: 8.6, carbohydrates: 49.5, fatTotal: 37.3)
-        ),
-        ProductRecord(
-            code: "5449000000996", name: "Coca-Cola", brand: "Coca-Cola",
-            per100g: Nutrition(energy: 42, carbohydrates: 10.6), measure: .volume
-        ),
-    ]
-)
-
-#Preview("Yours and database") {
+#Preview("Mixed sources") {
     SearchResultsList(
-        local: PreviewStore.localResults, results: PreviewStore.bundledResults, errorMessage: nil,
-        modules: nil, products: ProductResults(), onSelect: { _ in }, onSelectProduct: { _ in }
+        results: PreviewStore.searchResults, databaseError: nil,
+        products: ProductResults(isEnabled: true), modules: nil, onSelect: { _ in }
     )
 }
 
-#Preview("Database only") {
+#Preview("Products still coming") {
     SearchResultsList(
-        local: [], results: PreviewStore.bundledResults, errorMessage: nil,
-        modules: nil, products: ProductResults(), onSelect: { _ in }, onSelectProduct: { _ in }
-    )
-}
-
-#Preview("No matches") {
-    SearchResultsList(
-        local: [], results: [], errorMessage: nil,
-        modules: nil, products: ProductResults(), onSelect: { _ in }, onSelectProduct: { _ in }
-    )
-}
-
-#Preview("No matches, modules on") {
-    SearchResultsList(
-        local: [], results: [], errorMessage: nil,
-        modules: ModuleButtonsRow(scanRequested: .constant(false), estimateRequested: .constant(false)),
-        products: ProductResults(), onSelect: { _ in }, onSelectProduct: { _ in }
-    )
-    .defaultAppStorage(PreviewDefaults.modulesOn)
-}
-
-#Preview("Database missing") {
-    SearchResultsList(
-        local: PreviewStore.localResults, results: [],
-        errorMessage: FoodRepositoryError.databaseMissing.errorDescription,
-        modules: nil, products: ProductResults(), onSelect: { _ in }, onSelectProduct: { _ in }
-    )
-}
-
-#Preview("With products") {
-    SearchResultsList(
-        local: [], results: PreviewStore.bundledResults, errorMessage: nil,
-        modules: nil, products: exampleProducts, onSelect: { _ in }, onSelectProduct: { _ in }
-    )
-}
-
-#Preview("Products still loading") {
-    SearchResultsList(
-        local: [], results: [], errorMessage: nil, modules: nil,
-        products: ProductResults(isEnabled: true, isSearching: true),
-        onSelect: { _ in }, onSelectProduct: { _ in }
+        results: Array(PreviewStore.searchResults.prefix(3)), databaseError: nil,
+        products: ProductResults(isEnabled: true, isSearching: true), modules: nil, onSelect: { _ in }
     )
 }
 
 #Preview("Products unavailable") {
     SearchResultsList(
-        local: [], results: PreviewStore.bundledResults, errorMessage: nil, modules: nil,
-        products: ProductResults(isEnabled: true, errorMessage: "No connection to Open Food Facts."),
-        onSelect: { _ in }, onSelectProduct: { _ in }
+        results: Array(PreviewStore.searchResults.prefix(3)), databaseError: nil,
+        products: ProductResults(isEnabled: true, errorMessage: "Open Food Facts could not be reached."),
+        modules: nil, onSelect: { _ in }
     )
+}
+
+#Preview("Database missing") {
+    SearchResultsList(
+        results: [], databaseError: FoodRepositoryError.databaseMissing.errorDescription,
+        products: ProductResults(), modules: nil, onSelect: { _ in }
+    )
+}
+
+#Preview("No matches") {
+    SearchResultsList(
+        results: [], databaseError: nil, products: ProductResults(), modules: nil, onSelect: { _ in }
+    )
+}
+
+#Preview("No matches, modules on") {
+    SearchResultsList(
+        results: [], databaseError: nil, products: ProductResults(),
+        modules: ModuleButtonsRow(scanRequested: .constant(false), estimateRequested: .constant(false)),
+        onSelect: { _ in }
+    )
+    .defaultAppStorage(PreviewDefaults.modulesOn)
 }
 
 #Preview("Accessibility 5") {
     SearchResultsList(
-        local: PreviewStore.localResults, results: PreviewStore.bundledResults, errorMessage: nil,
-        modules: nil, products: exampleProducts, onSelect: { _ in }, onSelectProduct: { _ in }
+        results: PreviewStore.searchResults, databaseError: nil,
+        products: ProductResults(isEnabled: true), modules: nil, onSelect: { _ in }
     )
     .environment(\.dynamicTypeSize, .accessibility5)
 }
