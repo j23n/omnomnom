@@ -62,70 +62,44 @@ struct SearchRelevanceTests {
         #expect(rank > 0)
     }
 
-    @Test func bonusesFavourWhatTheUserOwnsAndHasLogged() {
-        #expect(SearchRelevance.bonus(isLocal: true, isCrowdsourced: false, isFamiliar: false)
-            == SearchRelevance.ownBonus)
-        #expect(SearchRelevance.bonus(isLocal: false, isCrowdsourced: false, isFamiliar: false) == 0)
-        // A saved product counts as the user's own however it got there.
-        #expect(SearchRelevance.bonus(isLocal: true, isCrowdsourced: true, isFamiliar: false)
-            == SearchRelevance.ownBonus)
-        #expect(SearchRelevance.bonus(isLocal: false, isCrowdsourced: true, isFamiliar: false)
-            == -SearchRelevance.crowdsourcedPenalty)
-        #expect(SearchRelevance.bonus(isLocal: true, isCrowdsourced: false, isFamiliar: true)
-            == SearchRelevance.ownBonus + SearchRelevance.familiarBonus)
+    @Test func onlyCrowdsourcingIsWeighted() {
+        #expect(SearchRelevance.bonus(isCrowdsourced: false) == 0)
+        #expect(SearchRelevance.bonus(isCrowdsourced: true) == -SearchRelevance.crowdsourcedPenalty)
     }
 
-    @Test func aBetterMatchAlwaysWinsAtTheSameProvenance() {
+    @Test func aBetterMatchAlwaysWins() {
         let names = ["Cola", "Cola, diet", "Soft drink, cola", "Chocolate"]
-        for bonus in [0.0, SearchRelevance.ownBonus,
-                      SearchRelevance.ownBonus + SearchRelevance.familiarBonus] {
+        for bonus in [0.0, -SearchRelevance.crowdsourcedPenalty] {
             let ranks = names.map { SearchRelevance.rank(anyOf: [$0], query: "cola", bonus: bonus) }
             #expect(ranks == ranks.sorted(by: >))
         }
     }
 
-    /// The one thing a bonus must never do. A row Open Food Facts returned for a
-    /// category this app never asked for has no explainable place in the list, and no
-    /// amount of "it is yours and you have logged it" may lift it over a row that does.
-    /// The margin is one hundredth; raise a bonus and this test says so.
-    @Test func aBonusNeverInventsAMatch() {
-        let bestUnexplained = SearchRelevance.rank(
-            anyOf: ["Nutella"], query: "kinder bueno",
-            bonus: SearchRelevance.bonus(isLocal: true, isCrowdsourced: false, isFamiliar: true)
+    /// A row Open Food Facts returned for a category this app never asked for has no
+    /// explainable place in the list, and must stay under every row that does.
+    @Test func anUnexplainedRowStaysUnderAnExplainedOne() {
+        let unexplained = SearchRelevance.rank(
+            anyOf: ["Nutella"], query: "kinder bueno", bonus: 0
         )
         let weakestExplained = SearchRelevance.everyToken - SearchRelevance.crowdsourcedPenalty
-        #expect(bestUnexplained < weakestExplained)
+        #expect(unexplained < weakestExplained)
     }
 
-    @Test func aWeakLocalMatchDoesNotBeatAStrongDatabaseOne() {
-        let local = SearchRelevance.rank(
-            anyOf: ["Pineapple juice"], query: "apple",
-            bonus: SearchRelevance.bonus(isLocal: true, isCrowdsourced: false, isFamiliar: true)
+    @Test func aMeasuredRowEdgesOutACrowdsourcedOneAtTheSameMatch() {
+        let measured = SearchRelevance.rank(anyOf: ["Oat drink"], query: "oat", bonus: 0)
+        let crowdsourced = SearchRelevance.rank(
+            anyOf: ["Oat drink"], query: "oat",
+            bonus: SearchRelevance.bonus(isCrowdsourced: true)
         )
-        let database = SearchRelevance.rank(
-            anyOf: ["Apple raw"], query: "apple",
-            bonus: SearchRelevance.bonus(isLocal: false, isCrowdsourced: false, isFamiliar: false)
-        )
-        #expect(database > local)
-    }
-
-    @Test func aFamiliarRecipeBeatsADatabaseRowThatMerelyStartsTheSame() {
-        let recipe = SearchRelevance.rank(
-            anyOf: ["Overnight oats"], query: "oat",
-            bonus: SearchRelevance.bonus(isLocal: true, isCrowdsourced: false, isFamiliar: true)
-        )
-        let database = SearchRelevance.rank(
-            anyOf: ["Oat whole grain, raw"], query: "oat",
-            bonus: SearchRelevance.bonus(isLocal: false, isCrowdsourced: false, isFamiliar: false)
-        )
-        #expect(recipe > database)
+        #expect(measured > crowdsourced)
     }
 }
 
-/// Merging the three halves into one list.
-struct SearchResultsMergeTests {
+/// Splitting the results into the two groups they are shown in.
+struct SearchSectionsTests {
     private func result(
-        _ name: String, _ provenance: SearchResult.Provenance, rank: Double, barcode: String? = nil
+        _ name: String, _ provenance: SearchResult.Provenance, rank: Double,
+        lastUsed: Date? = nil, barcode: String? = nil
     ) -> SearchResult {
         let action: SearchResult.Action
         if let barcode {
@@ -141,14 +115,14 @@ struct SearchResultsMergeTests {
         }
         return SearchResult(
             id: "\(provenance.pill)-\(name)", provenance: provenance, name: name,
-            caption: "", photo: nil, rank: rank, action: action
+            caption: "", photo: nil, rank: rank, lastUsed: lastUsed, action: action
         )
     }
 
     private func saved(_ name: String, barcode: String, rank: Double) -> SearchResult {
         SearchResult(
             id: "saved-\(barcode)", provenance: .openFoodFacts, name: name, caption: "",
-            photo: nil, rank: rank,
+            photo: nil, rank: rank, lastUsed: nil,
             action: .choice(FoodChoice(
                 source: .product(foodID: UUID()), name: name, perUnit: Nutrition(energy: 100),
                 attribution: ProductAttribution(barcode: barcode, brand: nil, source: .openFoodFacts)
@@ -156,26 +130,66 @@ struct SearchResultsMergeTests {
         )
     }
 
-    @Test func bestMatchFirstWhateverTheSource() {
-        let merged = SearchResults.merged(
-            local: [result("Mine", .yours, rank: 0.4)],
+    @Test func theUsersOwnFoodsStayOutOfTheRankedHalf() {
+        let sections = SearchResults.sections(
+            local: [result("Mine", .yours, rank: 0.1)],
             database: [result("Measured", .database, rank: 0.9)],
             products: [result("Branded", .openFoodFacts, rank: 0.6, barcode: "1")]
         )
-        #expect(merged.map(\.name) == ["Measured", "Branded", "Mine"])
+        #expect(sections.yours.map(\.name) == ["Mine"])
+        #expect(sections.others.map(\.name) == ["Measured", "Branded"])
     }
 
-    @Test func tiesKeepTheOrderTheyWereMergedIn() {
-        let merged = SearchResults.merged(
-            local: [result("A", .yours, rank: 0.5), result("B", .recipe, rank: 0.5)],
-            database: [result("C", .database, rank: 0.5)],
-            products: [result("D", .openFoodFacts, rank: 0.5, barcode: "1")]
+    @Test func whatWasEatenMostRecentlyComesFirst() {
+        let old = Date(timeIntervalSinceReferenceDate: 1000)
+        let recent = Date(timeIntervalSinceReferenceDate: 9000)
+        let sections = SearchResults.sections(
+            local: [
+                result("Oatcakes", .yours, rank: 0.9, lastUsed: old),
+                result("Overnight oats", .recipe, rank: 0.5, lastUsed: recent),
+            ],
+            database: [], products: []
         )
-        #expect(merged.map(\.name) == ["A", "B", "C", "D"])
+        // The better text match is the oatcakes; the answer is the porridge.
+        #expect(sections.yours.map(\.name) == ["Overnight oats", "Oatcakes"])
+    }
+
+    @Test func whatHasNeverBeenEatenFollowsByMatch() {
+        let sections = SearchResults.sections(
+            local: [
+                result("Never eaten, poor match", .recipe, rank: 0.3),
+                result("Eaten once", .yours, rank: 0.1, lastUsed: Date(timeIntervalSinceReferenceDate: 1)),
+                result("Never eaten, good match", .recipe, rank: 0.8),
+            ],
+            database: [], products: []
+        )
+        #expect(sections.yours.map(\.name)
+            == ["Eaten once", "Never eaten, good match", "Never eaten, poor match"])
+    }
+
+    @Test func theBundledTablesAndTheNetworkAreOneRankedList() {
+        let sections = SearchResults.sections(
+            local: [],
+            database: [result("Second", .database, rank: 0.5)],
+            products: [
+                result("First", .openFoodFacts, rank: 0.9, barcode: "1"),
+                result("Third", .openFoodFacts, rank: 0.1, barcode: "2"),
+            ]
+        )
+        #expect(sections.others.map(\.name) == ["First", "Second", "Third"])
+    }
+
+    @Test func tiesKeepTheOrderTheyWereGroupedIn() {
+        let sections = SearchResults.sections(
+            local: [],
+            database: [result("A", .database, rank: 0.5), result("B", .database, rank: 0.5)],
+            products: [result("C", .openFoodFacts, rank: 0.5, barcode: "1")]
+        )
+        #expect(sections.others.map(\.name) == ["A", "B", "C"])
     }
 
     @Test func aProductAlreadySavedIsNotOfferedTwice() {
-        let merged = SearchResults.merged(
+        let sections = SearchResults.sections(
             local: [saved("Kinder Bueno", barcode: "8000500037560", rank: 0.9)],
             database: [],
             products: [
@@ -183,12 +197,20 @@ struct SearchResultsMergeTests {
                 result("Kinder Bueno Coconut", .openFoodFacts, rank: 0.8, barcode: "80960270"),
             ]
         )
-        #expect(merged.map(\.name) == ["Kinder Bueno", "Kinder Bueno Coconut"])
+        #expect(sections.yours.map(\.name) == ["Kinder Bueno"])
+        #expect(sections.others.map(\.name) == ["Kinder Bueno Coconut"])
         // The saved copy is the one that survives, because it knows the last amount.
-        #expect(merged.first?.barcode == "8000500037560")
-        if case .choice = merged.first?.action {} else {
+        if case .choice = sections.yours.first?.action {} else {
             Issue.record("the saved copy should be the one kept")
         }
+    }
+
+    @Test func nothingFoundIsAnEmptyPairOfGroups() {
+        let sections = SearchResults.sections(local: [], database: [], products: [])
+        #expect(sections.isEmpty)
+        #expect(SearchResults.sections(
+            local: [], database: [result("One", .database, rank: 0.5)], products: []
+        ).isEmpty == false)
     }
 
     @Test func pillsNameTheSource() {

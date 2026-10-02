@@ -172,12 +172,12 @@ enum PreviewStore {
         per100g: Nutrition(energy: 59, protein: 1, carbohydrates: 6.8, fatTotal: 3), measure: .volume
     )
 
-    /// A search for "oat" with one row from each source, in the order the app puts
-    /// them. Built through the real scorer, so the preview shows the real ranking.
-    static let searchResults: [SearchResult] = SearchResults.merged(
+    /// A search for "oat" in both groups, in the order the app puts them. Built through
+    /// the real scorer and grouper, so the preview shows the real arrangement.
+    static let searchSections: SearchResults.Sections = SearchResults.sections(
         local: [
-            searchResult(oatsChoice, provenance: .recipe, query: oatQuery, isFamiliar: true),
-            searchResult(manualProductChoice, provenance: .yours, query: oatQuery, isFamiliar: true),
+            searchResult(oatsChoice, provenance: .recipe, lastUsed: Date.now.addingTimeInterval(-3600)),
+            searchResult(manualProductChoice, provenance: .yours, lastUsed: Date.now.addingTimeInterval(-86_400)),
         ],
         database: [
             BundledFood(id: 9, name: "Oat whole grain, raw", category: "Cereal products", per100g: PreviewFoods.oats, popularity: 0),
@@ -186,11 +186,17 @@ enum PreviewStore {
         products: [SearchResult.make(product: oatProduct, query: oatQuery)]
     )
 
+    /// Rows that carry a pill, for previewing one.
+    static var searchResults: [SearchResult] { searchSections.others }
+
+    /// Rows that do not, for previewing the user's own half.
+    static var yourResults: [SearchResult] { searchSections.yours }
+
     private static let oatQuery = "oat"
 
-    /// A Library row as the merged list builds one, without needing a stored model.
+    /// A Library row as the grouper builds one, without needing a stored model.
     private static func searchResult(
-        _ choice: FoodChoice, provenance: SearchResult.Provenance, query: String, isFamiliar: Bool
+        _ choice: FoodChoice, provenance: SearchResult.Provenance, lastUsed: Date?
     ) -> SearchResult {
         SearchResult(
             id: "preview-\(choice.name)",
@@ -200,12 +206,9 @@ enum PreviewStore {
             photo: choice.photo,
             rank: SearchRelevance.rank(
                 anyOf: [choice.name, choice.attribution?.brand].compactMap { $0 },
-                query: query,
-                bonus: SearchRelevance.bonus(
-                    isLocal: true, isCrowdsourced: choice.attribution?.isFromOpenFoodFacts == true,
-                    isFamiliar: isFamiliar
-                )
+                query: oatQuery, bonus: 0
             ),
+            lastUsed: lastUsed,
             action: .choice(choice)
         )
     }

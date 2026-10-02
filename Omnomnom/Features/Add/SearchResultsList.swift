@@ -1,14 +1,17 @@
 import SwiftUI
 
-/// One list of results, best match first, each row saying where it came from.
+/// Results in two groups: what the user owns, then everything else.
 ///
-/// The three sources used to be three sections, which put the app's plumbing between
-/// the user and their porridge and buried a perfect Library match under a heading. The
-/// order is `SearchRelevance`'s now, and the only things that are not results sit at
-/// the bottom: whether more are still coming, and what went wrong if anything did.
-/// They sit there so that nothing already on screen moves when they appear.
+/// Their own foods come first, ordered by what they last ate, because that is almost
+/// always the answer and it is never a question where the numbers came from. Below
+/// them the bundled tables and Open Food Facts are read as one list, best match first,
+/// with a pill per row saying which — the one place that question arises.
+///
+/// The only things that are not results sit at the bottom: whether more are still
+/// coming, and what went wrong if anything did. They sit there so nothing already on
+/// screen moves when they appear.
 struct SearchResultsList: View {
-    let results: [SearchResult]
+    let sections: SearchResults.Sections
     /// Why the bundled database could not be read; `nil` when it was.
     let databaseError: String?
     let products: ProductResults
@@ -22,20 +25,22 @@ struct SearchResultsList: View {
 
     var body: some View {
         List {
-            if results.isEmpty, !hasStatus {
+            if sections.isEmpty, !hasStatus {
                 ContentUnavailableView.search
                     .listRowSeparator(.hidden)
                 if let modules {
                     modules
                 }
             }
-            ForEach(results) { result in
-                Button {
-                    onSelect(result)
-                } label: {
-                    SearchResultRow(result: result)
+            if !sections.yours.isEmpty {
+                Section("Yours") {
+                    rows(sections.yours, showsSource: false)
                 }
-                .buttonStyle(.plain)
+            }
+            if !sections.others.isEmpty {
+                Section("Other foods") {
+                    rows(sections.others, showsSource: true)
+                }
             }
             if products.isSearching {
                 HStack(spacing: 8) {
@@ -60,28 +65,47 @@ struct SearchResultsList: View {
             }
         }
         .listStyle(.plain)
-        .animation(.default, value: results.map(\.id))
+        .animation(.default, value: sections.others.map(\.id))
+    }
+
+    private func rows(_ results: [SearchResult], showsSource: Bool) -> some View {
+        ForEach(results) { result in
+            Button {
+                onSelect(result)
+            } label: {
+                SearchResultRow(result: result, showsSource: showsSource)
+            }
+            .buttonStyle(.plain)
+        }
     }
 }
 
 #if DEBUG
-#Preview("Mixed sources") {
+#Preview("Both groups") {
     SearchResultsList(
-        results: PreviewStore.searchResults, databaseError: nil,
+        sections: PreviewStore.searchSections, databaseError: nil,
         products: ProductResults(isEnabled: true), modules: nil, onSelect: { _ in }
+    )
+}
+
+#Preview("Nothing of the user's own") {
+    SearchResultsList(
+        sections: SearchResults.Sections(others: PreviewStore.searchSections.others),
+        databaseError: nil, products: ProductResults(isEnabled: true),
+        modules: nil, onSelect: { _ in }
     )
 }
 
 #Preview("Products still coming") {
     SearchResultsList(
-        results: Array(PreviewStore.searchResults.prefix(3)), databaseError: nil,
+        sections: PreviewStore.searchSections, databaseError: nil,
         products: ProductResults(isEnabled: true, isSearching: true), modules: nil, onSelect: { _ in }
     )
 }
 
 #Preview("Products unavailable") {
     SearchResultsList(
-        results: Array(PreviewStore.searchResults.prefix(3)), databaseError: nil,
+        sections: PreviewStore.searchSections, databaseError: nil,
         products: ProductResults(isEnabled: true, errorMessage: "Open Food Facts could not be reached."),
         modules: nil, onSelect: { _ in }
     )
@@ -89,20 +113,21 @@ struct SearchResultsList: View {
 
 #Preview("Database missing") {
     SearchResultsList(
-        results: [], databaseError: FoodRepositoryError.databaseMissing.errorDescription,
+        sections: SearchResults.Sections(), databaseError: FoodRepositoryError.databaseMissing.errorDescription,
         products: ProductResults(), modules: nil, onSelect: { _ in }
     )
 }
 
 #Preview("No matches") {
     SearchResultsList(
-        results: [], databaseError: nil, products: ProductResults(), modules: nil, onSelect: { _ in }
+        sections: SearchResults.Sections(), databaseError: nil, products: ProductResults(),
+        modules: nil, onSelect: { _ in }
     )
 }
 
 #Preview("No matches, modules on") {
     SearchResultsList(
-        results: [], databaseError: nil, products: ProductResults(),
+        sections: SearchResults.Sections(), databaseError: nil, products: ProductResults(),
         modules: ModuleButtonsRow(scanRequested: .constant(false), estimateRequested: .constant(false)),
         onSelect: { _ in }
     )
@@ -111,7 +136,7 @@ struct SearchResultsList: View {
 
 #Preview("Accessibility 5") {
     SearchResultsList(
-        results: PreviewStore.searchResults, databaseError: nil,
+        sections: PreviewStore.searchSections, databaseError: nil,
         products: ProductResults(isEnabled: true), modules: nil, onSelect: { _ in }
     )
     .environment(\.dynamicTypeSize, .accessibility5)
