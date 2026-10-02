@@ -24,9 +24,11 @@ struct TodayBottomBar: View {
             .controlSize(.large)
             .buttonBorderShape(.capsule)
             .accessibilityLabel("Add food")
+            .readableColumn(ReadableColumn.control)
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
+        .readableColumn()
         .animation(.default, value: model.banner)
         .animation(.default, value: model.showsUnauthorizedNotice)
     }
@@ -41,6 +43,12 @@ struct TodayBottomBar: View {
     let model = TodayViewModel()
     model.banner = "Logged here only. Health didn't accept it."
     model.showsUnauthorizedNotice = true
+    return TodayBottomBar(model: model)
+}
+
+#Preview("iPad width", traits: .fixedLayout(width: 1024, height: 220)) {
+    let model = TodayViewModel()
+    model.banner = "Copied 4 entries from yesterday."
     return TodayBottomBar(model: model)
 }
 

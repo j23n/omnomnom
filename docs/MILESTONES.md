@@ -293,3 +293,17 @@ Apple's own food analysis is not reachable and would not help: it is qualitative
 Not built: the `semanticContentSearch` schema intent — the "More results" link into the app's own search. Its schema member could not be verified from Apple's documentation and Xcode generates it by completion.
 
 Watch list for the first build: whether `@MainActor func perform()` satisfies `OpenIntent` without complaint; whether `TypeDisplayRepresentation(name:numericFormat:)` and `DisplayRepresentation.Image(systemName:isTemplate:)` resolve as written; whether `AppIntents` and `VisualIntelligence` auto-link in a project whose Frameworks phase is empty, as HealthKit and VisionKit already do; and what the labels actually say when a camera is pointed at a plate, which decides whether six is the right number of them to search.
+
+## iPad
+
+One target, both device families: `TARGETED_DEVICE_FAMILY = "1,2"`. The iPhone keeps its portrait lock through `INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone`; the iPad gets all four through the `_iPad` key, which multitasking requires. The generated scene manifest and launch screen were already in place, so nothing else in the project had to move.
+
+Every framework the app needs is on iPadOS and was checked rather than assumed: HealthKit since iPadOS 17, when the Health app arrived there; `DataScannerViewController` since iPadOS 16; Foundation Models and Visual Intelligence on iPadOS 26. So this is a layout change, not a port.
+
+- `ReadableColumn` caps a read-down list at 700 pt and a tapped control at 420 pt, centring both. Every measure is wider than any iPhone, so the modifier is a no-op on one by construction — which is the point: there is no second layout to keep in step.
+- Applied to the food search field, the search results, the recents and the Add food capsule. The inset-grouped lists on Today, in the Library and in Settings are left full width, because that is what Apple's own apps do with them and they are already shaped for the iPad.
+- Six previews at 1024 pt, one per screen whose measure the cap governs, so the thing this change is about is visible in the canvas rather than only on a device. `RecentsList` had no previews at all; it has four now.
+
+Watch list for the first build: whether a capped `List` frame leaves the plain-style separators and scroll indicators where they belong; the full-screen search cover on an iPad, which is a lot of display for one column and may want to be a sheet in the regular size class; the barcode scanner in a centred iPad sheet, which is a small window for a camera; and `presentationDetents` on the Quantity sheet and the day picker, which an iPad ignores in favour of a centred card.
+
+Not done: a `NavigationSplitView` for the Library, and a second column on Today. Both are redesigns rather than an iPad pass, and the app should be looked at on a real iPad before either is decided.

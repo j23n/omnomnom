@@ -167,4 +167,9 @@ struct TodayView: View {
     return TodayView(model: model)
         .previewEnvironment(seed: .healthStates)
 }
+#Preview("iPad width", traits: .fixedLayout(width: 1024, height: 768)) {
+    TodayView()
+        .previewEnvironment(seed: .typicalDay)
+}
+
 #endif

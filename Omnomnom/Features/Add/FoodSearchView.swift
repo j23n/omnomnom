@@ -390,6 +390,11 @@ struct FoodSearchView: View {
         .previewEnvironment(seed: .library)
 }
 
+#Preview("iPad width", traits: .fixedLayout(width: 1024, height: 768)) {
+    FoodSearchView(mode: .log(day: .now, onLogged: { _ in }, onMessage: { _ in }))
+        .previewEnvironment(seed: .typicalDay)
+}
+
 #Preview("Log mode, accessibility 5") {
     FoodSearchView(mode: .log(day: .now, onLogged: { _ in }, onMessage: { _ in }))
         .previewEnvironment(seed: .typicalDay)

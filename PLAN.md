@@ -10,7 +10,7 @@ The motivating target is the redesigned Health app's Longevity tab, which scores
 
 | Decision | Choice |
 | --- | --- |
-| Platform | iOS 26+, iPhone only; pure SwiftUI, Swift 6 language mode |
+| Platform | iOS and iPadOS 26+; pure SwiftUI, Swift 6 language mode |
 | Distribution | App Store, worldwide, paid upfront |
 | Storage | Local only, no CloudKit, no account; schema kept CloudKit-compatible |
 | Dependencies | None. No third-party packages in the app target |
@@ -30,6 +30,8 @@ Paid upfront removes StoreKit entirely: no receipt validation, no entitlement ga
 ## Implementation stack and gating
 
 Pure SwiftUI, Swift 6 language mode with strict concurrency on from the first commit. Deployment target iOS 26, which covers iPhone 11 and newer.
+
+Universal: one target, both device families. The iPhone stays portrait, because logging a meal is a one-handed job done standing up; the iPad takes all four orientations, which multitasking requires. Not macOS, and not for want of trying — HealthKit is not supported there and `isHealthDataAvailable()` returns false, so the half of this app that matters cannot run. The app would degrade cleanly into a local food log, which is not the app.
 
 Nothing in this plan needs iOS 27 except the image-prompt call and the query for a time-limited Health authorization window, which is itself an iOS 27 feature. HealthKit correlations, sync identifiers, VisionKit scanning, SwiftData, Observation and text-only Foundation Models all exist on iOS 26, so availability checks appear in exactly two places.
 
@@ -82,7 +84,7 @@ OS version is the least interesting gate. The AI feature alone has four independ
 | --- | --- | --- |
 | Foundation Models image input | `#available(iOS 27, *)` | Device is on iOS 26 |
 | Foundation Models at all | `SystemLanguageModel.default.availability` | Apple Intelligence off, unsupported device, unsupported region or language, model assets not yet downloaded |
-| HealthKit | `HKHealthStore.isHealthDataAvailable()` | Never false on iPhone, still check |
+| HealthKit | `HKHealthStore.isHealthDataAvailable()` | Never false on an iPhone or an iPad since iPadOS 17, still check; false on macOS, which is why there is no Mac app |
 | HealthKit write | Per-type authorization status | User declined that type; the other types are still written |
 | HealthKit read | Not queryable by design | Always treat an empty result as empty, never as denied |
 | Background delivery | `com.apple.developer.healthkit.background-delivery` entitlement | Entitlement missing; fails silently. No `UIBackgroundModes` entry is needed |
