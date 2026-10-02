@@ -6,9 +6,11 @@ import SwiftUI
 /// logged before, most recent first, then the recipes and custom foods never logged, so
 /// a new recipe is one tap away.
 ///
-/// Rows are the same `SearchResultRow` the results use, pills and all, so a food looks
-/// the same wherever it is met. Their relevance is not consulted here: these are
-/// ordered by when they were last eaten, which is a better guess than any score.
+/// Rows are the same `SearchResultRow` the results use, without the provenance pill:
+/// the headings already say that everything here is yours or something you have eaten,
+/// so a pill on every row would label a list that cannot vary. Relevance is not
+/// consulted either — these are ordered by when they were last eaten, which is a better
+/// guess than any score.
 struct RecentsList: View {
     /// Recipes are hidden when picking an ingredient, since recipes do not nest.
     let includesRecipes: Bool
@@ -79,7 +81,7 @@ struct RecentsList: View {
             Button {
                 onSelect(result)
             } label: {
-                SearchResultRow(result: result)
+                SearchResultRow(result: result, showsSource: false)
             }
             .buttonStyle(.plain)
         }
