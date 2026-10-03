@@ -132,12 +132,12 @@ meta(key, value)                   -- schema_version, built_at, source versions,
 foods(id, name, name_locale, alt_names, source, source_ref, category,
       kcal_100g, protein_100g, carb_100g, fat_100g,
       satfat_100g, fiber_100g, sugar_100g, sodium_mg_100g,
-      is_estimated, popularity)
+      is_estimated, is_ingredient, popularity)
 foods_fts(name, alt_names)         -- FTS5 external content, unicode61, diacritics removed
 portions(id, food_id, label, grams, seq)   -- "1 medium", "1 slice"
 ```
 
-`alt_names` holds the same food's names in the source's other languages, newline separated, indexed for search and never displayed: typing "pomme" finds the row that reads "Apple, pulp and skin, raw", and typing "Apfel" finds "Apfel roh". `id` is assigned by the build, never the source's own identifier; `source_ref` carries that. `kcal_100g` is the only nutrient that must be present, the rest are null when the source lacks them, never zero. `popularity` is the curated ranking boost. The `source` column exists for attribution, so the UI can name where a value came from. The full DDL lives in `Tools/fooddb/fooddb/schema.sql` and is the reference; this block is a summary.
+`is_ingredient` marks a row that is an ingredient or a dry, raw or concentrated form rather than a portion anyone eats, which is what keeps a 200 g serving of coffee powder from being auto-matched to the word "coffee"; see the validation section for the three defences it is the first of. `alt_names` holds the same food's names in the source's other languages, newline separated, indexed for search and never displayed: typing "pomme" finds the row that reads "Apple, pulp and skin, raw", and typing "Apfel" finds "Apfel roh". `id` is assigned by the build, never the source's own identifier; `source_ref` carries that. `kcal_100g` is the only nutrient that must be present, the rest are null when the source lacks them, never zero. `popularity` is the curated ranking boost. The `source` column exists for attribution, so the UI can name where a value came from. The full DDL lives in `Tools/fooddb/fooddb/schema.sql` and is the reference; this block is a summary.
 
 ### Column mapping
 
@@ -347,39 +347,90 @@ So that pancake line produces four resolved rows, each carrying its database row
 
 An item that resolves to nothing carries no values and cannot be logged. It has to be matched or removed, because an entry with invented numbers is worse than a missing entry: it corrupts the one thing the overview is for.
 
-### Why this is not a RAG problem
+### Where the model belongs, and where it does not
 
-Retrieval is needed. Retrieval-augmented *generation* is not, and the distinction decides the architecture.
+Three separate jobs get confused under the one word "RAG", and this plan answers them differently.
 
-The order is inverted from RAG. A RAG pipeline retrieves first and generates second, with the retrieved text in the model's context so that the answer can be grounded in it. Here the model parses first and the database answers second, and no retrieved row ever goes back into the model.
+| Job | Who does it | Why |
+| --- | --- | --- |
+| Finding candidate rows | FTS5 over `foods.sqlite`. Never an embedding | Lexical is the stronger tool on this corpus, and it is on every device |
+| Choosing between them, or rejecting them all | The on-device model, with the shortlist in its context | A plausible wrong row is the dangerous failure, and only world knowledge catches it |
+| Producing any nutrient value | Nobody. It is read from the chosen row | No language model can know one |
+
+The middle row is a retrieval-augmented step and it is the one this plan originally left out. It is needed because the retriever's failures are not random — they are confidently, specifically wrong in a way that a confidence score cannot express.
+
+**The failure this fixes.** A composition table is full of rows that are ingredients or dry forms rather than things eaten as a portion, and they match the same tokens as the food the user meant.
+
+| Typed | What FTS5 ranks highly | Why it is wrong |
+| --- | --- | --- |
+| "oats" | `Biscuits, oat` | A different kind of food; the token is in both |
+| "coffee" | `Coffee, instant, powder` | About 350 kcal/100 g. A 200 g "portion" is 700 kcal instead of 4 |
+| "chicken" | `Chicken, raw` | Nobody logs raw chicken; the cooked row is meant |
+| "milk" | `Milk, dried, skimmed` | A dry form standing in for a drink |
+
+bm25 cannot tell these apart, because the query term really is in the name and the name really is a food. A popularity prior helps and does not solve it. The coffee case is the one that matters most: it is not a small ranking error, it is a hundredfold energy error that lands silently in a trend the user is trying to read.
+
+**What stays true from the original reasoning.** The retrieval itself stays lexical, for all the reasons that have not changed: no third-party packages in the app target, `NLEmbedding` is word-level and covers few locales, a bundled sentence encoder is tens of megabytes plus a vector index against a 5 MB SQLite file, and an embedding path would not exist on a device with Apple Intelligence off. What was wrong was treating the whole pipeline as one decision. A reranker does not need the corpus in context. It needs five to eight rows that a retriever has already chosen, which fits the window with room to spare.
+
+So the pipeline has four stages, not three.
 
 | Stage | Who does it | What comes out |
 | --- | --- | --- |
 | Parse | The on-device model, or the fallback parser | Items: a name, a lookup term, an amount |
-| Recall and retrieve | `Phrase` memory, then FTS5 over `foods.sqlite` | A food and an amount per item, with a confidence |
-| Resolve | The user, once, and only on rows the retriever is unsure of | Entries |
+| Recall and retrieve | `Phrase` memory, then FTS5, then Open Food Facts if it is on | A shortlist per item |
+| Validate | The on-device model, one call for the whole line | One row chosen per item, or none, with a verdict |
+| Resolve | The user, once, and only on rows that came back unsure or empty | Entries |
 
-Five reasons RAG is the wrong tool here:
+### Validating the match
 
-- **The model is never asked for a number**, so the corpus has no business in its context. Its only job is turning one sentence into tuples, which is a parsing task and needs no corpus at all.
-- **The corpus does not fit, and a subset that fits has already answered the question.** Around 10,600 rows; the on-device system model's window is small enough that this plan already caps a typed description at 500 characters. Any candidate set small enough to put in a prompt must have been chosen by a retriever first, and at that point the retriever has done the work.
-- **Lexical search is the stronger tool on this corpus.** Composition tables hold literal food nouns, "Apple, pulp and skin, raw" and "Haferflocken", and `alt_names` already crosses the languages. Embeddings would pay off on colloquialism, which `EstimatedItem.lookupTerm` already handles more cheaply and far more controllably: the model is asked for the database's wording alongside the user's own.
-- **Embeddings have no cheap home here.** No third-party packages in the app target. `NLEmbedding` is word-level and covers few locales. A bundled sentence encoder is tens of megabytes plus a vector index, against a 5 MB SQLite file, and a new App Review surface. The cost is out of all proportion to the queries it would rescue.
-- **It would break the load-bearing requirement.** FTS5 is deterministic, answers in milliseconds and is on every device. A retrieval path running through the model does not exist for anyone with Apple Intelligence off, which is exactly the configuration this app promises to work in.
+One model call per line, after retrieval, carrying every unsettled item and its shortlist at once rather than one call per item. The whole line is better context than a fragment: "oats, banana, coffee" at eight in the morning disambiguates all three together in a way none of them does alone.
 
-The consequence is that the interesting work is in the matcher and in the memory, not in the model.
+**What goes in.** Per candidate: its id, its name, its category, and its energy per 100 g. The energy is there precisely so the model can reject `Coffee, instant, powder` as a drink — the number is evidence for a judgment, not something to copy forward.
 
-### Three levels of recall
+**What comes out.** Per item: the id of the chosen candidate, a verdict of certain, probable or unsure, and nothing else. A `@Generable` enum and an id, so the output cannot contain a food name the model invented or a nutrient value it made up. An id outside the shortlist is read as "none of these", not as a hint. The model may also return none of these outright, which is the correct answer for a food the bundled tables do not hold and is what routes the item to Open Food Facts or to the user.
+
+| Verdict | What happens |
+| --- | --- |
+| certain | The row is settled and the user is not asked |
+| probable | Logged, marked for a glance, one tap to change |
+| unsure, or none of these | Blocks the log until the user picks or removes the row |
+
+**It is never asked about an amount, only about plausibility.** A second flag, `implausible`, says the amount and the row do not go together — 200 g of a powder, 2 kg of butter. That is a judgment about the pair, not a figure, so it stays inside what the model may be asked. A deterministic guard backs it up and works without any model: a single item resolving to more than about 1,200 kcal is marked regardless of what anything thinks.
+
+**Recall skips validation entirely.** A phrase that came back from history was asserted by this user already, so there is nothing to validate and no model call to wait for. That is what keeps the repeat path under five seconds: the fast path never touches the model, and the model is paid for only on something new.
+
+### Three defences, only one of which needs Apple Intelligence
+
+Validation must make the app better without being load-bearing, because a large share of users will not have it. So the "oat biscuits" failure is defended three times over.
+
+1. **A build-time flag.** `foods.is_ingredient` marks rows that are an ingredient or a dry, raw or concentrated form rather than a portion someone eats: powders, dried milk, raw meat, concentrates, pure fats. Set by the pipeline from the source's own category and name patterns, per source, and auditable with `inspect`. The matcher demotes a flagged row heavily for a "what I ate" query and never auto-accepts one. Deterministic, offline, on every device, and it alone removes the coffee-powder class of error.
+2. **The model's verdict**, where Apple Intelligence is available, which catches the cases a flag cannot enumerate — the oat biscuit, the wrong preparation, the composite that should have been two rows.
+3. **The user's one correction**, which writes a `Phrase` row and means the mistake cannot recur for that wording.
+
+Without the model, the thresholds tighten rather than the feature disappearing: fewer rows auto-accept, more are marked for a glance, and the app is less convenient and equally correct. That is the same posture the barcode and photo modules already take, and it is why validation is an enhancement to the matcher rather than a replacement for it.
+
+### Open Food Facts as the fourth rung
+
+A generic composition table has never held a branded product, and a line like "a pancake with peanut butter" is quite likely to mean a specific jar. So the retrieval ladder gets one more rung, and it is the existing opt-in rather than anything new.
+
+When the bundled tables return nothing the validator accepts, and the product-search opt-in is on, the item's lookup term goes to `search.openfoodfacts.org` through the client that already exists, the hits are shortlisted the same way, and they go through the same validation. A chosen product is fetched by barcode and cached exactly as a scan would be, so attribution and the local cache are unchanged.
+
+It stays strictly opt-in and strictly a fallback. The order matters: the bundled tables are tried first because they are offline, licence-clean and analytically measured, and a crowdsourced record is consulted only when there is nothing better. With the opt-in off, an unmatched item goes straight to the user, which is where it went before.
+
+### Four rungs, tried in order
 
 The first question to ask of a typed line is not "what foods are these" but "have I eaten this before". Most lines are repeats, and a repeat has a better answer available than any parse: what happened last time.
 
-| Level | Lookup | What it supplies | Case |
-| --- | --- | --- | --- |
-| Phrase | The whole normalised line | Every food and every amount, from the last time this line was logged | The Tuesday breakfast |
-| Item | One parsed fragment | That food, and the amount last used for it in this phrase | A familiar food in a new combination |
-| Database | FTS5 over `foods.sqlite` | The food only; the amount comes from a portion row or the parser | Something eaten for the first time |
+| Rung | Lookup | What it supplies | Validated? | Case |
+| --- | --- | --- | --- | --- |
+| Phrase | The whole normalised line | Every food and every amount, from the last time this line was logged | No, it was asserted already | The Tuesday breakfast |
+| Item | One parsed fragment | That food, and the amount last used for it in this phrase | No, same reason | A familiar food in a new combination |
+| Database | FTS5 over `foods.sqlite` | A shortlist; the amount comes from a portion row or the parser | Yes | Something eaten for the first time |
+| Products | Open Food Facts by name, opt-in, online | A shortlist of branded products | Yes | A jar of something the tables do not hold |
 
-One table serves the first two levels. `Phrase` holds a normalised string and ordered `PhraseItem` rows, each a food reference plus an amount. A phrase of one word with one item is a synonym for a food, "flat white" or "my bread"; a phrase of a whole sentence with four items is a remembered meal. The same lookup answers both, and the same act writes both: logging a line records it, and correcting a row rewrites it.
+The first two rungs answer most lines and neither of them costs a model call, which is the whole reason a repeat is fast. The lower two are where something new gets resolved, and both go through validation.
+
+One table serves the first two rungs. `Phrase` holds a normalised string and ordered `PhraseItem` rows, each a food reference plus an amount. A phrase of one word with one item is a synonym for a food, "flat white" or "my bread"; a phrase of a whole sentence with four items is a remembered meal. The same lookup answers both, and the same act writes both: logging a line records it, and correcting a row rewrites it.
 
 This is deliberately not a library of saved recipes. Nothing is created, nothing is named, nothing accumulates in the Library, and the user is never asked whether something was worth keeping. Eating the same thing twice is what makes the second time free.
 
@@ -683,9 +734,9 @@ Ordered by dependency, not by visibility. The first two milestones carry the mos
 
 Revision 4 adds the following. They are ordered so that each one is useful on its own, and so that the riskiest thing — auto-matching a parsed item well enough to log it without being asked — is proved before anything is built on top of it.
 
-8. **The matcher.** Confidence scoring on `SearchRelevance`, the two thresholds, the composite-before-split rule, and a rewritten `popularity` list against real Ciqual and BLS names. No UI. The gate is a fixture set of real typed lines with their expected matches, because every later milestone assumes this one works.
+8. **The matcher and its deterministic defences.** Confidence scoring on `SearchRelevance`, the two thresholds, the composite-before-split rule, a rewritten `popularity` list against real Ciqual and BLS names, and the `is_ingredient` flag in the pipeline with the demotion that reads it. No UI and no model. The gate is a fixture set of real typed lines with their expected matches, including the ingredient-form traps, because every later milestone assumes this one works.
 9. **Phrase memory.** `Phrase` and `PhraseItem`, the normalisation function, recall before search, amounts from history. Testable without any parser: a phrase is recorded and recalled whatever produced it.
-10. **The composer and the resolution sheet.** The fallback parser first, so the path exists on every device, then the model tier behind the availability gate it already has. Keyboard dictation comes free with the text field. This is the milestone the redesign is for.
+10. **The composer, the validator and the resolution sheet.** The fallback parser first, so the path exists on every device, then the model tier behind the availability gate it already has, then the validation call and the three verdicts it returns. Keyboard dictation comes free with the text field. The sheet has to make a validated row, an unvalidated one and a rejected one tell themselves apart without colour-coding any of them as good or bad. This is the milestone the redesign is for.
 11. **Buckets and coverage.** Portion buckets with the reference ladder, `DayRecord`, marking a day complete, and partial-day totals on Today.
 12. **Trends.** Statistics-collection queries per nutrient, the three charts, the coverage strip, the range switcher.
 13. **Baseline days.** `BaselinePhrase`, proposals on Today, accept and deviate.
@@ -732,7 +783,13 @@ Each is a behaviour this plan assumes but Apple does not document. Run them on a
 
 The risks revision 4 adds, worst first.
 
-**Auto-matching is the whole bet and it is unproven.** Every saving in revision 4 comes from resolving a typed fragment to a database row without asking. If that lands wrong often enough to need checking every time, the resolution sheet becomes the search screen it replaced and the redesign has bought nothing. This is why the matcher is milestone 8 and why its gate is a fixture set of real typed lines rather than a code review. The honest failure mode is not a wrong match, which the user corrects once and the alias remembers; it is a *plausible* wrong match that nobody notices, which is why the confidence band exists and why a low-confidence row is marked rather than silently logged.
+**Auto-matching is the whole bet and it is unproven.** Every saving here comes from resolving a typed fragment to a database row without asking. If that lands wrong often enough to need checking every time, the resolution sheet becomes the search screen it replaced and the redesign has bought nothing. The honest failure mode is not a wrong match, which the user corrects once and the phrase remembers; it is a *plausible* wrong match that nobody notices — oat biscuits for oats, coffee powder for coffee — which is why there is a validation step, an `is_ingredient` flag and a confidence band rather than a single score. The gate is a fixture set of real typed lines including the ingredient-form traps, not a code review.
+
+**Validation is the second bet, and it is the model judging its own domain.** A reranker that confidently picks the wrong row is worse than no reranker, because it converts a marked row into a settled one. Two mitigations are structural rather than hopeful: it can only choose from ids the retriever supplied, so it cannot invent a food; and it returns a verdict, so "unsure" is an available answer and the sheet can act on it. What remains open is calibration — whether "certain" is actually certain often enough to auto-accept — and that is measured against the same fixture set, per verdict, before the threshold for auto-accepting is set at all.
+
+**Validation costs a round trip on the one path that is allowed to be slow.** A model call per line adds a second or two to logging something new, against a twenty-second target, which is affordable. It must never touch the repeat path, and the recall rungs are specified to skip it for that reason. If that ordering is ever lost, the five-second target goes with it.
+
+**The no-Apple-Intelligence path is now measurably worse, not merely plainer.** Before, a device without the model lost a photo feature. Now it loses the validator, so its matches are less trustworthy and more rows need a glance. The `is_ingredient` flag is what keeps that gap from being dangerous rather than just inconvenient, which makes a build-time flag load-bearing for correctness on a large share of devices. It deserves an audit pass against the real Ciqual and BLS categories rather than a pattern list written once.
 
 **The popularity prior is empty.** Carried over from revision 3 and promoted, because auto-picking depends on it in a way interactive search did not. The curated list is written against FDC descriptions and matches nothing in a Ciqual and BLS build. Rewriting it against the real names is a sitting's work and is now on the critical path.
 
