@@ -400,6 +400,10 @@ One model call per line, after retrieval, carrying every unsettled item and its 
 
 **Recall skips validation entirely.** A phrase that came back from history was asserted by this user already, so there is nothing to validate and no model call to wait for. That is what keeps the repeat path under five seconds: the fast path never touches the model, and the model is paid for only on something new.
 
+**Validation is all-or-nothing for a line, and that is a requirement rather than an implementation detail.** Either every retrieved row in a line was checked or none was. It matters because "not checked" then describes the screen, which one sentence can carry, instead of describing individual rows, which would need a per-row marker competing with the three verdicts for the same space — and the resolution sheet has no room for a fourth distinction. So a model that is available but fails or times out partway through a line is treated as unavailable for that whole line, and the sheet falls back to its unchecked form rather than mixing the two.
+
+**An unchecked row says what happened, not what is missing.** A checked row reads "Checked"; an unchecked one reads "Matched by name". Same structure, same position, same length of sentence, no warning tone, because the second is a true description of a reasonable thing the app did rather than an apology for a feature the device lacks. The general rule, which is worth keeping beyond this screen: a degraded path reads as abnormal only when the honest description of it is phrased as a defect.
+
 ### Three defences, only one of which needs Apple Intelligence
 
 Validation must make the app better without being load-bearing, because a large share of users will not have it. So the "oat biscuits" failure is defended three times over.
@@ -491,7 +495,9 @@ The gram field is the most expensive thing in the current flow and it buys preci
 | More | 1.4 |
 | Double | 2 |
 
-The reference the multiplier applies to is, in order: the amount remembered for this food in this phrase, then `Food.lastGrams`, then the matched row from the `portions` table, then 100 g. So a food eaten before has a reference that is literally what this person last ate, and "Usual" is a correct answer rather than an average of strangers.
+The reference the multiplier applies to is, in order: the amount remembered for this food in this phrase, then `Food.lastGrams`, then the matched row from the `portions` table, then 100 g. So a food eaten before has a reference that is literally what this person last ate.
+
+**The labels only hold where there is history, and the control has to say which it is.** On a food eaten before, "Usual" means what this person usually has, which is the whole point. On a food eaten for the first time there is nothing to multiply, and the same word would quietly mean a population average or, worse, a bare 100 g. So a first-time row does not offer "Usual" at all: it offers the portion row by its own name, "1 slice, 40 g", or a plain gram field where the food has no portions. The buckets appear once the food has been eaten once. One control must not mean a measured fact on one row and a guess on the next.
 
 Grams stay canonical. The bucket multiplies the reference and the product is stored in `rawAmount` exactly as a typed figure would be, so `SnapshotMath`, `HealthSampleBuilder` and the entire write path are untouched. The gram field stays one tap away, and a typed figure sets a new reference.
 
@@ -523,6 +529,10 @@ Marking a day complete is one tap on Today. That is the entire mechanism, and it
 
 Averages are computed over complete days only. Partial days are drawn as what they are and left out of the mean. Empty days are a gap, drawn as a gap, and never as a zero — a zero-kilocalorie Tuesday is the one answer a nutrition chart must never give.
 
+**Coverage is always a sentence, never a ratio.** "19 of 30 days" and "63 per cent logged" are the same fact, and the second one grades the user's diligence. That is a worse failure than grading their diet, because the app's whole claim to stay on the logging-tool side of the line is that it does not grade, and because diligence is not even the thing being measured. So coverage is named — which days, how many, what the mean rests on — and never divided. No percentage, no ratio, no progress bar, and nothing that can be read as a target met or missed.
+
+**An accepted baseline is its own state.** A day whose entries were all accepted from a proposal is `assumed`, not `complete`: real enough to write to Health, not asserted carefully enough to be silent about. The coverage strip draws four states, complete, partial, assumed and empty, and a mean that includes assumed days says so — "mean of 19 complete days, 4 assumed". That keeps the baseline useful without letting it quietly become the dataset.
+
 ### Sampling
 
 The overview does not need every day. Three complete days a week, or one complete week a month, is enough to read a trend over months, and it is how dietary intake is measured whenever a weighed record is not affordable.
@@ -550,7 +560,13 @@ The read-authorization quirk still applies: an empty result is empty, never deni
 
 ### What is drawn
 
-Energy, protein and fiber, each as daily points under a seven-day rolling mean, over a week, a month or a quarter. The rolling mean is the line the eye should follow and the daily points are context. Beneath them a coverage strip, one mark per day, reading complete, partial or empty.
+Energy, protein and fiber, each as daily points under a seven-day rolling mean, over a month or a quarter. The rolling mean is the line the eye should follow and the daily points are context. Beneath them a coverage strip, one mark per day, reading complete, partial, assumed or empty.
+
+**No week range.** A seven-day mean cannot be drawn over seven days, so a week view has to fall back to bare daily columns, which makes one control mean two different things and invites exactly the day-to-day reading this app is not for. A month is the shortest range on which the thing being plotted exists.
+
+**The mean breaks rather than bridging.** A window holding fewer than four of seven days with data draws no point at all, so a gap in the log is a gap in the line. Interpolating across a holiday would invent the one number nobody recorded.
+
+**Fiber is the weakest of the three and is the first to cut.** Energy and protein are spread across most of what a person eats, so a bucket chosen one step too low on one item is diluted by everything else in the day. Fiber is not: a single portion of lentils or wholegrain bread can be a third of a day's total, so one bucket choice moves the fiber figure by more than the ±20 per cent the whole design is built to tolerate, and the trend risks reporting bucket choices rather than diet. It stays in the headline for now because it is also the nutrient a broad-strokes view can most usefully move, and because a rolling mean over a month dilutes unbiased bucket noise. The thing to watch for is *bias* rather than noise — a user who always takes "Usual" when they had more — which averaging does not fix. If the fiber line proves unreadable against its own coverage, it leaves the headline before anything else does.
 
 The other five nutrients are reachable but not on the first screen. All eight still go to Health in full; the overview is about the three figures a person can act on.
 
@@ -569,7 +585,15 @@ The line is between describing and judging. A chart of what you ate describes. T
 
 One principle decides every trade-off below: the cost of logging is the whole product. An app that is pleasant but takes twenty seconds per item gets abandoned in a week, and an empty nutrition history is worth nothing to anyone.
 
-The targets to design against: a repeat meal in under five seconds and three taps; something never logged before in under twenty seconds. Revision 4 adds a third: a routine day in no taps at all, by accepting a baseline.
+The targets to design against, and which path each one governs, because measuring the wrong path against the wrong target is how a design pass talks itself into a problem it does not have:
+
+| Target | Governs |
+| --- | --- |
+| Under five seconds, three taps | A repeat: a line recalled from phrase memory, or an entry logged again |
+| Under twenty seconds | Something never logged before, including the typing and the resolution |
+| One tap | A routine day, accepted from its baseline |
+
+Typing a sentence for the first time cannot be a five-second path and is not meant to be: twenty-five characters is around six seconds of thumb before anything else happens. The five-second target is about the second time and every time after, which is where nearly all logging happens.
 
 The second principle, new in revision 4 and the one that constrains the first: **the user must always be able to tell what they asserted from what the app inferred.** Speed is bought by inferring amounts, recalling phrases and proposing days, and every one of those is a place where the app could quietly put a number into Health that nobody stood behind. Each is marked, each is one tap from correction, and none of them writes anything without that tap.
 

@@ -53,6 +53,9 @@ Every screen is held to the plan's targets rather than to taste:
 Filled in as the screen-by-screen pass settles each one.
 
 - Copy yesterday re-logs each entry at the same time of day, never in the future, keeping its meal slot; each copy is mirrored to Health like a repeat.
+- A degraded path is described, never apologised for. A row matched without the on-device check reads "Matched by name" where a checked row reads "Checked": same position, same structure, same tone, no warning. The rule behind it is that a path reads as abnormal only when the honest description of it is phrased as a defect, so the fix is almost always the wording rather than hiding what happened.
+- Coverage is named, never divided. How many days and which ones, never a percentage, a ratio or a progress bar, because a proportion of days logged grades the user's diligence, and that is a judgement the app does not make.
+- One control never means a measured fact on one row and a guess on another. The portion buckets appear only where there is a remembered amount to multiply; a food eaten for the first time offers its portion by name instead.
 - One accent colour, tangerine, in a light and a dark value, both passing 3:1 for white text on a glass-prominent button; the asset catalog is the only place the values live.
 - The mark appears on the app icon, on the onboarding intro, on the empty day, in Settings › About and on the thumbnail placeholder. Nowhere else without a decision here.
 - The rounded system design at bold weight is used for the wordmark and the energy total, and for nothing else.
