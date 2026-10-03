@@ -564,11 +564,13 @@ All eight, each as daily points under a seven-day rolling mean, over a month or 
 
 **There is nothing to choose on this screen.** Small multiples cost vertical space and nothing else, and scrolling is free. Today's headline has to pick four because a phone's width forces it; a scrolling chart screen has no such constraint, so limiting it would be a judgement about which nutrients deserve a chart rather than a consequence of anything. "How much fat have I been eating" is exactly the question an overview exists to answer.
 
+**The coverage strip sits second, under energy, not at the bottom.** With three charts its position was nearly free; with eight it is not. Last would mean the reader meets every line on the screen before learning how many days they are made of, and a confident reading of a sparse month is the single conclusion this screen must not produce. It is drawn once rather than per chart, and the basis is stated once above everything — eight copies of the same sentence would read as decoration rather than as a governing fact.
+
 **No week range.** A seven-day mean cannot be drawn over seven days, so a week view has to fall back to bare daily columns, which makes one control mean two different things and invites exactly the day-to-day reading this app is not for. A month is the shortest range on which the thing being plotted exists.
 
 **The mean breaks rather than bridging.** A window holding fewer than four of seven days with data draws no point at all, so a gap in the log is a gap in the line. Interpolating across a holiday would invent the one number nobody recorded.
 
-**The eight do not all tolerate this design equally, and the screen says so.** A portion bucket is a ±30 per cent decision on one item. How much that matters to a day's total depends entirely on how concentrated the nutrient is in single foods.
+**The eight do not all tolerate this design equally.** A portion bucket is a ±30 per cent decision on one item. How much that matters to a day's total depends entirely on how concentrated the nutrient is in single foods.
 
 | Nutrient | Where it comes from | How to read the line |
 | --- | --- | --- |
@@ -577,6 +579,8 @@ All eight, each as daily points under a seven-day rolling mean, over a month or 
 | Fiber, sugar, sodium | One item can be a third of a day | Noisiest. Read the trend only, never a single day |
 
 This reverses an earlier judgement in this plan, which had promoted fiber into the headline and demoted carbohydrates and fat out of it. The variance argument says the opposite: carbohydrates and fat are among the *best* behaved of the eight under a bucket, and fiber among the worst. Keeping the noisiest figure large while hiding two of the steadiest was backwards.
+
+**That table is documentation, not screen furniture.** It belongs in this plan and in a design note, not printed beside the charts, and the line between the two is worth stating because it decides more than this screen: **a chart says what it measures, and never how much to trust it.** What it measures is a fact about the data — grams of total sugars, including those naturally present — and belongs on screen permanently. How much to trust it is an interpretation of the user's own numbers, and an app that annotates which of someone's figures to believe is one step from telling them what to do about it, which is the line this whole design is drawn to stay behind. So the sugar caveat is on the screen and the variance ranking is not.
 
 **The caveat that is not about variance: sugar is total sugar.** Ciqual and the BLS publish total sugars, which includes the fruit and the lactose nobody is usually asking about, and no permissively licensed composition table separates free or added sugar. So a fruit-heavy day reads high on a line most people will read as being about confectionery. That is also the chart most likely to invite the verdict this app does not give. The answer is not to hide it but to label it: the caption says total sugars, including those naturally present, on the screen rather than in a help page.
 

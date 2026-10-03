@@ -268,8 +268,16 @@ body[data-screens="dark"] .screen[data-ios="auto"]{
   font:800 40px/1 var(--f-round);letter-spacing:-.02em;display:flex;align-items:baseline;gap:6px
 }
 .totals .energy small{font:700 16px/1 var(--f-round);letter-spacing:-.01em;color:var(--s-label2)}
-.totals .pair{display:flex;gap:26px;margin-top:13px}
+.totals .pair{display:flex;flex-wrap:wrap;gap:11px 22px;margin-top:13px}
 .totals .pair div{min-width:0}
+.totals .minor{
+  display:flex;flex-wrap:wrap;gap:9px 18px;margin-top:12px;padding-top:11px;
+  border-top:.5px solid var(--s-sep)
+}
+.totals .minor div{min-width:0}
+.totals .minor .lbl{font-size:11px;margin-bottom:3px}
+.totals .minor .fig{font:400 15px/1 var(--f-ui);font-variant-numeric:tabular-nums;letter-spacing:-.012em}
+.totals .minor .fig b{font-size:12px}
 .totals .lbl{font:400 12px/1 var(--f-ui);color:var(--s-label2);display:block;margin-bottom:4px}
 .totals .fig{font:400 20px/1 var(--f-ui);font-variant-numeric:tabular-nums;letter-spacing:-.018em}
 .totals .fig b{font-weight:400;font-size:13px;color:var(--s-label2)}
@@ -447,6 +455,7 @@ body[data-screens="dark"] .screen[data-ios="auto"] .key{background:#6B6B70;box-s
 .chart-title{font:600 15px/1.2 var(--f-ui);letter-spacing:-.014em}
 .chart-now{font:400 15px/1.2 var(--f-ui);font-variant-numeric:tabular-nums;color:var(--s-label)}
 .chart-sub{font:400 11.5px/1.35 var(--f-ui);color:var(--s-label2);margin-bottom:7px}
+.basis-line{font:400 12.5px/1.4 var(--f-ui);color:var(--s-label2);margin:0 0 12px;padding:0 4px}
 .chart svg{display:block;width:100%;height:auto;overflow:visible}
 .ios-seg{display:flex;gap:2px;background:var(--s-fill);border-radius:9px;padding:2px;margin:2px 0 12px}
 .ios-seg button{
@@ -558,7 +567,7 @@ details.data summary::-webkit-details-marker{display:none}
 details.data summary::before{content:"▸ ";color:var(--ink-3)}
 details.data[open] summary::before{content:"▾ "}
 .tbl-wrap{overflow-x:auto;padding:0 18px 18px}
-table{border-collapse:collapse;width:100%;min-width:430px;font:400 13.5px/1.4 var(--f-ui);font-variant-numeric:tabular-nums}
+table{border-collapse:collapse;width:100%;min-width:760px;font:400 13.5px/1.4 var(--f-ui);font-variant-numeric:tabular-nums}
 th,td{text-align:right;padding:7px 10px;border-bottom:1px solid var(--rule-soft);white-space:nowrap}
 th:first-child,td:first-child{text-align:left}
 thead th{font-weight:600;color:var(--ink-3);font-size:11px;letter-spacing:.07em;text-transform:uppercase}
@@ -642,6 +651,7 @@ footer p{max-width:64ch;margin:0 0 9px}
     <li><dt>Grounding</dt><p>Every value comes from a Ciqual/BLS row. The model names foods, never numbers.</p></li>
     <li><dt>Repetition</dt><p>Remembered invisibly from what was typed. Amounts come back only where there is history.</p></li>
     <li><dt>Incompleteness</dt><p>Complete, partial, assumed and empty are four different days, named and never divided.</p></li>
+    <li><dt>Figures</dt><p>Four on Today, chosen by the user because the screen is narrow. All eight on Trends.</p></li>
   </ul>
 </div>
 
@@ -673,9 +683,11 @@ footer p{max-width:64ch;margin:0 0 9px}
   <div class="shead">
     <span class="snum">01 — Today</span>
     <h2>The day, and nothing about how the day went</h2>
-    <p>Energy, protein and fibre are the headline; the other five nutrients still reach Apple Health but have
-    no place on this screen. The composer is pinned at the bottom, in reach of a thumb, because the plan's
-    one-handed requirement is the only thing on Today that is a hard target.</p>
+    <p>Four figures large and four small, all eight always visible, as the plan has always required. The
+    four large ones default to energy, protein, carbohydrates and fat and <strong>the user chooses which four
+    they are</strong> — because the only reason to pick four is that a 393 pt screen fits four, not because
+    those four matter more. The composer is pinned at the bottom, in reach of a thumb, because the plan's
+    one-handed requirement is the only hard target on this screen.</p>
     <p>The first pair is deliberately shown in both appearances at once; everything after it follows the
     Screens switch above. Every frame's content scrolls inside the device, so what sits below the fold can be
     read without leaving the page.</p>
@@ -704,7 +716,14 @@ footer p{max-width:64ch;margin:0 0 9px}
               <div class="energy">1,890 <small>kcal</small></div>
               <div class="pair">
                 <div><span class="lbl">Protein</span><span class="fig">96 <b>g</b></span></div>
+                <div><span class="lbl">Carbs</span><span class="fig">212 <b>g</b></span></div>
+                <div><span class="lbl">Fat</span><span class="fig">64 <b>g</b></span></div>
+              </div>
+              <div class="minor">
+                <div><span class="lbl">Sat. fat</span><span class="fig">19 <b>g</b></span></div>
                 <div><span class="lbl">Fibre</span><span class="fig">24 <b>g</b></span></div>
+                <div><span class="lbl">Sugar</span><span class="fig">58 <b>g</b></span></div>
+                <div><span class="lbl">Sodium</span><span class="fig">1,840 <b>mg</b></span></div>
               </div>
               <p class="coverage-line">Breakfast, lunch and a snack logged. Nothing for dinner yet.</p>
             </div>
@@ -771,14 +790,20 @@ footer p{max-width:64ch;margin:0 0 9px}
       </div></div>
       <figcaption>
         <p class="cap-title">Today, light <span class="tag">01a</span></p>
-        <p class="cap">Three figures, one of them in the rounded face, then the entries. The portion bucket is
+        <p class="cap">The four headline figures are a <b>width constraint, not a ranking</b>: the user picks
+        which four sit large, in Settings › Headline figures, and the default is the plan's own energy,
+        protein, carbohydrates and fat. The other four sit under a hairline in the same card, so all eight are
+        on screen without a tap, and Trends charts all eight regardless of what is chosen here. Nothing in the
+        app says one nutrient matters more than another; this screen says only that four of them fit.</p>
+        <p class="cap">Energy keeps the rounded face. The portion bucket is
         written as the word that was chosen — <b>usual</b>, <b>more</b> — beside the grams, so the bucket is
         legible without being the only record. Grams stay canonical and stay on screen; they are just no longer
         the question being asked. Three tabs: <b>Today, Trends, Settings</b>. Meals and Library are gone as
         destinations, which is what the no-curation rule costs.</p>
-        <p class="omit"><span class="lbl">Left out</span> Carbs, fat, saturated fat, sugar and sodium — they go
-        to Health, not here. No per-meal subtotals, no ring, no target, no comparison with yesterday, no
-        "remaining". The energy figure is a sum, not a budget.</p>
+        <p class="omit"><span class="lbl">Left out</span> A visible control for choosing the four. The picker
+        lives in Settings, so Today carries no edit affordance at all — which costs discoverability, and is the
+        trade I would revisit first if nobody finds it. Also left out: per-meal subtotals, a ring, a target, a
+        comparison with yesterday, and anything called "remaining". The energy figure is a sum, not a budget.</p>
       </figcaption>
     </figure>
 
@@ -803,7 +828,14 @@ footer p{max-width:64ch;margin:0 0 9px}
               <div class="energy">2,474 <small>kcal</small></div>
               <div class="pair">
                 <div><span class="lbl">Protein</span><span class="fig">118 <b>g</b></span></div>
+                <div><span class="lbl">Carbs</span><span class="fig">268 <b>g</b></span></div>
+                <div><span class="lbl">Fat</span><span class="fig">102 <b>g</b></span></div>
+              </div>
+              <div class="minor">
+                <div><span class="lbl">Sat. fat</span><span class="fig">31 <b>g</b></span></div>
                 <div><span class="lbl">Fibre</span><span class="fig">31 <b>g</b></span></div>
+                <div><span class="lbl">Sugar</span><span class="fig">62 <b>g</b></span></div>
+                <div><span class="lbl">Sodium</span><span class="fig">2,410 <b>mg</b></span></div>
               </div>
               <p class="coverage-line">All four slots logged.</p>
             </div>
@@ -907,7 +939,14 @@ footer p{max-width:64ch;margin:0 0 9px}
               <div class="energy">0 <small>kcal</small></div>
               <div class="pair">
                 <div><span class="lbl">Protein</span><span class="fig">0 <b>g</b></span></div>
+                <div><span class="lbl">Carbs</span><span class="fig">0 <b>g</b></span></div>
+                <div><span class="lbl">Fat</span><span class="fig">0 <b>g</b></span></div>
+              </div>
+              <div class="minor">
+                <div><span class="lbl">Sat. fat</span><span class="fig">0 <b>g</b></span></div>
                 <div><span class="lbl">Fibre</span><span class="fig">0 <b>g</b></span></div>
+                <div><span class="lbl">Sugar</span><span class="fig">0 <b>g</b></span></div>
+                <div><span class="lbl">Sodium</span><span class="fig">0 <b>mg</b></span></div>
               </div>
               <p class="coverage-line">Nothing logged yet.</p>
             </div>
@@ -975,7 +1014,14 @@ footer p{max-width:64ch;margin:0 0 9px}
               <div class="energy">0 <small>kcal</small></div>
               <div class="pair">
                 <div><span class="lbl">Protein</span><span class="fig">0 <b>g</b></span></div>
+                <div><span class="lbl">Carbs</span><span class="fig">0 <b>g</b></span></div>
+                <div><span class="lbl">Fat</span><span class="fig">0 <b>g</b></span></div>
+              </div>
+              <div class="minor">
+                <div><span class="lbl">Sat. fat</span><span class="fig">0 <b>g</b></span></div>
                 <div><span class="lbl">Fibre</span><span class="fig">0 <b>g</b></span></div>
+                <div><span class="lbl">Sugar</span><span class="fig">0 <b>g</b></span></div>
+                <div><span class="lbl">Sodium</span><span class="fig">0 <b>mg</b></span></div>
               </div>
               <p class="coverage-line">Nothing logged yet.</p>
             </div>
@@ -1072,8 +1118,17 @@ footer p{max-width:64ch;margin:0 0 9px}
         <div class="content"><div class="scroller" style="opacity:.5">
           <div class="card"><div class="totals">
             <div class="energy">0 <small>kcal</small></div>
-            <div class="pair"><div><span class="lbl">Protein</span><span class="fig">0 <b>g</b></span></div>
-            <div><span class="lbl">Fibre</span><span class="fig">0 <b>g</b></span></div></div>
+            <div class="pair">
+              <div><span class="lbl">Protein</span><span class="fig">0 <b>g</b></span></div>
+              <div><span class="lbl">Carbs</span><span class="fig">0 <b>g</b></span></div>
+              <div><span class="lbl">Fat</span><span class="fig">0 <b>g</b></span></div>
+            </div>
+            <div class="minor">
+              <div><span class="lbl">Sat. fat</span><span class="fig">0 <b>g</b></span></div>
+              <div><span class="lbl">Fibre</span><span class="fig">0 <b>g</b></span></div>
+              <div><span class="lbl">Sugar</span><span class="fig">0 <b>g</b></span></div>
+              <div><span class="lbl">Sodium</span><span class="fig">0 <b>mg</b></span></div>
+            </div>
           </div></div>
         </div></div>
         <div class="sheet-dim"></div>
@@ -1136,8 +1191,17 @@ footer p{max-width:64ch;margin:0 0 9px}
         <div class="content"><div class="scroller" style="opacity:.5">
           <div class="card"><div class="totals">
             <div class="energy">392 <small>kcal</small></div>
-            <div class="pair"><div><span class="lbl">Protein</span><span class="fig">14 <b>g</b></span></div>
-            <div><span class="lbl">Fibre</span><span class="fig">7 <b>g</b></span></div></div>
+            <div class="pair">
+              <div><span class="lbl">Protein</span><span class="fig">14 <b>g</b></span></div>
+              <div><span class="lbl">Carbs</span><span class="fig">55 <b>g</b></span></div>
+              <div><span class="lbl">Fat</span><span class="fig">11 <b>g</b></span></div>
+            </div>
+            <div class="minor">
+              <div><span class="lbl">Sat. fat</span><span class="fig">4 <b>g</b></span></div>
+              <div><span class="lbl">Fibre</span><span class="fig">7 <b>g</b></span></div>
+              <div><span class="lbl">Sugar</span><span class="fig">22 <b>g</b></span></div>
+              <div><span class="lbl">Sodium</span><span class="fig">180 <b>mg</b></span></div>
+            </div>
           </div></div>
         </div></div>
         <div class="sheet-dim"></div>
@@ -1216,8 +1280,17 @@ footer p{max-width:64ch;margin:0 0 9px}
         <div class="content"><div class="scroller" style="opacity:.5">
           <div class="card"><div class="totals">
             <div class="energy">1,402 <small>kcal</small></div>
-            <div class="pair"><div><span class="lbl">Protein</span><span class="fig">71 <b>g</b></span></div>
-            <div><span class="lbl">Fibre</span><span class="fig">18 <b>g</b></span></div></div>
+            <div class="pair">
+              <div><span class="lbl">Protein</span><span class="fig">71 <b>g</b></span></div>
+              <div><span class="lbl">Carbs</span><span class="fig">160 <b>g</b></span></div>
+              <div><span class="lbl">Fat</span><span class="fig">53 <b>g</b></span></div>
+            </div>
+            <div class="minor">
+              <div><span class="lbl">Sat. fat</span><span class="fig">20 <b>g</b></span></div>
+              <div><span class="lbl">Fibre</span><span class="fig">18 <b>g</b></span></div>
+              <div><span class="lbl">Sugar</span><span class="fig">40 <b>g</b></span></div>
+              <div><span class="lbl">Sodium</span><span class="fig">1,500 <b>mg</b></span></div>
+            </div>
           </div></div>
         </div></div>
         <div class="sheet-dim"></div>
@@ -1285,8 +1358,17 @@ footer p{max-width:64ch;margin:0 0 9px}
         <div class="content"><div class="scroller" style="opacity:.5">
           <div class="card"><div class="totals">
             <div class="energy">392 <small>kcal</small></div>
-            <div class="pair"><div><span class="lbl">Protein</span><span class="fig">14 <b>g</b></span></div>
-            <div><span class="lbl">Fibre</span><span class="fig">7 <b>g</b></span></div></div>
+            <div class="pair">
+              <div><span class="lbl">Protein</span><span class="fig">14 <b>g</b></span></div>
+              <div><span class="lbl">Carbs</span><span class="fig">55 <b>g</b></span></div>
+              <div><span class="lbl">Fat</span><span class="fig">11 <b>g</b></span></div>
+            </div>
+            <div class="minor">
+              <div><span class="lbl">Sat. fat</span><span class="fig">4 <b>g</b></span></div>
+              <div><span class="lbl">Fibre</span><span class="fig">7 <b>g</b></span></div>
+              <div><span class="lbl">Sugar</span><span class="fig">22 <b>g</b></span></div>
+              <div><span class="lbl">Sodium</span><span class="fig">180 <b>mg</b></span></div>
+            </div>
           </div></div>
         </div></div>
         <div class="sheet-dim"></div>
@@ -1366,8 +1448,17 @@ footer p{max-width:64ch;margin:0 0 9px}
         <div class="content"><div class="scroller" style="opacity:.5">
           <div class="card"><div class="totals">
             <div class="energy">1,402 <small>kcal</small></div>
-            <div class="pair"><div><span class="lbl">Protein</span><span class="fig">71 <b>g</b></span></div>
-            <div><span class="lbl">Fibre</span><span class="fig">18 <b>g</b></span></div></div>
+            <div class="pair">
+              <div><span class="lbl">Protein</span><span class="fig">71 <b>g</b></span></div>
+              <div><span class="lbl">Carbs</span><span class="fig">160 <b>g</b></span></div>
+              <div><span class="lbl">Fat</span><span class="fig">53 <b>g</b></span></div>
+            </div>
+            <div class="minor">
+              <div><span class="lbl">Sat. fat</span><span class="fig">20 <b>g</b></span></div>
+              <div><span class="lbl">Fibre</span><span class="fig">18 <b>g</b></span></div>
+              <div><span class="lbl">Sugar</span><span class="fig">40 <b>g</b></span></div>
+              <div><span class="lbl">Sodium</span><span class="fig">1,500 <b>mg</b></span></div>
+            </div>
           </div></div>
         </div></div>
         <div class="sheet-dim"></div>
@@ -1576,7 +1667,14 @@ footer p{max-width:64ch;margin:0 0 9px}
               <div class="energy">0 <small>kcal</small></div>
               <div class="pair">
                 <div><span class="lbl">Protein</span><span class="fig">0 <b>g</b></span></div>
+                <div><span class="lbl">Carbs</span><span class="fig">0 <b>g</b></span></div>
+                <div><span class="lbl">Fat</span><span class="fig">0 <b>g</b></span></div>
+              </div>
+              <div class="minor">
+                <div><span class="lbl">Sat. fat</span><span class="fig">0 <b>g</b></span></div>
                 <div><span class="lbl">Fibre</span><span class="fig">0 <b>g</b></span></div>
+                <div><span class="lbl">Sugar</span><span class="fig">0 <b>g</b></span></div>
+                <div><span class="lbl">Sodium</span><span class="fig">0 <b>mg</b></span></div>
               </div>
               <p class="coverage-line">Nothing logged yet. Your usual Monday would come to 1,604 kcal.</p>
             </div>
@@ -1650,7 +1748,14 @@ footer p{max-width:64ch;margin:0 0 9px}
               <div class="energy">1,164 <small>kcal</small></div>
               <div class="pair">
                 <div><span class="lbl">Protein</span><span class="fig">58 <b>g</b></span></div>
+                <div><span class="lbl">Carbs</span><span class="fig">128 <b>g</b></span></div>
+                <div><span class="lbl">Fat</span><span class="fig">47 <b>g</b></span></div>
+              </div>
+              <div class="minor">
+                <div><span class="lbl">Sat. fat</span><span class="fig">16 <b>g</b></span></div>
                 <div><span class="lbl">Fibre</span><span class="fig">15 <b>g</b></span></div>
+                <div><span class="lbl">Sugar</span><span class="fig">34 <b>g</b></span></div>
+                <div><span class="lbl">Sodium</span><span class="fig">1,320 <b>mg</b></span></div>
               </div>
               <p class="coverage-line">Breakfast and lunch logged. Dinner and a snack still proposed.</p>
             </div>
@@ -1720,21 +1825,31 @@ footer p{max-width:64ch;margin:0 0 9px}
 <section id="trends" class="wrap">
   <div class="shead">
     <span class="snum">06 — Trends</span>
-    <h2>Three measures, one hue, no verdict</h2>
-    <p>This screen reverses an explicit decision in <code>PLAN.md</code> ("no trend charts or history graphs"),
-    so it carries the most regulatory risk in the app. Everything about it is built to stay descriptive.</p>
+    <h2>All eight measures, one hue, no verdict</h2>
+    <p>This screen reverses an explicit decision in <code>PLAN.md</code> (“no trend charts or history
+    graphs”), so it carries the most regulatory risk in the app. Everything about it is built to stay
+    descriptive.</p>
+    <p><strong>Why eight and not three.</strong> Today's headline has to choose, because a phone is 393 pt
+    wide and four figures is what fits. Trends has no such constraint: a small multiple costs vertical space
+    and nothing else, and scrolling is free. Charting only energy, protein and fibre was therefore a judgement
+    about which nutrients deserve a chart, wearing a width constraint's clothes. All eight are here, in the
+    app's own order — energy, then protein, carbohydrates and total fat, then saturated fat, fibre, sugar and
+    sodium.</p>
     <p><strong>On colour.</strong> The brand has one accent and the design rule says nutrient values are never
-    tinted — so a three-series rainbow was never available, and neither was tangerine on the data. Energy,
-    protein and fibre are drawn as <strong>small multiples</strong>: three charts, one measure each, one axis
-    each, a single warm-graphite ink. No dual axes, no legend (a single series needs none), no series colour at
-    all. Tangerine appears exactly once, on the selected range — the only thing on the screen you can operate.
-    The coverage strip is the one place with more than one class, and it uses an ordinal ramp of the same hue,
-    validated light and dark, not a second colour.</p>
+    tinted, so a rainbow was never available and neither was tangerine on the data. The eight are
+    <strong>small multiples</strong>: one measure per chart, one axis per chart, one warm-graphite ink. No dual
+    axes, no legend (a single series needs none), no series colour anywhere. Eight charts in eight hues would
+    have been the obvious failure; eight charts in one hue is the whole answer. Tangerine appears exactly
+    once, on the selected range — the only thing on screen you can operate. The coverage strip is the one
+    place with more than one class, and it is an ordinal ramp of the same hue, validated light and dark.</p>
+    <p><strong>How to read them</strong> is itself a finding, and it is in the caption below rather than on the
+    screen, because a note telling the user which of their own numbers to trust is one short step from telling
+    them what to do about it.</p>
   </div>
 
   <div class="rail">
 
-    <figure class="mock" style="grid-column:span 1">
+    <figure class="mock">
       <div class="phone"><div class="screen" data-ios="auto">
         <div class="island"></div>
         <div class="statusbar"><span>21:18</span><span class="right">
@@ -1749,6 +1864,7 @@ footer p{max-width:64ch;margin:0 0 9px}
             <button type="button" data-range="m" aria-pressed="false">Month</button>
             <button type="button" data-range="q" aria-pressed="true">Quarter</button>
           </div>
+          <p class="basis-line" id="s-basis">—</p>
 
           <div class="chart-card">
             <div class="chart-head"><span class="chart-title">Energy</span><span class="chart-now" id="n-e">—</span></div>
@@ -1756,7 +1872,6 @@ footer p{max-width:64ch;margin:0 0 9px}
             <div class="chart" id="c-e"></div>
             <div class="tip" id="tip-e"></div>
           </div>
-
           <div class="chart-card">
             <div class="chart-head"><span class="chart-title">Data</span><span class="chart-now" id="n-c">—</span></div>
             <p class="chart-sub" id="s-c">—</p>
@@ -1768,22 +1883,16 @@ footer p{max-width:64ch;margin:0 0 9px}
               <span><i style="background:transparent;box-shadow:inset 0 0 0 1px var(--c-axis)"></i>Nothing logged</span>
             </div>
           </div>
-
           <div class="chart-card">
             <div class="chart-head"><span class="chart-title">Protein</span><span class="chart-now" id="n-p">—</span></div>
             <p class="chart-sub" id="s-p">—</p>
             <div class="chart" id="c-p"></div>
           </div>
-
           <div class="chart-card">
-            <div class="chart-head"><span class="chart-title">Fibre</span><span class="chart-now" id="n-f">—</span></div>
-            <p class="chart-sub" id="s-f">—</p>
-            <div class="chart" id="c-f"></div>
+            <div class="chart-head"><span class="chart-title">Carbohydrates</span><span class="chart-now" id="n-ca">—</span></div>
+            <p class="chart-sub" id="s-ca">—</p>
+            <div class="chart" id="c-ca"></div>
           </div>
-
-          <p class="footnote" style="padding:10px 4px 0">Days with nothing logged are left out of the mean
-          rather than counted as zero. Days you accepted from your usual day are in it, and every mean says
-          how many.</p>
         </div></div>
         <div class="tabbar">
           <span class="tab"><svg><use href="#i-list"/></svg>Today</span>
@@ -1794,25 +1903,101 @@ footer p{max-width:64ch;margin:0 0 9px}
         <div class="home"></div>
       </div></div>
       <figcaption>
-        <p class="cap-title">Trends, live <span class="tag">06</span></p>
-        <p class="cap">The range switcher works; so does the crosshair on the energy chart, which reports the
-        day's value <em>and</em> its coverage state together, because on this screen those are the same
-        question. Three things to look at. First, <b>the rolling mean breaks wherever fewer than four of the
-        seven days in its window have data</b> — it does not bridge the gap. The four blank days in August are
-        a hole in the line, not a dip toward zero and not a straight segment drawn across; a bridged line would
-        be the app asserting a figure for days it knows nothing about. Second, <b>the range is Month or
-        Quarter and nothing shorter</b>: a seven-day mean cannot be drawn over seven days, so a Week tab could
-        only have shown a different statistic behind a control that looks like a zoom. Third, <b>every mean
-        says what it is made of</b> — “mean of 67 complete days, 7 partial, 7 assumed” — as a named count, never
-        as a fraction or a percentage.
-        A user-set reference line is permitted, and energy is drawn here with one set: a neutral hairline,
-        its value in plain ink, labelled “your reference”. It is off until the user sets it, it is never
-        suggested, and it is never called a target or a goal.</p>
-        <p class="omit"><span class="lbl">Left out</span> Red and green, up/down arrows, percentage change,
-        a Week range, a coverage percentage, a ratio of any kind, “best week”, any shading of a region as good
-        or bad, and any axis that starts somewhere flattering.
-        Also left out: a second series on any chart, and carbs, fat, sugar, sodium and saturated fat — five
-        more charts would make this a dashboard, and a dashboard invites interpretation.</p>
+        <p class="cap-title">Trends, top of the screen <span class="tag">06a</span></p>
+        <p class="cap">The range switcher and the crosshair both work; drag across the energy chart. Four
+        things to look at here. First, <b>the rolling mean breaks wherever fewer than four of the seven days in
+        its window have data</b> — it does not bridge. The four blank days in August are a hole in the line,
+        not a dip toward zero and not a segment drawn across, because a bridged line would assert figures the
+        app does not have. Second, <b>the range is Month or Quarter and nothing shorter</b>: a seven-day mean
+        cannot be drawn over seven days, so a Week tab could only have shown a different statistic behind a
+        control that looks like a zoom. Third, the basis is <b>stated once, above everything</b> — “Means cover
+        67 complete days, 7 partial and 7 assumed” — rather than repeated under eight charts, where eight
+        copies of one sentence would read as decoration. It is a named count and never a share.</p>
+        <p class="cap">Fourth, and the thing I changed my mind about: <b>the coverage strip stays second, not
+        last.</b> With three charts its position hardly mattered. With eight, putting it at the bottom means a
+        reader meets every line in the app before learning what the lines are made of — and the one conclusion
+        this screen must not produce is a confident reading of a sparse month. So it sits directly under
+        Energy, where it is the second thing read.</p>
+        <p class="omit"><span class="lbl">Left out</span> Red and green, up and down arrows, percentage
+        change, a Week range, a coverage percentage, a ratio of any kind, “best week”, shading of any region as
+        good or bad, and any axis that starts somewhere flattering. Also left out: a coverage strip per chart.
+        Coverage is a property of the day, not of the nutrient, so it is drawn once.</p>
+      </figcaption>
+    </figure>
+
+    <figure class="mock">
+      <div class="phone"><div class="screen" data-ios="auto">
+        <div class="island"></div>
+        <div class="statusbar"><span>21:18</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="navbar">
+          <div class="nav-row"><span class="nav-title">Trends</span><span class="nav-btn plain" style="font-size:13px;color:var(--s-label2)">Quarter</span></div>
+        </div>
+        <div class="content"><div class="scroller">
+          <div class="card" style="height:30px;border-radius:0 0 13px 13px;margin-bottom:10px"></div>
+          <div class="chart-card">
+            <div class="chart-head"><span class="chart-title">Total fat</span><span class="chart-now" id="n-fa">—</span></div>
+            <p class="chart-sub" id="s-fa">—</p>
+            <div class="chart" id="c-fa"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-head"><span class="chart-title">Saturated fat</span><span class="chart-now" id="n-sf">—</span></div>
+            <p class="chart-sub" id="s-sf">—</p>
+            <div class="chart" id="c-sf"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-head"><span class="chart-title">Fibre</span><span class="chart-now" id="n-fb">—</span></div>
+            <p class="chart-sub" id="s-fb">—</p>
+            <div class="chart" id="c-fb"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-head"><span class="chart-title">Sugar</span><span class="chart-now" id="n-su">—</span></div>
+            <p class="chart-sub" id="s-su">—</p>
+            <div class="chart" id="c-su"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-head"><span class="chart-title">Sodium</span><span class="chart-now" id="n-so">—</span></div>
+            <p class="chart-sub" id="s-so">—</p>
+            <div class="chart" id="c-so"></div>
+          </div>
+          <p class="footnote" style="padding:10px 4px 0">Days with nothing logged are left out of the mean
+          rather than counted as zero. Days you accepted from your usual day are in it, and the line at the top
+          of this screen says how many.</p>
+        </div></div>
+        <div class="tabbar">
+          <span class="tab"><svg><use href="#i-list"/></svg>Today</span>
+          <span class="tab on"><svg><use href="#i-chart"/></svg>Trends</span>
+          <span class="tab"><svg><use href="#i-book"/></svg>Library</span>
+          <span class="tab"><svg><use href="#i-gear"/></svg>Settings</span>
+        </div>
+        <div class="home"></div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">Trends, scrolled <span class="tag">06b</span></p>
+        <p class="cap">The same screen, further down — the cropped card at the top edge is the tail of
+        Carbohydrates. Five more measures, identical form: same hue, same rolling mean, same break rule, same
+        axis treatment, each on its own scale. When the title bar collapses, the active range moves into it, so
+        the reader always knows what window they are looking at without scrolling back.</p>
+        <p class="cap"><b>Sugar carries a caveat on the screen, not in a help page.</b> Ciqual and the BLS
+        publish <i>total</i> sugars — fruit and lactose included — and no permissively licensed table separates
+        free or added sugar, so a day of fruit and yoghurt reads high on the line most people assume is about
+        sweets. The subtitle therefore says “total sugars, including those naturally present”, every time, for
+        everyone. It is also the chart most likely to attract a verdict, which is exactly why it gets the
+        plainest treatment on the screen: no reference line, no annotation, no commentary.</p>
+        <p class="cap"><b>How to read the eight</b>, which belongs in this document and not in the app:
+        energy, carbohydrates and total fat are the most trustworthy lines, because they are spread across
+        nearly everything a person eats, so a portion bucket one step off is diluted. Protein and saturated fat
+        are noisier. <b>Fibre, sugar and sodium are the noisiest</b> — each concentrates in a few foods, so one
+        bucket decides a large share of the day — and should be read as a trend over weeks, never as a single
+        day. That ordering is about measurement, not nutrition, and it is the reason none of these charts
+        annotates a point.</p>
+        <p class="omit"><span class="lbl">Left out</span> Any mark on a chart saying it is less reliable than
+        another — a dotted line, a wider band, a disclaimer badge. The ranking above is a reader's note, and
+        putting it on screen would have the app grading its own evidence in front of the user, which is one
+        step from grading the user. Also left out: a second series on any chart, and any chart combining two
+        measures to save space.</p>
       </figcaption>
     </figure>
 
@@ -1835,8 +2020,15 @@ footer p{max-width:64ch;margin:0 0 9px}
             <div class="totals">
               <div class="energy" style="color:var(--s-label2)">— <small>kcal</small></div>
               <div class="pair">
-                <div><span class="lbl">Protein</span><span class="fig" style="color:var(--s-label2)">—</span></div>
-                <div><span class="lbl">Fibre</span><span class="fig" style="color:var(--s-label2)">—</span></div>
+                <div><span class="lbl">Protein</span><span class="fig" style="color:var(--s-label2)">— <b>g</b></span></div>
+                <div><span class="lbl">Carbs</span><span class="fig" style="color:var(--s-label2)">— <b>g</b></span></div>
+                <div><span class="lbl">Fat</span><span class="fig" style="color:var(--s-label2)">— <b>g</b></span></div>
+              </div>
+              <div class="minor">
+                <div><span class="lbl">Sat. fat</span><span class="fig" style="color:var(--s-label2)">— <b>g</b></span></div>
+                <div><span class="lbl">Fibre</span><span class="fig" style="color:var(--s-label2)">— <b>g</b></span></div>
+                <div><span class="lbl">Sugar</span><span class="fig" style="color:var(--s-label2)">— <b>g</b></span></div>
+                <div><span class="lbl">Sodium</span><span class="fig" style="color:var(--s-label2)">— <b>mg</b></span></div>
               </div>
               <p class="coverage-line">Nothing logged on this day.</p>
             </div>
@@ -1930,11 +2122,13 @@ footer p{max-width:64ch;margin:0 0 9px}
   </div>
 
   <details class="data">
-    <summary>Values behind the Trends charts — last 21 days</summary>
+    <summary>Values behind the Trends charts — all eight measures, last 21 days</summary>
     <div class="tbl-wrap">
       <table id="data-table">
         <thead><tr><th scope="col">Day</th><th scope="col">Coverage</th><th scope="col">Energy kcal</th>
-          <th scope="col">Protein g</th><th scope="col">Fibre g</th><th scope="col">7-day energy</th></tr></thead>
+          <th scope="col">Protein g</th><th scope="col">Carbs g</th><th scope="col">Fat g</th>
+          <th scope="col">Sat. fat g</th><th scope="col">Fibre g</th><th scope="col">Sugar g</th>
+          <th scope="col">Sodium mg</th><th scope="col">7-day energy</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -1970,7 +2164,14 @@ footer p{max-width:64ch;margin:0 0 9px}
               <div class="energy">1,412 <small>kcal</small></div>
               <div class="pair">
                 <div><span class="lbl">Protein</span><span class="fig">71 <b>g</b></span></div>
+                <div><span class="lbl">Carbs</span><span class="fig">162 <b>g</b></span></div>
+                <div><span class="lbl">Fat</span><span class="fig">53 <b>g</b></span></div>
+              </div>
+              <div class="minor">
+                <div><span class="lbl">Sat. fat</span><span class="fig">20 <b>g</b></span></div>
                 <div><span class="lbl">Fibre</span><span class="fig">18 <b>g</b></span></div>
+                <div><span class="lbl">Sugar</span><span class="fig">41 <b>g</b></span></div>
+                <div><span class="lbl">Sodium</span><span class="fig">1,510 <b>mg</b></span></div>
               </div>
               <p class="coverage-line">Breakfast and lunch logged. Dinner assumed from your usual Thursday.
               No snack logged.</p>
@@ -2056,8 +2257,17 @@ footer p{max-width:64ch;margin:0 0 9px}
         <div class="content"><div class="scroller" style="opacity:.5">
           <div class="card"><div class="totals">
             <div class="energy">392 <small>kcal</small></div>
-            <div class="pair"><div><span class="lbl">Protein</span><span class="fig">14 <b>g</b></span></div>
-            <div><span class="lbl">Fibre</span><span class="fig">7 <b>g</b></span></div></div>
+            <div class="pair">
+              <div><span class="lbl">Protein</span><span class="fig">14 <b>g</b></span></div>
+              <div><span class="lbl">Carbs</span><span class="fig">55 <b>g</b></span></div>
+              <div><span class="lbl">Fat</span><span class="fig">11 <b>g</b></span></div>
+            </div>
+            <div class="minor">
+              <div><span class="lbl">Sat. fat</span><span class="fig">4 <b>g</b></span></div>
+              <div><span class="lbl">Fibre</span><span class="fig">7 <b>g</b></span></div>
+              <div><span class="lbl">Sugar</span><span class="fig">22 <b>g</b></span></div>
+              <div><span class="lbl">Sodium</span><span class="fig">180 <b>mg</b></span></div>
+            </div>
           </div></div>
         </div></div>
         <div class="sheet-dim"></div>
@@ -2242,18 +2452,18 @@ footer p{max-width:64ch;margin:0 0 9px}
         <p class="sd">Tap Trends. Opens on Quarter, the range the premise is written for.</p>
         <span class="sc">1 tap · <em>0.5 s</em></span></div>
       <div class="step"><span class="sn">02</span><span class="sw">Energy + Data</span>
-        <p class="sd">Reads the line and then, immediately under it, which days it is made of.</p>
+        <p class="sd">Reads the energy line and then, immediately under it, which days it is made of.</p>
         <span class="sc">0 taps · <em>8.5 s</em></span></div>
       <div class="step"><span class="sn">03</span><span class="sw">Range</span>
         <p class="sd">Tap Month. Same form, 30 days, subtitle renames what the mean is made of.</p>
         <span class="sc">1 tap · <em>0.7 s</em></span></div>
       <div class="step"><span class="sn">04</span><span class="sw">Protein, Fibre</span>
-        <p class="sd">Scrolls past two more small multiples on their own axes.</p>
+        <p class="sd">Scrolls past seven more small multiples, each on its own axis.</p>
         <span class="sc">0 taps · <em>7.2 s</em></span></div>
     </div>
-    <p class="j-note">What the user can conclude, and nothing more: energy has sat near 2,300 for six weeks;
-    protein near 97 g; fibre moves more than either and its low stretches line up with the weeks that have
-    gaps. <b>The app states none of that.</b> The Data chart sits directly beneath Energy rather than at the
+    <p class="j-note">What the user can conclude, and nothing more: energy has sat near 2,270 for six weeks;
+    carbohydrate and fat have moved with it and protein near 95 g; fibre, sugar and sodium move more than any
+    of those, and their low stretches line up with the weeks that have gaps. <b>The app states none of that.</b> The Data chart sits directly beneath Energy rather than at the
     bottom of the screen precisely so that the second thing read after a trend is what the trend is made of —
     without it the user draws a conclusion about August from four days of data. There is no Week range to drop
     into, so there is no point at which the chart quietly stops being a rolling mean.</p>
@@ -2381,20 +2591,29 @@ footer p{max-width:64ch;margin:0 0 9px}
       <span class="drawn">Where to see it</span><p style="margin:0">Screens 03a–03e are the tier system under
       increasing load; the count sits above the Log button on each.</p></div>
 
-    <div class="brk"><span class="n">BREAK 03 <span class="st">Accepted limitation</span></span>
-      <h3>Fibre survives ±20% as a day total and does not survive it as a trend</h3>
+    <div class="brk"><span class="n">BREAK 03 <span class="st">Reframed</span></span>
+      <h3>The eight lines are not equally trustworthy, and the reason is portion bias</h3>
       <p>Energy at ±15–20% is fine: a 400 kcal error on 2,300 moves the 7-day line by 57 kcal, inside the
-      noise. Fibre does not behave that way. A single lentil portion is 8–10 g of fibre, a third of a typical
-      day, so one bucket chosen wrong moves the day by 12% and a week of the same habit moves the rolling
-      average by more than the signal anyone is looking for.</p>
-      <p>The brief names energy, protein and fibre as co-equal headlines. On the evidence of drawing the
-      chart, <b>they are not co-equal</b>: the fibre chart is the one where the rolling mean is mostly
-      reporting bucket choices.</p>
-      <p class="how"><b>Accepted as a known limitation.</b> Fibre stays in the headline, and this entry is on
-      record as the reason it is the first thing to cut if the headline ever has to shrink. The thing to watch
-      is <b>bias, not noise</b>: a monthly mean dilutes a user who guesses high one day and low the next, and
-      does nothing at all about a user who guesses high every day. If the fibre line sits consistently above
-      or below what a weighed week says, that is bucket bias and no amount of averaging will remove it.</p></div>
+      noise. Not every measure behaves that way, and the thing that decides which do is <b>how widely the
+      nutrient is spread across what a person eats</b>. Carbohydrate and total fat are in nearly everything, so
+      a portion bucket one step off is diluted across the day. Fibre, sugar and sodium concentrate in a few
+      foods — one lentil portion is 8–10 g of fibre, a third of a typical day — so one bucket decides a large
+      share of the figure.</p>
+      <p>I originally read this as an argument for cutting fibre from the headline. That was wrong, and so was
+      the frame around it: fibre was only ever competing for a <i>scarce slot</i>, and once Trends charts all
+      eight there is no scarcity to compete for. The ordering is not a cut list. It is a reading note.</p>
+      <p class="how"><b>Reframed and accepted.</b> All eight are charted. Energy, carbohydrates and total fat
+      are the most trustworthy lines; protein and saturated fat are noisier; <b>fibre, sugar and sodium are the
+      noisiest and should be read as a trend over weeks, never as a single day.</b> That note lives in this
+      document and in screen 06b's caption, deliberately not on the screen — an app that annotates which of
+      the user's own numbers to trust is a step away from telling them what to do about it.</p>
+      <p class="how"><b>What to actually watch is bias, not noise.</b> A monthly mean dilutes a user who
+      guesses high one day and low the next, and does nothing whatever about a user who guesses the same
+      direction every time. If the fibre or sodium line sits consistently above or below what a weighed week
+      says, that is bucket bias, and no amount of averaging will remove it. Noise is a reading problem; bias is
+      a product problem, and only the second one is worth instrumenting.</p>
+      <span class="drawn">Where to see it</span><p style="margin:0">Screens 06a and 06b; the reading note is in
+      06b's caption.</p></div>
 
     <div class="brk"><span class="n">BREAK 04 <span class="st">Settled</span></span>
       <h3>“Incompleteness is first-class” and “no judgement” pull in opposite directions</h3>
@@ -2514,7 +2733,9 @@ footer p{max-width:64ch;margin:0 0 9px}
   — so names read as “Apfel, mit Schale, roh” rather than as brands. Nutrient values are rounded from those
   tables: oats ≈ 370 kcal/100 g, banana ≈ 90, black coffee ≈ 2, rye bread ≈ 230, butter ≈ 750, linseed oil
   ≈ 884. The 90 days of Trends data are synthetic and clearly marked as a sample; nothing here is anyone's
-  record.</p>
+  record. Its macronutrients are generated so that protein, carbohydrate and fat account for the day's energy
+  rather than being drawn independently, and sugar is a share of carbohydrate, so the eight lines move
+  together the way real days do. Sugar figures are total sugars throughout.</p>
   <p>Chart palette: a single warm-graphite hue. The coverage strip is a three-step ordinal ramp of that hue
   — complete, partial, assumed — plus an empty track for a day with nothing, validated against the card
   surface in both appearances (monotone lightness, adjacent gaps clear, light end 2.15:1 on the light card and
@@ -2547,11 +2768,14 @@ footer p{max-width:64ch;margin:0 0 9px}
 
 /* ───────────────────────────────── trends ──────────────────────────────── */
 (function(){
-/* 90 days of synthetic data: [MM-DD, coverage l|a|n, kcal, protein g, fibre g] */
-const DAYS = [["07-06","c",2370,114,32],["07-07","c",2310,113,28],["07-08","a",2180,99,26],["07-09","c",2310,106,29],["07-10","c",2470,93,14],["07-11","e",null,null,null],["07-12","c",2820,89,25],["07-13","p",2030,121,29],["07-14","c",2460,88,31],["07-15","a",2180,99,26],["07-16","c",1960,87,23],["07-17","c",2280,80,26],["07-18","c",2740,106,16],["07-19","p",2550,90,14],["07-20","c",2370,95,26],["07-21","c",2210,82,29],["07-22","c",2040,85,22],["07-23","c",2480,73,18],["07-24","a",2180,99,26],["07-25","c",2520,81,16],["07-26","e",null,null,null],["07-27","c",2400,102,28],["07-28","p",2190,92,26],["07-29","c",2410,111,29],["07-30","c",2500,83,29],["07-31","c",2040,82,35],["08-01","c",2520,98,22],["08-02","c",2610,82,20],["08-03","e",null,null,null],["08-04","c",1980,111,34],["08-05","c",2080,85,20],["08-06","a",2180,99,26],["08-07","c",1890,94,28],["08-08","c",2520,93,23],["08-09","c",2570,91,22],["08-10","c",2360,106,37],["08-11","c",2250,105,29],["08-12","c",2100,104,36],["08-13","c",1590,94,26],["08-14","p",2080,108,28],["08-15","e",null,null,null],["08-16","c",2320,84,21],["08-17","e",null,null,null],["08-18","e",null,null,null],["08-19","e",null,null,null],["08-20","e",null,null,null],["08-21","c",2120,89,24],["08-22","c",2540,69,20],["08-23","a",2440,91,22],["08-24","c",2140,108,18],["08-25","c",1970,98,27],["08-26","c",2190,98,34],["08-27","c",1670,109,40],["08-28","c",2140,101,30],["08-29","p",2530,108,31],["08-30","c",2180,78,14],["08-31","a",2180,99,26],["09-01","c",1800,109,35],["09-02","c",2370,66,22],["09-03","c",2320,98,23],["09-04","p",2470,122,27],["09-05","c",2320,110,21],["09-06","c",2320,89,37],["09-07","c",2230,69,24],["09-08","c",2480,81,27],["09-09","c",2350,100,33],["09-10","c",2070,102,30],["09-11","c",2060,75,20],["09-12","c",2680,83,15],["09-13","e",null,null,null],["09-14","c",2120,99,26],["09-15","c",2300,112,25],["09-16","c",1890,83,25],["09-17","c",2410,109,26],["09-18","c",2370,82,26],["09-19","c",2650,84,17],["09-20","c",2260,86,16],["09-21","c",1640,103,22],["09-22","c",1730,98,33],["09-23","c",2250,93,30],["09-24","a",2180,99,26],["09-25","c",2280,72,31],["09-26","c",2740,108,31],["09-27","c",2550,123,17],["09-28","c",2340,103,23],["09-29","c",1970,98,28],["09-30","c",2370,115,27],["10-01","c",2390,100,21],["10-02","p",1990,122,25],["10-03","c",2580,97,31]];
+/* 90 days of synthetic sample data. Each row is
+   [MM-DD, coverage c|p|a|e, kcal, protein, carbohydrate, fat, saturated fat,
+    fibre, total sugars (g), sodium (mg)]. Accepted-baseline days carry that
+   weekday's usual figures exactly, which is why they sit flat. */
+const DAYS = [["07-06","c",2370,114,274,91,32,32,95,1660],["07-07","c",2310,113,275,84,24,28,75,2260],["07-08","a",2180,99,258,84,27,26,61,2150],["07-09","c",2310,106,282,84,32,29,56,2090],["07-10","c",2470,93,327,88,33,14,61,2320],["07-11","e",null,null,null,null,null,null,null,null],["07-12","c",2820,89,399,97,40,25,119,1970],["07-13","p",2030,121,198,84,29,29,38,1990],["07-14","c",2460,88,283,109,33,31,52,1710],["07-15","a",2180,99,258,84,27,26,61,2150],["07-16","c",1960,87,253,67,23,23,75,2250],["07-17","c",2280,80,284,91,33,26,74,1890],["07-18","c",2740,106,376,90,35,16,116,3590],["07-19","p",2550,90,303,108,32,14,70,2800],["07-20","c",2370,95,282,96,38,26,70,2460],["07-21","c",2210,82,303,74,29,29,55,2380],["07-22","c",2040,85,245,80,33,22,62,3040],["07-23","c",2480,73,285,117,42,18,91,2130],["07-24","a",2180,99,258,84,27,26,61,2150],["07-25","c",2520,81,306,108,45,16,97,2330],["07-26","e",null,null,null,null,null,null,null,null],["07-27","c",2400,102,262,105,31,28,52,2850],["07-28","p",2190,92,244,94,33,26,64,2430],["07-29","c",2410,111,264,101,38,29,54,2020],["07-30","c",2500,83,308,104,31,29,70,1990],["07-31","c",2040,82,276,67,26,35,65,2370],["08-01","c",2520,98,301,103,41,22,89,1960],["08-02","c",2610,82,299,121,51,20,65,2110],["08-03","e",null,null,null,null,null,null,null,null],["08-04","c",1980,111,214,76,23,34,41,2870],["08-05","c",2080,85,227,92,32,20,51,1820],["08-06","a",2180,99,258,84,27,26,61,2150],["08-07","c",1890,94,217,72,30,28,58,1910],["08-08","c",2520,93,317,98,39,23,67,2670],["08-09","c",2570,91,344,92,28,22,74,2910],["08-10","c",2360,106,297,83,34,37,64,2980],["08-11","c",2250,105,272,82,27,29,54,1880],["08-12","c",2100,104,217,91,38,36,48,2060],["08-13","c",1590,94,190,51,18,26,44,1840],["08-14","p",2080,108,220,85,32,28,42,2220],["08-15","e",null,null,null,null,null,null,null,null],["08-16","c",2320,84,312,82,29,21,72,2680],["08-17","e",null,null,null,null,null,null,null,null],["08-18","e",null,null,null,null,null,null,null,null],["08-19","e",null,null,null,null,null,null,null,null],["08-20","e",null,null,null,null,null,null,null,null],["08-21","c",2120,89,282,71,21,24,52,2100],["08-22","c",2540,69,293,121,35,20,72,2600],["08-23","a",2440,91,296,95,31,22,72,2420],["08-24","c",2140,108,252,78,22,18,62,3060],["08-25","c",1970,98,237,70,26,27,68,1400],["08-26","c",2190,98,238,94,25,34,44,2700],["08-27","c",1670,109,199,49,13,40,59,1800],["08-28","c",2140,101,251,81,31,30,60,2320],["08-29","p",2530,108,308,96,36,31,105,2150],["08-30","c",2180,78,286,80,30,14,92,2490],["08-31","a",2180,99,258,84,27,26,61,2150],["09-01","c",1800,109,207,60,24,35,70,1950],["09-02","c",2370,66,299,101,39,22,100,1620],["09-03","c",2320,98,272,94,33,23,79,1890],["09-04","p",2470,122,258,105,38,27,93,2640],["09-05","c",2320,110,265,91,34,21,75,1690],["09-06","c",2320,89,281,93,37,37,55,2150],["09-07","c",2230,69,290,88,30,24,64,2050],["09-08","c",2480,81,328,94,32,27,95,2430],["09-09","c",2350,100,249,106,33,33,75,2000],["09-10","c",2070,102,224,85,24,30,77,1910],["09-11","c",2060,75,279,71,22,20,84,1770],["09-12","c",2680,83,316,121,40,15,103,2890],["09-13","e",null,null,null,null,null,null,null,null],["09-14","c",2120,99,243,84,30,26,58,1710],["09-15","c",2300,112,245,97,33,25,81,2530],["09-16","c",1890,83,250,62,19,25,53,1610],["09-17","c",2410,109,283,94,29,26,62,1650],["09-18","c",2370,82,296,95,29,26,98,2450],["09-19","c",2650,84,375,91,30,17,73,2990],["09-20","c",2260,86,247,103,38,16,70,2320],["09-21","c",1640,103,170,61,24,22,31,2450],["09-22","c",1730,98,172,72,28,33,38,2500],["09-23","c",2250,93,249,98,26,30,73,1590],["09-24","a",2180,99,258,84,27,26,61,2150],["09-25","c",2280,72,300,88,34,31,106,2350],["09-26","c",2740,108,350,101,29,31,93,2180],["09-27","c",2550,123,296,97,36,17,63,2210],["09-28","c",2340,103,264,97,31,23,81,1570],["09-29","c",1970,98,243,67,22,28,78,2080],["09-30","c",2370,115,304,77,21,27,106,2110],["10-01","c",2390,100,285,94,34,21,98,1930],["10-02","p",1990,122,211,73,26,25,71,2440],["10-03","c",2580,97,315,104,38,31,68,1180]];
 
 const MONTH = {'07':'Jul','08':'Aug','09':'Sep','10':'Oct'};
-const W = 316, PAD_L = 30, PAD_R = 10, PAD_T = 8;
+const W = 316, PAD_L = 34, PAD_R = 10, PAD_T = 8;
 
 function fmt(n){ return n == null ? '—' : n.toLocaleString('en-GB'); }
 
@@ -2695,6 +2919,18 @@ function coverage(states){
 var DATA_SLICE = DAYS;
 var geom = null;
 
+/* the eight measures, in the app's own order; col indexes into a DAYS row */
+var SERIES = [
+  { id: 'p',  col: 3, unit: 'g',  h: 88 },
+  { id: 'ca', col: 4, unit: 'g',  h: 88 },
+  { id: 'fa', col: 5, unit: 'g',  h: 88 },
+  { id: 'sf', col: 6, unit: 'g',  h: 88 },
+  { id: 'fb', col: 7, unit: 'g',  h: 88 },
+  { id: 'su', col: 8, unit: 'g',  h: 88,
+    note: 'total sugars, including those naturally present' },
+  { id: 'so', col: 9, unit: 'mg', h: 88 }
+];
+
 function render(range){
   var n = range === 'm' ? 30 : 90;
   var period = range === 'm' ? 'this month' : 'this quarter';
@@ -2703,9 +2939,6 @@ function render(range){
 
   var labels = slice.map(function(r){ return r[0]; });
   var states = slice.map(function(r){ return r[1]; });
-  var e = slice.map(function(r){ return r[2]; });
-  var p = slice.map(function(r){ return r[3]; });
-  var f = slice.map(function(r){ return r[4]; });
 
   function count(k){ return states.filter(function(s){ return s === k; }).length; }
   var complete = count('c'), partial = count('p'), assumed = count('a'), empty = count('e');
@@ -2713,33 +2946,40 @@ function render(range){
   function meanOf(a){ var v = a.filter(function(x){ return x != null; });
     return v.length ? v.reduce(function(s, x){ return s + x; }, 0) / v.length : null; }
   function lastOf(a){ for (var i = a.length - 1; i >= 0; i--) if (a[i] != null) return a[i]; return null; }
+  function plural(k, w){ return k + ' ' + w + (k === 1 ? '' : 's'); }
 
-  /* An average says what it is made of, and names days rather than dividing them. */
-  var basis = 'mean of ' + complete + ' complete ' + (complete === 1 ? 'day' : 'days') +
-              (partial ? ', ' + partial + ' partial' : '') +
-              (assumed ? ', ' + assumed + ' assumed' : '');
+  /* The basis is stated once for the whole screen, as named days and never as a
+     share, rather than repeated under each of the eight charts. */
+  document.getElementById('s-basis').textContent =
+    'Means cover ' + plural(complete, 'complete day') +
+    (partial ? ', ' + partial + ' partial' : '') +
+    (assumed ? ' and ' + assumed + ' assumed' : '') + '.';
 
-  var re = rolling(e, 7, 4), rp = rolling(p, 7, 4), rf = rolling(f, 7, 4);
+  /* energy: the crosshair and the one neutral user-set reference line live here */
+  var e = slice.map(function(r){ return r[2]; });
+  var re = rolling(e, 7, 4);
   var g = lineChart(re, { h: 126, labels: labels, ref: 2200,
                           alt: 'Seven-day rolling mean energy over ' + n + ' days' });
   document.getElementById('c-e').innerHTML = g.svg;
   geom = g;
   document.getElementById('n-e').textContent = fmt(Math.round(lastOf(re))) + ' kcal';
-  document.getElementById('s-e').textContent = '7-day rolling mean · ' + basis;
+  document.getElementById('s-e').textContent = '7-day rolling mean, kilocalories';
 
-  document.getElementById('c-p').innerHTML =
-    lineChart(rp, { h: 88, labels: labels, alt: 'Seven-day rolling mean protein over ' + n + ' days' }).svg;
-  document.getElementById('c-f').innerHTML =
-    lineChart(rf, { h: 88, labels: labels, alt: 'Seven-day rolling mean fibre over ' + n + ' days' }).svg;
-  document.getElementById('s-p').textContent = '7-day rolling mean, grams · ' + basis;
-  document.getElementById('s-f').textContent = '7-day rolling mean, grams · ' + basis;
-  document.getElementById('n-p').textContent = fmt(Math.round(meanOf(p))) + ' g';
-  document.getElementById('n-f').textContent = fmt(Math.round(meanOf(f))) + ' g';
+  SERIES.forEach(function(m){
+    var v = slice.map(function(r){ return r[m.col]; });
+    document.getElementById('c-' + m.id).innerHTML =
+      lineChart(rolling(v, 7, 4), { h: m.h, labels: labels,
+        alt: 'Seven-day rolling mean over ' + n + ' days, in ' + m.unit }).svg;
+    document.getElementById('n-' + m.id).textContent = fmt(Math.round(meanOf(v))) + ' ' + m.unit;
+    document.getElementById('s-' + m.id).textContent =
+      '7-day rolling mean, ' + (m.unit === 'mg' ? 'milligrams' : 'grams') +
+      (m.note ? ' · ' + m.note : '');
+  });
 
   document.getElementById('c-c').innerHTML = coverage(states).svg;
   document.getElementById('n-c').textContent = complete + ' complete';
   document.getElementById('s-c').textContent =
-    complete + ' complete ' + (complete === 1 ? 'day ' : 'days ') + period +
+    plural(complete, 'complete day') + ' ' + period +
     (partial ? ', ' + partial + ' partial' : '') +
     (assumed ? ', ' + assumed + ' assumed' : '') +
     (empty ? ', ' + empty + ' with nothing logged' : '');
@@ -2799,9 +3039,10 @@ document.querySelectorAll('.ios-seg button').forEach(function(b){
   DAYS.slice(-21).forEach(function(r, k){
     var i = DAYS.length - 21 + k;
     var tr = document.createElement('tr');
+    var cells = '';
+    for (var c = 2; c <= 9; c++) cells += '<td>' + fmt(r[c]) + '</td>';
     tr.innerHTML = '<td>' + r[0].slice(3) + ' ' + (MONTH[r[0].slice(0, 2)] || '') + '</td>' +
-      '<td>' + COV[r[1]] + '</td>' +
-      '<td>' + fmt(r[2]) + '</td><td>' + fmt(r[3]) + '</td><td>' + fmt(r[4]) + '</td>' +
+      '<td>' + COV[r[1]] + '</td>' + cells +
       '<td>' + (re[i] == null ? '—' : fmt(Math.round(re[i]))) + '</td>';
     tb.appendChild(tr);
   });
