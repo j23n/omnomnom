@@ -27,7 +27,8 @@ The motivating target is the redesigned Health app's Longevity tab, which scores
 | Input | One line of text or speech is the primary path; search, barcode and photo all remain |
 | Amounts | Portion buckets against the last amount; grams canonical underneath and still reachable |
 | Trends | In scope as of revision 4: energy, protein and fiber over time, plus data coverage |
-| AI estimation | Opt-in; on-device Foundation Models, with a deterministic parser behind it |
+| On-device AI | Core path, not a module: parses the line and checks each match. Degrades to a deterministic parser and a build-time flag |
+| AI estimation | The photo tier only, opt-in; same model, same prompt, same matcher |
 | Meals | Saved from what was parsed or logged, not built by weighing; `Recipe` in the schema |
 
 Both optional modules degrade to nothing. With no network and no Apple Intelligence, the app still logs food from the bundled database and writes it to Health. That is the load-bearing requirement.
