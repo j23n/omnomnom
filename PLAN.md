@@ -20,7 +20,7 @@ The motivating target is the redesigned Health app's Longevity tab, which scores
 | Distribution | App Store, worldwide, paid upfront |
 | Storage | Local only, no CloudKit, no account; schema kept CloudKit-compatible |
 | Dependencies | None. No third-party packages in the app target |
-| Nutrients | Eight written to Health; energy, protein and fiber are the headline in the app |
+| Nutrients | All eight written to Health and all eight charted; four on the Today headline, and the user picks which |
 | Food data | Bundled generic database from Ciqual and the Bundeslebensmittelschlüssel; FDC readable but not built in |
 | Products | Opt-in; Open Food Facts looked up by barcode or searched by name, cached locally |
 | Visual search | The app's foods appear in the system's visual intelligence results; nothing leaves the device |
@@ -560,15 +560,27 @@ The read-authorization quirk still applies: an empty result is empty, never deni
 
 ### What is drawn
 
-Energy, protein and fiber, each as daily points under a seven-day rolling mean, over a month or a quarter. The rolling mean is the line the eye should follow and the daily points are context. Beneath them a coverage strip, one mark per day, reading complete, partial, assumed or empty.
+All eight, each as daily points under a seven-day rolling mean, over a month or a quarter: energy first, then the four macronutrients, then saturated fat, sugar and sodium. The rolling mean is the line the eye should follow and the daily points are context. Beneath them a coverage strip, one mark per day, reading complete, partial, assumed or empty.
+
+**There is nothing to choose on this screen.** Small multiples cost vertical space and nothing else, and scrolling is free. Today's headline has to pick four because a phone's width forces it; a scrolling chart screen has no such constraint, so limiting it would be a judgement about which nutrients deserve a chart rather than a consequence of anything. "How much fat have I been eating" is exactly the question an overview exists to answer.
 
 **No week range.** A seven-day mean cannot be drawn over seven days, so a week view has to fall back to bare daily columns, which makes one control mean two different things and invites exactly the day-to-day reading this app is not for. A month is the shortest range on which the thing being plotted exists.
 
 **The mean breaks rather than bridging.** A window holding fewer than four of seven days with data draws no point at all, so a gap in the log is a gap in the line. Interpolating across a holiday would invent the one number nobody recorded.
 
-**Fiber is the weakest of the three and is the first to cut.** Energy and protein are spread across most of what a person eats, so a bucket chosen one step too low on one item is diluted by everything else in the day. Fiber is not: a single portion of lentils or wholegrain bread can be a third of a day's total, so one bucket choice moves the fiber figure by more than the ±20 per cent the whole design is built to tolerate, and the trend risks reporting bucket choices rather than diet. It stays in the headline for now because it is also the nutrient a broad-strokes view can most usefully move, and because a rolling mean over a month dilutes unbiased bucket noise. The thing to watch for is *bias* rather than noise — a user who always takes "Usual" when they had more — which averaging does not fix. If the fiber line proves unreadable against its own coverage, it leaves the headline before anything else does.
+**The eight do not all tolerate this design equally, and the screen says so.** A portion bucket is a ±30 per cent decision on one item. How much that matters to a day's total depends entirely on how concentrated the nutrient is in single foods.
 
-The other five nutrients are reachable but not on the first screen. All eight still go to Health in full; the overview is about the three figures a person can act on.
+| Nutrient | Where it comes from | How to read the line |
+| --- | --- | --- |
+| Energy, carbohydrates, total fat | Nearly everything eaten | The most trustworthy lines. One bucket a step too low is diluted by everything else in the day |
+| Protein, saturated fat | A few items carry most of a day | Noisier. Readable over a month, not over three days |
+| Fiber, sugar, sodium | One item can be a third of a day | Noisiest. Read the trend only, never a single day |
+
+This reverses an earlier judgement in this plan, which had promoted fiber into the headline and demoted carbohydrates and fat out of it. The variance argument says the opposite: carbohydrates and fat are among the *best* behaved of the eight under a bucket, and fiber among the worst. Keeping the noisiest figure large while hiding two of the steadiest was backwards.
+
+**The caveat that is not about variance: sugar is total sugar.** Ciqual and the BLS publish total sugars, which includes the fruit and the lactose nobody is usually asking about, and no permissively licensed composition table separates free or added sugar. So a fruit-heavy day reads high on a line most people will read as being about confectionery. That is also the chart most likely to invite the verdict this app does not give. The answer is not to hide it but to label it: the caption says total sugars, including those naturally present, on the screen rather than in a help page.
+
+**Bias, not noise, is the thing to watch across all eight.** A monthly rolling mean dilutes a user who guesses high one day and low the next. It does nothing for one who takes "Usual" every time they actually had more, and no averaging will remove that. If a line sits consistently off what a carefully weighed week says, the bucket defaults are wrong rather than the chart.
 
 ### What trends must not become
 
@@ -643,7 +655,9 @@ Timestamp defaults to now, with the meal slot inferred from time of day and edit
 
 ### Daily totals
 
-Energy, protein and fiber are the headline. The other five sit in a secondary row, still always visible and never behind a tap. Revision 4 moved carbohydrates and fat out of the headline and fiber into it: three figures is what a person can hold in their head, and fiber is the one of the eight that a broad-strokes view actually moves.
+Four figures are the headline, the user chooses which four, and the default is energy, protein, carbohydrates and fat. The other four sit in a secondary row, still always visible and never behind a tap.
+
+The headline is a space constraint and nothing more. Four large figures is what a phone's width holds at the type sizes people actually use, and that is the only reason there is a choice to make. Which four a person wants is not a decision this app is in a position to make for them: someone watching carbohydrates and someone watching fiber are both using it correctly, and a fixed set would simply be wrong for one of them. An earlier revision of this plan fixed the set at energy, protein and fiber and justified it as the figures "a person can act on", which was a judgement about what the user ought to care about dressed up as a layout constraint. The layout constraint is real; the judgement was not ours to make.
 
 A day's totals say how complete they are. A partial day shows its total and the fact that it is partial, in text, with no implication of a shortfall against anything.
 
