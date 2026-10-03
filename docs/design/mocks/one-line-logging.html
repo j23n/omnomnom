@@ -1,0 +1,2638 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Omnomnom one-line logging</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Nunito:wght@700;800&display=swap">
+<style>
+/* ──────────────────────────────────────────────────────────────────────────
+   Layout concept: a single reading column of argued sections; inside each,
+   a responsive rail of 393pt device frames that each carry their own iOS
+   colour scheme, so the document chrome and the mocked app never share tokens.
+   Document voice = serif prose + grotesque headings. App voice = system sans.
+   ────────────────────────────────────────────────────────────────────────── */
+:root{
+  color-scheme: light;
+  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+
+  /* document palette — warm neutrals biased toward the brand tangerine */
+  --paper:      #FAF8F5;
+  --plane:      #FFFFFF;
+  --ink:        #1A1613;
+  --ink-2:      #5C544B;
+  --ink-3:      #8B8279;
+  --rule:       #E6DFD5;
+  --rule-soft:  #F0EBE3;
+  --accent:     #E8641C;
+  --accent-ink: #A8420A;
+
+  /* type roles */
+  --f-head: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-body: "Source Serif 4", Iowan Old Style, Georgia, "Times New Roman", serif;
+  --f-ui:   -apple-system, BlinkMacSystemFont, "SF Pro Text", "Instrument Sans", system-ui, "Segoe UI", Roboto, sans-serif;
+  --f-round:"Nunito", -apple-system, "SF Pro Rounded", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --paper:      #131110;
+    --plane:      #1B1917;
+    --ink:        #F3EEE7;
+    --ink-2:      #ADA49A;
+    --ink-3:      #837A71;
+    --rule:       #2D2926;
+    --rule-soft:  #232120;
+    --accent:     #F0701F;
+    --accent-ink: #F89354;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --paper:      #131110;
+  --plane:      #1B1917;
+  --ink:        #F3EEE7;
+  --ink-2:      #ADA49A;
+  --ink-3:      #837A71;
+  --rule:       #2D2926;
+  --rule-soft:  #232120;
+  --accent:     #F0701F;
+  --accent-ink: #F89354;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font:400 17px/1.6 var(--f-body);
+  font-synthesis-weight:none;
+  overflow-x:hidden;
+}
+img{max-width:100%}
+[hidden]{display:none !important}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+
+.wrap{max-width:1260px;margin:0 auto;padding-inline:20px;padding-block:0}
+
+/* ── masthead ───────────────────────────────────────────────────────────── */
+.masthead{padding-block:56px 36px;border-bottom:1px solid var(--rule)}
+.eyebrow{
+  font:600 11px/1 var(--f-ui);letter-spacing:.14em;text-transform:uppercase;
+  color:var(--accent-ink);margin:0 0 18px;display:flex;align-items:center;gap:9px
+}
+.eyebrow .bite{width:15px;height:15px;color:var(--accent)}
+h1{
+  font:700 clamp(38px,6.2vw,64px)/1.02 var(--f-head);letter-spacing:-.028em;
+  margin:0 0 20px;text-wrap:balance;max-width:16ch
+}
+.lede{font-size:clamp(18px,2.1vw,21px);line-height:1.52;max-width:62ch;margin:0 0 18px;color:var(--ink-2)}
+.lede strong{color:var(--ink);font-weight:600}
+.premise{
+  list-style:none;margin:26px 0 0;padding:0;display:grid;gap:1px;
+  grid-template-columns:repeat(auto-fit,minmax(214px,1fr));
+  background:var(--rule);border:1px solid var(--rule);border-radius:10px;overflow:hidden
+}
+.premise li{background:var(--plane);padding:14px 16px}
+.premise dt{font:600 11px/1 var(--f-ui);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:7px}
+.premise p{margin:0;font-size:15px;line-height:1.45}
+
+/* ── controls bar ───────────────────────────────────────────────────────── */
+.controls{
+  position:sticky;top:env(safe-area-inset-top, 0px);z-index:40;
+  background:color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter:saturate(1.6) blur(14px);-webkit-backdrop-filter:saturate(1.6) blur(14px);
+  border-bottom:1px solid var(--rule)
+}
+.controls .wrap{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;padding-block:11px}
+.toc{display:flex;flex-wrap:wrap;gap:3px 14px;font:500 13px/1 var(--f-ui);margin-right:auto}
+.toc a{color:var(--ink-2);text-decoration:none;padding:5px 0;border-bottom:1px solid transparent}
+.toc a:hover{color:var(--ink);border-bottom-color:var(--accent)}
+.seg{display:inline-flex;background:var(--rule-soft);border:1px solid var(--rule);border-radius:9px;padding:2px;gap:2px}
+.seg button{
+  font:600 12px/1 var(--f-ui);letter-spacing:.01em;color:var(--ink-2);background:none;border:0;
+  padding:7px 13px;border-radius:7px;cursor:pointer
+}
+.seg button[aria-pressed="true"]{background:var(--plane);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.09)}
+.seg-label{font:600 11px/1 var(--f-ui);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+
+/* ── sections ───────────────────────────────────────────────────────────── */
+section{padding-block:60px 10px;border-bottom:1px solid var(--rule)}
+section:last-of-type{border-bottom:0}
+.shead{max-width:64ch;margin-bottom:40px}
+.snum{font:600 11px/1 var(--f-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);display:block;margin-bottom:13px}
+h2{font:700 clamp(27px,3.6vw,38px)/1.1 var(--f-head);letter-spacing:-.021em;margin:0 0 14px;text-wrap:balance}
+h3{font:600 clamp(19px,2.3vw,23px)/1.22 var(--f-head);letter-spacing:-.012em;margin:0 0 10px;text-wrap:balance}
+.shead p{margin:0 0 12px;color:var(--ink-2);font-size:17px}
+.shead p:last-child{margin-bottom:0}
+
+/* ── the frame rail ─────────────────────────────────────────────────────── */
+.rail{
+  display:grid;gap:52px 30px;
+  grid-template-columns:repeat(auto-fit,minmax(300px,393px));
+  justify-content:start;align-items:start;margin-bottom:46px
+}
+.rail.pair{grid-template-columns:repeat(auto-fit,minmax(300px,393px))}
+figure.mock{margin:0;display:flex;flex-direction:column;gap:16px;min-width:0}
+figcaption{min-width:0}
+.cap-title{font:600 15px/1.3 var(--f-ui);letter-spacing:-.005em;margin:0 0 7px;display:flex;gap:9px;align-items:baseline}
+.cap-title .tag{
+  font:600 10px/1 var(--f-ui);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);
+  border:1px solid var(--rule);border-radius:5px;padding:4px 6px;flex:none;white-space:nowrap
+}
+.cap{margin:0 0 9px;font-size:15.5px;line-height:1.52;color:var(--ink-2)}
+.cap b{color:var(--ink);font-weight:600}
+.omit{margin:0;font-size:14px;line-height:1.5;color:var(--ink-3);padding-left:13px;border-left:2px solid var(--rule)}
+.omit .lbl{font:600 10px/1 var(--f-ui);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);display:block;margin-bottom:4px}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DEVICE FRAME + iOS tokens. Each .phone owns its colour scheme so light and
+   dark screens can sit side by side regardless of the document's theme.
+   ══════════════════════════════════════════════════════════════════════════ */
+.phone{
+  width:min(393px,100%);
+  background:#0A0A0A;border-radius:54px;padding:11px;
+  box-shadow:0 0 0 1px rgba(0,0,0,.22), 0 22px 46px -18px rgba(26,22,19,.42);
+  flex:none
+}
+.screen{
+  position:relative;height:812px;border-radius:44px;overflow:hidden;
+  font-family:var(--f-ui);display:flex;flex-direction:column;
+  background:var(--s-bg);color:var(--s-label);
+  /* light iOS tokens */
+  --s-bg:#F2F2F7; --s-card:#FFFFFF; --s-card-2:#FFFFFF;
+  --s-label:#000000; --s-label2:rgba(60,60,67,.62); --s-label3:rgba(60,60,67,.34);
+  --s-sep:rgba(60,60,67,.20); --s-fill:rgba(118,118,128,.12); --s-fill2:rgba(118,118,128,.20);
+  --s-tint:#E8641C; --s-tint-ink:#FFFFFF;
+  --s-glass:rgba(248,248,250,.80); --s-glass-line:rgba(60,60,67,.14);
+  --s-shadow:0 1px 3px rgba(0,0,0,.07);
+  /* chart tokens — warm graphite, single hue, validated against #FFFFFF */
+  --c-surface:#FFFFFF; --c-series:#44403B; --c-wash:rgba(68,64,59,.10);
+  --c-assumed:#A8A29A; --c-grid:#E8E4DE; --c-axis:#CFC9C1; --c-muted:#8B8279;
+}
+.screen[data-ios="dark"],
+body[data-screens="dark"] .screen[data-ios="auto"]{
+  --s-bg:#000000; --s-card:#1C1C1E; --s-card-2:#2C2C2E;
+  --s-label:#FFFFFF; --s-label2:rgba(235,235,245,.62); --s-label3:rgba(235,235,245,.32);
+  --s-sep:rgba(84,84,88,.62); --s-fill:rgba(118,118,128,.24); --s-fill2:rgba(118,118,128,.36);
+  --s-tint:#F0701F; --s-tint-ink:#FFFFFF;
+  --s-glass:rgba(30,30,32,.74); --s-glass-line:rgba(235,235,245,.14);
+  --s-shadow:none;
+  --c-surface:#1C1C1E; --c-series:#E6E1DA; --c-wash:rgba(230,225,218,.10);
+  --c-assumed:#7A746C; --c-grid:#2E2B28; --c-axis:#3C3934; --c-muted:#948D85;
+}
+
+/* status bar / island / home indicator */
+.statusbar{
+  height:54px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 30px 7px;font:600 15px/1 var(--f-ui);letter-spacing:-.01em;position:relative;z-index:6
+}
+.statusbar .right{display:flex;align-items:center;gap:5px}
+.statusbar svg{display:block}
+.island{
+  position:absolute;top:11px;left:50%;transform:translateX(-50%);
+  width:124px;height:36px;border-radius:19px;background:#000;z-index:8
+}
+.home{
+  position:absolute;left:50%;bottom:8px;transform:translateX(-50%);
+  width:140px;height:5px;border-radius:3px;background:var(--s-label);opacity:.32;z-index:9
+}
+
+/* bars */
+.navbar{
+  flex:none;padding:0 18px 7px;position:relative;z-index:5;
+  background:var(--s-glass);backdrop-filter:saturate(1.8) blur(22px);-webkit-backdrop-filter:saturate(1.8) blur(22px);
+  box-shadow:0 .5px 0 var(--s-glass-line)
+}
+.navbar.plainbg{background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none}
+.nav-row{display:flex;align-items:center;justify-content:space-between;min-height:34px;gap:10px}
+.nav-title{font:600 17px/1.2 var(--f-ui);letter-spacing:-.02em}
+.nav-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:4px;
+  min-width:32px;height:32px;padding:0 9px;border-radius:16px;
+  background:var(--s-fill);color:var(--s-tint);font:500 15px/1 var(--f-ui)
+}
+.nav-btn.plain{background:none;padding:0;min-width:0}
+.large-title{font:700 34px/1.12 var(--f-ui);letter-spacing:-.032em;padding:4px 0 6px;display:flex;align-items:baseline;gap:9px}
+.large-title .sub{font:400 15px/1 var(--f-ui);letter-spacing:-.01em;color:var(--s-label2)}
+
+.content{flex:1;min-height:0;overflow:hidden;padding:0 16px;position:relative}
+.content.flush{padding:0}
+.scroller{height:100%;overflow-y:auto;overscroll-behavior:contain;padding-bottom:14px;
+  scrollbar-width:none;-ms-overflow-style:none}
+.scroller::-webkit-scrollbar{display:none}
+
+.tabbar{
+  flex:none;height:78px;padding:9px 10px 0;display:flex;align-items:flex-start;justify-content:space-around;
+  background:var(--s-glass);backdrop-filter:saturate(1.8) blur(22px);-webkit-backdrop-filter:saturate(1.8) blur(22px);
+  box-shadow:0 -.5px 0 var(--s-glass-line);position:relative;z-index:5
+}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--s-label3);font:500 10px/1 var(--f-ui);width:74px}
+.tab svg{width:25px;height:25px}
+.tab.on{color:var(--s-tint)}
+
+/* ── iOS list primitives ────────────────────────────────────────────────── */
+.ghead{
+  display:flex;align-items:center;gap:7px;padding:22px 4px 8px;
+  font:600 17px/1.2 var(--f-ui);letter-spacing:-.018em;color:var(--s-label2)
+}
+.ghead svg{width:17px;height:17px;color:var(--s-tint);flex:none}
+.ghead .right{margin-left:auto;font:500 13px/1 var(--f-ui);color:var(--s-label3);letter-spacing:0}
+.card{background:var(--s-card);border-radius:13px;box-shadow:var(--s-shadow);overflow:hidden}
+.card + .card{margin-top:10px}
+.row{display:flex;align-items:flex-start;gap:12px;padding:11px 14px;position:relative}
+.row + .row::before{content:"";position:absolute;left:14px;right:0;top:0;height:.5px;background:var(--s-sep)}
+.row .body{flex:1;min-width:0}
+.row .name{font:400 16px/1.26 var(--f-ui);letter-spacing:-.012em}
+.row .meta{
+  margin-top:3px;display:flex;flex-wrap:wrap;align-items:center;gap:5px 7px;
+  font:400 12.5px/1.3 var(--f-ui);color:var(--s-label2)
+}
+.row .val{font:400 16px/1.26 var(--f-ui);font-variant-numeric:tabular-nums;letter-spacing:-.012em;flex:none;padding-top:1px}
+.row .val.q{color:var(--s-label2)}
+.badge{
+  font:400 11px/1 var(--f-ui);color:var(--s-label2);background:var(--s-fill);
+  border-radius:5px;padding:4px 6px;white-space:nowrap
+}
+.chev{color:var(--s-label3);flex:none;align-self:center}
+.sep-note{padding:7px 14px 11px;font:400 12.5px/1.4 var(--f-ui);color:var(--s-label2);border-top:.5px solid var(--s-sep)}
+.footnote{padding:8px 6px 0;font:400 12.5px/1.4 var(--f-ui);color:var(--s-label2)}
+
+/* headline totals */
+.totals{padding:15px 16px 14px}
+.totals .energy{
+  font:800 40px/1 var(--f-round);letter-spacing:-.02em;display:flex;align-items:baseline;gap:6px
+}
+.totals .energy small{font:700 16px/1 var(--f-round);letter-spacing:-.01em;color:var(--s-label2)}
+.totals .pair{display:flex;gap:26px;margin-top:13px}
+.totals .pair div{min-width:0}
+.totals .lbl{font:400 12px/1 var(--f-ui);color:var(--s-label2);display:block;margin-bottom:4px}
+.totals .fig{font:400 20px/1 var(--f-ui);font-variant-numeric:tabular-nums;letter-spacing:-.018em}
+.totals .fig b{font-weight:400;font-size:13px;color:var(--s-label2)}
+.coverage-line{
+  margin-top:14px;padding-top:11px;border-top:.5px solid var(--s-sep);
+  font:400 12.5px/1.42 var(--f-ui);color:var(--s-label2)
+}
+
+/* composer */
+.composer-dock{
+  position:absolute;left:0;right:0;bottom:0;padding:9px 16px 11px;z-index:7;
+  background:linear-gradient(to top, var(--s-bg) 58%, transparent);
+  display:flex;flex-direction:column;gap:9px
+}
+.composer{
+  display:flex;align-items:center;gap:9px;height:50px;padding:0 6px 0 16px;border-radius:25px;
+  background:var(--s-glass);backdrop-filter:saturate(1.8) blur(22px);-webkit-backdrop-filter:saturate(1.8) blur(22px);
+  box-shadow:0 0 0 .5px var(--s-glass-line), 0 7px 18px -8px rgba(0,0,0,.30)
+}
+.composer .ph{flex:1;font:400 17px/1 var(--f-ui);letter-spacing:-.02em;color:var(--s-label3);min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.composer .typed{color:var(--s-label)}
+.composer .caret{display:inline-block;width:2px;height:20px;background:var(--s-tint);vertical-align:-4px;margin-left:1px}
+.mic{
+  width:38px;height:38px;border-radius:19px;background:var(--s-tint);color:var(--s-tint-ink);
+  display:flex;align-items:center;justify-content:center;flex:none
+}
+.mic.ghost{background:var(--s-fill);color:var(--s-tint)}
+.logbtn{
+  height:38px;padding:0 17px;border-radius:19px;background:var(--s-tint);color:var(--s-tint-ink);
+  font:600 15px/38px var(--f-ui);letter-spacing:-.01em;flex:none
+}
+.logbtn.off{background:var(--s-fill);color:var(--s-label3)}
+
+/* parsed chips */
+.chips{display:flex;gap:7px;overflow:hidden;padding:1px 0}
+.chip{
+  display:flex;align-items:center;gap:6px;flex:none;
+  background:var(--s-card);border-radius:16px;padding:7px 11px;box-shadow:var(--s-shadow), 0 0 0 .5px var(--s-glass-line);
+  font:400 13px/1.15 var(--f-ui);letter-spacing:-.01em;max-width:188px
+}
+.chip .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip .amt{color:var(--s-label2);flex:none}
+.chip svg{width:13px;height:13px;color:var(--s-label2);flex:none}
+.chip.pending{background:var(--s-fill);box-shadow:none;color:var(--s-label2)}
+.chip.unmatched{box-shadow:0 0 0 1px var(--s-label3)}
+.chip.unmatched .t{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px}
+
+/* keyboard */
+.keyboard{background:var(--s-card-2);padding:7px 3px 0;flex:none;border-top:.5px solid var(--s-sep)}
+.screen[data-ios="dark"] .keyboard,
+body[data-screens="dark"] .screen[data-ios="auto"] .keyboard{background:#1C1C1E}
+.krow{display:flex;gap:6px;justify-content:center;margin-bottom:7px;padding:0 3px}
+.key{
+  flex:1;height:42px;border-radius:5px;background:var(--s-card);box-shadow:0 1px 0 rgba(0,0,0,.28);
+  display:flex;align-items:center;justify-content:center;font:400 22px/1 var(--f-ui);
+  color:var(--s-label);max-width:34px
+}
+.screen[data-ios="dark"] .key,
+body[data-screens="dark"] .screen[data-ios="auto"] .key{background:#6B6B70;box-shadow:0 1px 0 rgba(0,0,0,.6)}
+.key.wide{max-width:none;flex:2.2;font-size:15px}
+.key.space{max-width:none;flex:5;font-size:15px}
+.key.dark{background:var(--s-fill2);box-shadow:none}
+.kbar{height:34px;display:flex;align-items:center;justify-content:center}
+.kbar .dot{width:140px;height:5px;border-radius:3px;background:var(--s-label);opacity:.32}
+
+/* sheet */
+.sheet-dim{position:absolute;inset:0;background:rgba(0,0,0,.30);z-index:10}
+.sheet{
+  position:absolute;left:0;right:0;bottom:0;z-index:11;background:var(--s-bg);
+  border-radius:14px 14px 0 0;display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 -2px 24px rgba(0,0,0,.22)
+}
+.grabber{width:36px;height:5px;border-radius:3px;background:var(--s-label3);margin:7px auto 0;flex:none}
+.sheet-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 8px;flex:none;gap:10px}
+.sheet-nav .t{font:600 17px/1.2 var(--f-ui);letter-spacing:-.02em}
+.sheet-body{flex:1;min-height:0;overflow:hidden;padding:0 16px}
+.sheet-foot{
+  padding:11px 16px 16px;flex:none;
+  background:var(--s-glass);backdrop-filter:saturate(1.8) blur(22px);-webkit-backdrop-filter:saturate(1.8) blur(22px);
+  box-shadow:0 -.5px 0 var(--s-glass-line)
+}
+.wide-btn{
+  display:block;width:100%;height:50px;border-radius:25px;background:var(--s-tint);color:var(--s-tint-ink);
+  font:600 17px/50px var(--f-ui);letter-spacing:-.01em;text-align:center
+}
+.wide-btn.off{background:var(--s-fill);color:var(--s-label3)}
+.foot-note{text-align:center;font:400 12.5px/1.35 var(--f-ui);color:var(--s-label2);margin-top:9px}
+
+/* resolution rows */
+.rrow{padding:12px 14px;position:relative}
+.rrow + .rrow::before{content:"";position:absolute;left:14px;right:0;top:0;height:.5px;background:var(--s-sep)}
+.rrow .top{display:flex;align-items:flex-start;gap:12px}
+.rrow .phrase{font:400 16px/1.26 var(--f-ui);letter-spacing:-.012em;flex:1;min-width:0}
+.rrow .kcal{font:400 16px/1.26 var(--f-ui);font-variant-numeric:tabular-nums;flex:none}
+.rrow .kcal.none{
+  color:var(--s-label3);border:1px dashed var(--s-label3);border-radius:5px;padding:1px 8px;font-size:13px
+}
+.rrow .src{
+  margin-top:4px;display:flex;align-items:center;gap:6px;
+  font:400 12.5px/1.34 var(--f-ui);color:var(--s-label2)
+}
+.rrow .src svg{width:12px;height:12px;flex:none;color:var(--s-label2)}
+.rrow .alt{
+  margin-top:5px;padding-left:18px;font:400 12.5px/1.34 var(--f-ui);color:var(--s-label2);
+  border-left:2px solid var(--s-fill2);margin-left:0;padding-top:1px;padding-bottom:1px
+}
+.rrow .alt b{font-weight:400;color:var(--s-label)}
+.rrow .top .chev{align-self:flex-start;margin-top:4px}
+.recall-flag{display:inline-flex;align-items:center;gap:4px;color:var(--s-label2);flex:none}
+.bucket{display:flex;gap:2px;background:var(--s-fill);border-radius:9px;padding:2px;margin-top:10px}
+.bucket span{
+  flex:1;text-align:center;font:500 13px/1 var(--f-ui);padding:7px 4px;border-radius:7px;color:var(--s-label2)
+}
+.bucket span.on{background:var(--s-card);color:var(--s-label);box-shadow:0 1px 2px rgba(0,0,0,.10)}
+.inline-btn{
+  margin-top:10px;display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 13px;border-radius:16px;
+  background:var(--s-fill);color:var(--s-tint);font:500 14px/1 var(--f-ui)
+}
+
+/* proposal card */
+.proposal{border:1px dashed var(--s-label3);background:transparent;border-radius:13px;overflow:hidden;box-shadow:none}
+.proposal .phead{
+  display:flex;align-items:center;gap:8px;padding:12px 14px 10px;
+  font:600 15px/1.2 var(--f-ui);letter-spacing:-.014em
+}
+.proposal .phead .badge{margin-left:auto}
+.proposal .prow{display:flex;gap:12px;padding:8px 14px;font:400 15px/1.3 var(--f-ui);color:var(--s-label2)}
+.proposal .prow .nm{flex:1;min-width:0}
+.proposal .prow .vv{font-variant-numeric:tabular-nums;flex:none}
+.proposal .pact{display:flex;gap:9px;padding:12px 14px 13px}
+.proposal .pact .b1{
+  flex:1;height:40px;border-radius:20px;background:var(--s-tint);color:var(--s-tint-ink);
+  font:600 15px/40px var(--f-ui);text-align:center
+}
+.proposal .pact .b2{
+  height:40px;padding:0 16px;border-radius:20px;background:var(--s-fill);color:var(--s-tint);
+  font:500 15px/40px var(--f-ui);text-align:center
+}
+
+/* dictation */
+.dictation{display:flex;flex-direction:column;height:100%;padding:0 4px}
+.dict-transcript{flex:1;display:flex;align-items:center;padding:14px 10px}
+.dict-transcript p{margin:0;font:400 26px/1.3 var(--f-ui);letter-spacing:-.024em}
+.dict-transcript .tail{color:var(--s-label3)}
+.wave{display:flex;align-items:center;justify-content:center;gap:3px;height:38px;margin-bottom:12px}
+.wave i{width:3px;border-radius:2px;background:var(--s-label2);display:block}
+.hold{
+  height:62px;border-radius:31px;background:var(--s-tint);color:var(--s-tint-ink);
+  display:flex;align-items:center;justify-content:center;gap:9px;font:600 17px/1 var(--f-ui);margin:0 12px 10px;
+  box-shadow:0 0 0 7px color-mix(in srgb, var(--s-tint) 22%, transparent)
+}
+
+/* trends */
+.chart-card{background:var(--s-card);border-radius:13px;box-shadow:var(--s-shadow);padding:13px 13px 10px;position:relative}
+.chart-card + .chart-card{margin-top:10px}
+.chart-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:2px}
+.chart-title{font:600 15px/1.2 var(--f-ui);letter-spacing:-.014em}
+.chart-now{font:400 15px/1.2 var(--f-ui);font-variant-numeric:tabular-nums;color:var(--s-label)}
+.chart-sub{font:400 11.5px/1.35 var(--f-ui);color:var(--s-label2);margin-bottom:7px}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.ios-seg{display:flex;gap:2px;background:var(--s-fill);border-radius:9px;padding:2px;margin:2px 0 12px}
+.ios-seg button{
+  flex:1;border:0;background:none;font:500 13px/1 var(--f-ui);color:var(--s-label2);
+  padding:7px 4px;border-radius:7px;cursor:pointer
+}
+.ios-seg button[aria-pressed="true"]{background:var(--s-card);color:var(--s-label);box-shadow:0 1px 2px rgba(0,0,0,.10)}
+.cov-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font:400 11.5px/1 var(--f-ui);color:var(--s-label2)}
+.cov-legend span{display:inline-flex;align-items:center;gap:5px}
+.cov-legend i{width:11px;height:11px;border-radius:2px;display:block;flex:none}
+.tip{
+  position:absolute;pointer-events:none;z-index:9;background:var(--s-card);border-radius:8px;
+  box-shadow:0 0 0 .5px var(--s-glass-line), 0 6px 18px -6px rgba(0,0,0,.35);
+  padding:7px 10px;font:400 12px/1.4 var(--f-ui);color:var(--s-label);white-space:nowrap;opacity:0;transition:opacity .09s
+}
+.tip b{font-weight:600;font-variant-numeric:tabular-nums}
+.tip .m{color:var(--s-label2)}
+
+/* widget */
+.lockwall{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(120% 70% at 22% 8%, rgba(232,100,28,.34), transparent 60%),
+    radial-gradient(100% 80% at 88% 92%, rgba(90,70,120,.45), transparent 62%),
+    linear-gradient(160deg,#2A211C,#14110F 62%,#201A2C)
+}
+.lockwall .t{position:absolute;top:84px;left:0;right:0;text-align:center;color:#fff}
+.lockwall .t .d{font:500 17px/1 var(--f-ui);opacity:.85}
+.lockwall .t .h{font:200 80px/1 var(--f-ui);letter-spacing:-.03em;margin-top:5px}
+.wgt{
+  position:absolute;left:18px;right:18px;top:242px;border-radius:22px;padding:13px 15px;
+  background:rgba(255,255,255,.14);backdrop-filter:blur(26px) saturate(1.5);-webkit-backdrop-filter:blur(26px) saturate(1.5);
+  box-shadow:inset 0 0 0 .5px rgba(255,255,255,.22);color:#fff
+}
+.wgt .wh{display:flex;align-items:center;gap:7px;font:600 12px/1 var(--f-ui);opacity:.8;margin-bottom:11px}
+.wgt .wh svg{width:13px;height:13px}
+.wgt .wrow{
+  display:flex;align-items:center;gap:10px;padding:9px 0;font:400 15px/1.2 var(--f-ui);
+  border-top:.5px solid rgba(255,255,255,.17)
+}
+.wgt .wrow:first-of-type{border-top:0}
+.wgt .wrow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wgt .wrow .kc{font-variant-numeric:tabular-nums;opacity:.72;font-size:13px}
+.wgt .wrow .go{
+  width:28px;height:28px;border-radius:14px;background:rgba(255,255,255,.2);
+  display:flex;align-items:center;justify-content:center;flex:none
+}
+
+/* ── journeys ───────────────────────────────────────────────────────────── */
+.journey{
+  border:1px solid var(--rule);border-radius:12px;background:var(--plane);
+  padding:22px 22px 20px;margin-bottom:22px
+}
+.j-head{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:baseline;margin-bottom:5px}
+.j-id{font:700 11px/1 var(--f-ui);letter-spacing:.12em;color:var(--accent-ink);flex:none}
+.j-title{font:600 20px/1.22 var(--f-head);letter-spacing:-.014em;margin:0;flex:1 1 220px;min-width:0}
+.j-total{
+  font:600 12px/1 var(--f-ui);letter-spacing:.01em;border:1px solid var(--rule);border-radius:6px;
+  padding:7px 9px;color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap
+}
+.j-target{font-size:14.5px;color:var(--ink-2);margin:0 0 18px}
+.j-target .hit{font-family:var(--f-ui);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
+.j-target .miss{font-family:var(--f-ui);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-ink)}
+.flow{display:flex;flex-wrap:wrap;gap:9px;align-items:stretch;margin-bottom:17px}
+.step{
+  flex:1 1 168px;min-width:0;border:1px solid var(--rule);border-radius:9px;padding:11px 12px 10px;
+  background:var(--paper);position:relative
+}
+.step .sn{font:700 10px/1 var(--f-ui);letter-spacing:.1em;color:var(--ink-3);display:block;margin-bottom:6px}
+.step .sw{font:600 13px/1.3 var(--f-ui);letter-spacing:-.005em;display:block;margin-bottom:4px}
+.step .sd{font-size:13.5px;line-height:1.42;color:var(--ink-2);margin:0 0 9px}
+.step .sc{
+  font:600 11px/1 var(--f-ui);letter-spacing:.02em;color:var(--ink);font-variant-numeric:tabular-nums;
+  border-top:1px solid var(--rule);padding-top:8px;display:block
+}
+.step .sc em{font-style:normal;color:var(--ink-3);font-weight:500}
+.j-note{margin:0;font-size:15.5px;line-height:1.55;color:var(--ink-2);padding-left:14px;border-left:2px solid var(--accent)}
+.j-note b{color:var(--ink);font-weight:600}
+
+/* ── breaks list ────────────────────────────────────────────────────────── */
+.breaks{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:12px;overflow:hidden}
+.brk{background:var(--plane);padding:22px 22px 20px}
+.brk h3{margin:0 0 9px;font-size:19px}
+.brk .n{font:700 11px/1 var(--f-ui);letter-spacing:.12em;color:var(--accent-ink);display:block;margin-bottom:11px}
+.brk p{margin:0 0 10px;font-size:16px;line-height:1.56;color:var(--ink-2)}
+.brk p:last-child{margin-bottom:0}
+.brk .drawn{
+  font:600 11px/1 var(--f-ui);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);
+  display:block;margin:14px 0 6px
+}
+
+/* data table */
+details.data{border:1px solid var(--rule);border-radius:10px;background:var(--plane);margin-bottom:46px}
+details.data summary{
+  cursor:pointer;padding:14px 18px;font:600 14px/1 var(--f-ui);letter-spacing:-.005em;list-style:none
+}
+details.data summary::-webkit-details-marker{display:none}
+details.data summary::before{content:"▸ ";color:var(--ink-3)}
+details.data[open] summary::before{content:"▾ "}
+.tbl-wrap{overflow-x:auto;padding:0 18px 18px}
+table{border-collapse:collapse;width:100%;min-width:430px;font:400 13.5px/1.4 var(--f-ui);font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:7px 10px;border-bottom:1px solid var(--rule-soft);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{font-weight:600;color:var(--ink-3);font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+
+footer{padding-block:44px 64px;color:var(--ink-3);font-size:14.5px}
+footer p{max-width:64ch;margin:0 0 9px}
+
+@media (max-width:640px){
+  .masthead{padding-block:34px 26px}
+  section{padding-block:44px 6px}
+  .rail{gap:40px 18px}
+  .journey{padding:17px 16px 16px}
+  .brk{padding:18px 16px}
+}
+</style>
+</head>
+<body data-screens="light">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <symbol id="i-bite" viewBox="0 0 100 100">
+    <mask id="m-bite"><rect width="100" height="100" fill="#fff" x="0" y="0"/>
+      <circle cx="69.5" cy="32.5" r="13.5" fill="#000"/></mask>
+    <circle cx="50" cy="53" r="30" fill="currentColor" mask="url(#m-bite)"/>
+    <circle cx="80" cy="23.5" r="2.4" fill="currentColor"/><circle cx="85.5" cy="31" r="1.6" fill="currentColor"/>
+  </symbol>
+  <symbol id="i-sunrise" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 17h16M7.5 17a4.5 4.5 0 0 1 9 0M12 3v3M5.2 6.2l2 2M18.8 6.2l-2 2M2.5 13h2M19.5 13h2M2 21h20"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="12" cy="12" r="4.4"/><path d="M12 2.4v2.2M12 19.4v2.2M2.4 12h2.2M19.4 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18.5 15.2A7.6 7.6 0 0 1 8.8 5.5a7.6 7.6 0 1 0 9.7 9.7Z"/><path d="M17.5 3.2l.8 1.8 1.8.8-1.8.8-.8 1.8-.8-1.8-1.8-.8 1.8-.8ZM21.4 9.4l.5 1.1 1.1.5-1.1.5-.5 1.1-.5-1.1-1.1-.5 1.1-.5Z"/></symbol>
+  <symbol id="i-carrot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14.2 8.4 5.6 17c-1 1-1.4 2.6-1 3.9.1.4.5.8 1 1 1.3.4 2.8 0 3.8-1l8.6-8.6a3.4 3.4 0 0 0-3.8-3.9Z"/>
+    <path d="M15.4 8.1c.4-1.6 1.3-3 2.6-3.9M17.3 10.2c1.5-.8 3.2-1 4.7-.4"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+    <rect x="9" y="2.6" width="6" height="11.2" rx="3"/><path d="M5.4 11.4a6.6 6.6 0 0 0 13.2 0M12 18v3.4"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M3.6 6.2h16.8M3.6 12h16.8M3.6 17.8h10.6"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3.4 16.4 8.6 10l4 3.6 7.6-8.2"/><path d="M3.4 20.6h17.2"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+    <circle cx="12" cy="12" r="3.1"/>
+    <path d="M12 2.6v2.1M12 19.3v2.1M21.4 12h-2.1M4.7 12H2.6M18.6 5.4l-1.5 1.5M6.9 17.1l-1.5 1.5M18.6 18.6l-1.5-1.5M6.9 6.9 5.4 5.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 4.5 16.5 12 9 19.5"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 4.5 7.5 12 15 19.5"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3.4 9.2A9 9 0 1 1 3 13.4"/><path d="M3.1 4.2v5h5"/><path d="M12 7.6V12l3 1.8"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 4.6h6a2.6 2.6 0 0 1 2.6 2.6v12A2.2 2.2 0 0 0 10.4 17H4Z"/>
+    <path d="M20 4.6h-6A2.6 2.6 0 0 0 11.4 7.2v12A2.2 2.2 0 0 1 13.6 17H20Z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+    <circle cx="10.8" cy="10.8" r="6.6"/><path d="m15.8 15.8 4.2 4.2"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-wifi" viewBox="0 0 17 12" fill="currentColor">
+    <path d="M8.5 11.6 10.6 9a2.8 2.8 0 0 0-4.2 0Zm0-5.4a4.9 4.9 0 0 1 3.6 1.6l1.4-1.7a7 7 0 0 0-10 0l1.4 1.7A4.9 4.9 0 0 1 8.5 6.2Zm0-4.1a8.9 8.9 0 0 1 6.3 2.6L16.2 3a11 11 0 0 0-15.4 0l1.4 1.3A8.9 8.9 0 0 1 8.5 2.1Z"/></symbol>
+  <symbol id="i-cell" viewBox="0 0 19 12" fill="currentColor">
+    <rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5.3" y="5.6" width="3" height="6.4" rx="1"/>
+    <rect x="10.6" y="3" width="3" height="9" rx="1"/><rect x="15.9" y="0" width="3" height="12" rx="1" opacity=".35"/></symbol>
+  <symbol id="i-batt" viewBox="0 0 27 13" fill="none">
+    <rect x=".6" y=".6" width="22.6" height="11.8" rx="3.4" stroke="currentColor" stroke-opacity=".38"/>
+    <rect x="2.3" y="2.3" width="15" height="8.4" rx="2.1" fill="currentColor"/>
+    <path d="M24.9 4.4c1 .4 1.6 1.1 1.6 2.1s-.6 1.7-1.6 2.1Z" fill="currentColor" fill-opacity=".38"/></symbol>
+</defs></svg>
+
+<div class="wrap masthead">
+  <p class="eyebrow"><svg class="bite"><use href="#i-bite"/></svg> Omnomnom · design mock · 3 Oct 2026</p>
+  <h1>One-line logging</h1>
+  <p class="lede">Mocks for the redesign that replaces gram-accurate per-food entry with <strong>one line of
+  natural language</strong>. Day-level totals, accurate to roughly ±15–20%, read as a 7-day rolling average over
+  months. Everything below follows from that target resolution, including the things that stop working because
+  of it.</p>
+  <p class="lede">This is a document to argue with, not a gallery. Every screen carries the decision it
+  demonstrates and what was left out on purpose; every journey carries its tap count and seconds against the
+  product targets. The last section lists the places where the premise broke down when I tried to draw it.</p>
+  <ul class="premise">
+    <li><dt>Target resolution</dt><p>Day totals, ±15–20%, read as a 7-day average. Not meal accuracy.</p></li>
+    <li><dt>Primary input</dt><p>One typed or dictated line. No search screen, no gram field by default.</p></li>
+    <li><dt>Grounding</dt><p>Every value comes from a Ciqual/BLS row. The model names foods, never numbers.</p></li>
+    <li><dt>Repetition</dt><p>Remembered invisibly from what was typed. No saved meals to name or curate.</p></li>
+    <li><dt>Incompleteness</dt><p>Logged, assumed and missing are three different things and stay visible.</p></li>
+  </ul>
+</div>
+
+<div class="controls">
+  <div class="wrap">
+    <nav class="toc" aria-label="Sections">
+      <a href="#today">Today</a>
+      <a href="#composer">Composer</a>
+      <a href="#resolution">Resolution</a>
+      <a href="#dictation">Dictation</a>
+      <a href="#baseline">Normal day</a>
+      <a href="#trends">Trends</a>
+      <a href="#edges">Edges</a>
+      <a href="#journeys">Journeys</a>
+      <a href="#breaks">Where it broke</a>
+    </nav>
+    <span class="seg-label" id="apl">Screens</span>
+    <div class="seg" role="group" aria-labelledby="apl">
+      <button type="button" data-mode="light" aria-pressed="true">Light</button>
+      <button type="button" data-mode="dark" aria-pressed="false">Dark</button>
+    </div>
+  </div>
+</div>
+
+<main>
+
+<!-- ══════════════════════════════════ TODAY ══════════════════════════════ -->
+<section id="today" class="wrap">
+  <div class="shead">
+    <span class="snum">01 — Today</span>
+    <h2>The day, and nothing about how the day went</h2>
+    <p>Energy, protein and fibre are the headline; the other five nutrients still reach Apple Health but have
+    no place on this screen. The composer is pinned at the bottom, in reach of a thumb, because the plan's
+    one-handed requirement is the only thing on Today that is a hard target.</p>
+    <p>The first pair is deliberately shown in both appearances at once; everything after it follows the
+    Screens switch above. Every frame's content scrolls inside the device, so what sits below the fold can be
+    read without leaving the page.</p>
+  </div>
+
+  <div class="rail pair">
+
+    <figure class="mock">
+      <div class="phone"><div class="screen" data-ios="light">
+        <div class="island"></div>
+        <div class="statusbar"><span>9:41</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="navbar plainbg">
+          <div class="nav-row">
+            <span class="nav-btn plain"><svg width="17" height="17"><use href="#i-back"/></svg></span>
+            <span class="nav-title">Fri 3 Oct</span>
+            <span class="nav-btn plain"><svg width="17" height="17"><use href="#i-gear"/></svg></span>
+          </div>
+          <div class="large-title">Today</div>
+        </div>
+        <div class="content"><div class="scroller">
+          <div class="card">
+            <div class="totals">
+              <div class="energy">1,890 <small>kcal</small></div>
+              <div class="pair">
+                <div><span class="lbl">Protein</span><span class="fig">96 <b>g</b></span></div>
+                <div><span class="lbl">Fibre</span><span class="fig">24 <b>g</b></span></div>
+              </div>
+              <p class="coverage-line">Breakfast, lunch and a snack logged. Nothing for dinner yet.</p>
+            </div>
+          </div>
+
+          <div class="ghead"><svg><use href="#i-sunrise"/></svg>Breakfast<span class="right">08:12</span></div>
+          <div class="card">
+            <div class="row"><div class="body">
+              <div class="name">Haferflocken, Vollkorn</div>
+              <div class="meta"><span>50 g</span><span>·</span><span>usual</span></div>
+            </div><div class="val">185 kcal</div></div>
+            <div class="row"><div class="body">
+              <div class="name">Banane, roh</div>
+              <div class="meta"><span>118 g</span><span>·</span><span>usual</span></div>
+            </div><div class="val">106 kcal</div></div>
+            <div class="row"><div class="body">
+              <div class="name">Milch, 3,5 % Fett</div>
+              <div class="meta"><span>150 g</span><span>·</span><span>usual</span></div>
+            </div><div class="val">96 kcal</div></div>
+            <div class="row"><div class="body">
+              <div class="name">Kaffee, schwarz</div>
+              <div class="meta"><span>250 g</span><span>·</span><span>more</span></div>
+            </div><div class="val">5 kcal</div></div>
+          </div>
+
+          <div class="ghead"><svg><use href="#i-sun"/></svg>Lunch<span class="right">12:40</span></div>
+          <div class="card">
+            <div class="row"><div class="body">
+              <div class="name">Hähnchenbrust, gegart</div>
+              <div class="meta"><span>150 g</span><span>·</span><span>usual</span></div>
+            </div><div class="val">248 kcal</div></div>
+            <div class="row"><div class="body">
+              <div class="name">Reis, weiß, gekocht</div>
+              <div class="meta"><span>252 g</span><span>·</span><span>more</span><span class="badge">Partly in Health</span></div>
+            </div><div class="val">328 kcal</div></div>
+            <div class="row"><div class="body">
+              <div class="name">Apfel, mit Schale, roh</div>
+              <div class="meta"><span>176 g</span><span>·</span><span>usual</span></div>
+            </div><div class="val">95 kcal</div></div>
+          </div>
+
+          <div class="ghead"><svg><use href="#i-carrot"/></svg>Snack<span class="right">16:05</span></div>
+          <div class="card">
+            <div class="row"><div class="body">
+              <div class="name">Skyr, natur</div>
+              <div class="meta"><span>200 g</span><span>·</span><span>usual</span></div>
+            </div><div class="val">126 kcal</div></div>
+          </div>
+        </div>
+          <div class="composer-dock">
+            <div class="composer">
+              <span class="ph">What did you eat?</span>
+              <span class="mic"><svg width="18" height="18"><use href="#i-mic"/></svg></span>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <span class="tab on"><svg><use href="#i-list"/></svg>Today</span>
+          <span class="tab"><svg><use href="#i-chart"/></svg>Trends</span>
+          <span class="tab"><svg><use href="#i-gear"/></svg>Settings</span>
+        </div>
+        <div class="home"></div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">Today, light <span class="tag">01a</span></p>
+        <p class="cap">Three figures, one of them in the rounded face, then the entries. The portion bucket is
+        written as the word that was chosen — <b>usual</b>, <b>more</b> — beside the grams, so the bucket is
+        legible without being the only record. Grams stay canonical and stay on screen; they are just no longer
+        the question being asked. Three tabs: <b>Today, Trends, Settings</b>. Meals and Library are gone as
+        destinations, which is what the no-curation rule costs.</p>
+        <p class="omit"><span class="lbl">Left out</span> Carbs, fat, saturated fat, sugar and sodium — they go
+        to Health, not here. No per-meal subtotals, no ring, no target, no comparison with yesterday, no
+        "remaining". The energy figure is a sum, not a budget.</p>
+      </figcaption>
+    </figure>
+
+    <figure class="mock">
+      <div class="phone"><div class="screen" data-ios="dark">
+        <div class="island"></div>
+        <div class="statusbar"><span>21:06</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="navbar plainbg">
+          <div class="nav-row">
+            <span class="nav-btn plain"><svg width="17" height="17"><use href="#i-back"/></svg></span>
+            <span class="nav-title">Fri 3 Oct</span>
+            <span class="nav-btn plain"><svg width="17" height="17"><use href="#i-gear"/></svg></span>
+          </div>
+          <div class="large-title">Today</div>
+        </div>
+        <div class="content"><div class="scroller">
+          <div class="card">
+            <div class="totals">
+              <div class="energy">2,474 <small>kcal</small></div>
+              <div class="pair">
+                <div><span class="lbl">Protein</span><span class="fig">118 <b>g</b></span></div>
+                <div><span class="lbl">Fibre</span><span class="fig">31 <b>g</b></span></div>
+              </div>
+              <p class="coverage-line">All four slots logged.</p>
+            </div>
+          </div>
+          <div class="ghead"><svg><use href="#i-sun"/></svg>Lunch<span class="right">12:40</span></div>
+          <div class="card">
+            <div class="row"><div class="body">
+              <div class="name">Hähnchenbrust, gegart</div>
+              <div class="meta"><span>150 g</span><span>·</span><span>usual</span></div>
+            </div><div class="val">248 kcal</div></div>
+            <div class="row"><div class="body">
+              <div class="name">Reis, weiß, gekocht</div>
+              <div class="meta"><span>252 g</span><span>·</span><span>more</span></div>
+            </div><div class="val">328 kcal</div></div>
+          </div>
+          <div class="ghead"><svg><use href="#i-moon"/></svg>Dinner<span class="right">19:22</span></div>
+          <div class="card">
+            <div class="row"><div class="body">
+              <div class="name">Linsen, Teller-, gegart</div>
+              <div class="meta"><span>300 g</span><span>·</span><span>more</span></div>
+            </div><div class="val">348 kcal</div></div>
+            <div class="row"><div class="body">
+              <div class="name">Brot, Roggenmischbrot</div>
+              <div class="meta"><span>60 g</span><span>·</span><span>usual</span></div>
+            </div><div class="val">138 kcal</div></div>
+            <div class="row"><div class="body">
+              <div class="name">Butter</div>
+              <div class="meta"><span>10 g</span><span>·</span><span>less</span></div>
+            </div><div class="val">75 kcal</div></div>
+          </div>
+          <div class="ghead"><svg><use href="#i-carrot"/></svg>Snack<span class="right">21:40</span></div>
+          <div class="card">
+            <div class="row"><div class="body">
+              <div class="name">Walnüsse</div>
+              <div class="meta"><span>20 g</span><span>·</span><span>usual</span><span class="badge">Estimated</span></div>
+            </div><div class="val">138 kcal</div></div>
+          </div>
+        </div>
+          <div class="composer-dock">
+            <div class="composer">
+              <span class="ph">What did you eat?</span>
+              <span class="mic"><svg width="18" height="18"><use href="#i-mic"/></svg></span>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <span class="tab on"><svg><use href="#i-list"/></svg>Today</span>
+          <span class="tab"><svg><use href="#i-chart"/></svg>Trends</span>
+          <span class="tab"><svg><use href="#i-gear"/></svg>Settings</span>
+        </div>
+        <div class="home"></div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">Today, dark <span class="tag">01b</span></p>
+        <p class="cap">Dark is pure black ground with elevated cards, matching the current build. The accent
+        lightens to <b>#F0701F</b> so it still clears 3:1 for white text on a glass button. Badges stay in the
+        neutral fill in both appearances: provenance is never tinted, so "Partly in Health" and "Estimated" read
+        as the same class of fact, which is what they are.</p>
+        <p class="omit"><span class="lbl">Left out</span> Any difference in information between light and dark.
+        The dark screen is not a quieter version of the light one; same rows, same words, same weights.</p>
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════ COMPOSER ═══════════════════════════════ -->
+<section id="composer" class="wrap">
+  <div class="shead">
+    <span class="snum">02 — The composer</span>
+    <h2>The whole redesign rests on one field</h2>
+    <p>The composer has to do three things at once: take a sentence, show what it understood before the user
+    commits, and stay out of the way when it understood everything. The understanding is shown as chips above
+    the field, built as the line is typed, each one a food plus an amount.</p>
+    <p>Chips are deliberately <em>not</em> tinted. Tangerine means "you can act on this"; the chips are the
+    app reporting what it read, so they are neutral. The only tinted things on this screen are the mic and the
+    Log button, both of which do something.</p>
+  </div>
+
+  <div class="rail">
+
+    <figure class="mock">
+      <div class="phone"><div class="screen" data-ios="auto">
+        <div class="island"></div>
+        <div class="statusbar"><span>8:04</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="navbar plainbg">
+          <div class="nav-row">
+            <span class="nav-btn plain" style="opacity:.3"><svg width="17" height="17"><use href="#i-back"/></svg></span>
+            <span class="nav-title">Sat 4 Oct</span>
+            <span class="nav-btn plain"><svg width="17" height="17"><use href="#i-gear"/></svg></span>
+          </div>
+          <div class="large-title">Today</div>
+        </div>
+        <div class="content"><div class="scroller">
+          <div class="card">
+            <div class="totals">
+              <div class="energy">0 <small>kcal</small></div>
+              <div class="pair">
+                <div><span class="lbl">Protein</span><span class="fig">0 <b>g</b></span></div>
+                <div><span class="lbl">Fibre</span><span class="fig">0 <b>g</b></span></div>
+              </div>
+              <p class="coverage-line">Nothing logged yet.</p>
+            </div>
+          </div>
+          <div class="footnote" style="padding-top:20px">You usually type</div>
+          <div class="card" style="margin-top:7px">
+            <div class="row"><div class="body">
+              <div class="name">oats, banana, milk, coffee</div>
+              <div class="meta"><svg width="12" height="12" style="color:inherit"><use href="#i-history"/></svg>
+                <span>29 mornings · 392 kcal</span></div>
+            </div><svg class="chev" width="13" height="13"><use href="#i-chevron"/></svg></div>
+            <div class="row"><div class="body">
+              <div class="name">rye bread with butter and cheese</div>
+              <div class="meta"><svg width="12" height="12"><use href="#i-history"/></svg>
+                <span>11 mornings · 418 kcal</span></div>
+            </div><svg class="chev" width="13" height="13"><use href="#i-chevron"/></svg></div>
+          </div>
+        </div>
+          <div class="composer-dock" style="background:none">
+            <div class="composer">
+              <span class="ph">What did you eat?<span class="caret"></span></span>
+              <span class="mic"><svg width="18" height="18"><use href="#i-mic"/></svg></span>
+            </div>
+          </div>
+        </div>
+        <div class="keyboard">
+          <div class="krow"><span class="key">q</span><span class="key">w</span><span class="key">e</span><span class="key">r</span><span class="key">t</span><span class="key">z</span><span class="key">u</span><span class="key">i</span><span class="key">o</span><span class="key">p</span></div>
+          <div class="krow" style="padding:0 16px"><span class="key">a</span><span class="key">s</span><span class="key">d</span><span class="key">f</span><span class="key">g</span><span class="key">h</span><span class="key">j</span><span class="key">k</span><span class="key">l</span></div>
+          <div class="krow"><span class="key dark wide">⇧</span><span class="key">y</span><span class="key">x</span><span class="key">c</span><span class="key">v</span><span class="key">b</span><span class="key">n</span><span class="key">m</span><span class="key dark wide">⌫</span></div>
+          <div class="krow"><span class="key dark wide">123</span><span class="key space">space</span><span class="key dark wide">return</span></div>
+          <div class="kbar"><span class="dot"></span></div>
+        </div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">Composer, focused and empty <span class="tag">02a</span></p>
+        <p class="cap">Tapping the field raises the keyboard and reveals <b>what you usually type at this hour</b>
+        — whole lines, as they were typed, with a count. These are not saved meals: the user never named them,
+        cannot edit them and does not curate them. They are the two most-repeated lines for this slot, and
+        tapping one goes straight to phrase recall. The heading is a plain sentence rather than a section
+        title, because "Recents" would imply a list the user owns.</p>
+        <p class="omit"><span class="lbl">Left out</span> A Meals tab, a save-as-meal button, favourites, a
+        name field, folders and tags. Nothing here is curatable, so nothing here needs managing. Also left out:
+        any suggestion at all before the field is focused — Today stays a record, not a prompt.</p>
+      </figcaption>
+    </figure>
+
+    <figure class="mock">
+      <div class="phone"><div class="screen" data-ios="auto">
+        <div class="island"></div>
+        <div class="statusbar"><span>8:05</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="navbar plainbg">
+          <div class="nav-row">
+            <span class="nav-btn plain" style="opacity:.3"><svg width="17" height="17"><use href="#i-back"/></svg></span>
+            <span class="nav-title">Sat 4 Oct</span>
+            <span class="nav-btn plain"><svg width="17" height="17"><use href="#i-gear"/></svg></span>
+          </div>
+          <div class="large-title">Today</div>
+        </div>
+        <div class="content"><div class="scroller">
+          <div class="card">
+            <div class="totals">
+              <div class="energy">0 <small>kcal</small></div>
+              <div class="pair">
+                <div><span class="lbl">Protein</span><span class="fig">0 <b>g</b></span></div>
+                <div><span class="lbl">Fibre</span><span class="fig">0 <b>g</b></span></div>
+              </div>
+              <p class="coverage-line">Nothing logged yet.</p>
+            </div>
+          </div>
+          <div class="footnote" style="padding-top:20px">Read as four items. Tap a chip to change it.</div>
+        </div>
+          <div class="composer-dock" style="background:none">
+            <div class="chips">
+              <span class="chip"><svg><use href="#i-history"/></svg><span class="t">Haferflocken</span><span class="amt">50 g</span></span>
+              <span class="chip"><svg><use href="#i-history"/></svg><span class="t">Banane</span><span class="amt">118 g</span></span>
+              <span class="chip"><svg><use href="#i-book"/></svg><span class="t">Butter</span><span class="amt">10 g</span></span>
+              <span class="chip pending"><span class="t">peanut butter</span></span>
+            </div>
+            <div class="composer">
+              <span class="ph typed">oats, banana, toast with butter and peanut b<span class="caret"></span></span>
+              <span class="logbtn">Log</span>
+            </div>
+          </div>
+        </div>
+        <div class="keyboard">
+          <div class="krow"><span class="key">q</span><span class="key">w</span><span class="key">e</span><span class="key">r</span><span class="key">t</span><span class="key">z</span><span class="key">u</span><span class="key">i</span><span class="key">o</span><span class="key">p</span></div>
+          <div class="krow" style="padding:0 16px"><span class="key">a</span><span class="key">s</span><span class="key">d</span><span class="key">f</span><span class="key">g</span><span class="key">h</span><span class="key">j</span><span class="key">k</span><span class="key">l</span></div>
+          <div class="krow"><span class="key dark wide">⇧</span><span class="key">y</span><span class="key">x</span><span class="key">c</span><span class="key">v</span><span class="key">b</span><span class="key">n</span><span class="key">m</span><span class="key dark wide">⌫</span></div>
+          <div class="krow"><span class="key dark wide">123</span><span class="key space">space</span><span class="key dark wide">return</span></div>
+          <div class="kbar"><span class="dot"></span></div>
+        </div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">Composer, mid-sentence <span class="tag">02b</span></p>
+        <p class="cap">Chips appear as the parse settles, one per item, each carrying the amount it will use.
+        A chip with the <b>clock glyph</b> had both its food and its amount recalled from the last time that
+        item was logged; a chip with the <b>book glyph</b> was resolved against the database just now. The same
+        two glyphs mean the same two things on the resolution sheet, so the vocabulary is learned once. The
+        last chip is still being typed, so it shows the user's own words in the muted fill and no amount — the
+        app never guesses ahead of the sentence. The mic swaps for Log as soon as there is something to log.</p>
+        <p class="omit"><span class="lbl">Left out</span> Energy per chip. A kcal number on each chip would
+        turn the composer into a calculator and invite correction at a precision the product does not claim.
+        Also left out: match certainty. Chips say what was read, not how sure the match is — certainty is
+        settled on the sheet, where there is room to name the runner-up and act on it. Also left out:
+        autocomplete, inline suggestions, and any “I think you mean…” prompt.</p>
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════ RESOLUTION SHEET ══════════════════════════ -->
+<section id="resolution" class="wrap">
+  <div class="shead">
+    <span class="snum">03 — The resolution sheet</span>
+    <h2>Five states, three tiers, no colour</h2>
+    <p>A row on this sheet is in one of five states. <b>From history</b> — the food and the amount come back
+    from the last time, no model involved. <b>Checked and certain</b> — retrieved from the bundled tables and
+    confirmed by the on-device model against the shortlist. <b>Checked and probable</b> — confirmed, but a
+    second candidate was close. <b>Unsure or unmatched</b> — the model declined the shortlist, or nothing was
+    retrieved; the row carries no values and blocks the Log button. <b>Not checked</b> — this iPhone has no
+    Apple Intelligence, so the match is by name only.</p>
+    <p>Checking is not a nicety. Text search for “coffee” retrieves <i>Kaffeepulver, löslich</i> at
+    350 kcal/100 g alongside <i>Kaffee, schwarz</i> at 2, and a 250 g cup logged against the wrong one is
+    875 kcal instead of 5 — a 40% error on the whole day from one row. That is the failure the model's second
+    pass exists to catch, and screen 03b is it being caught.</p>
+    <p><strong>Five states did not survive contact with the sheet.</strong> What I could draw legibly is
+    <strong>three tiers</strong>, carried by structure rather than colour: a <b>settled</b> row is one line
+    with nothing to operate; a <b>glance</b> row is taller, names the runner-up it rejected, and carries a
+    chevron and an open portion control; a <b>blocking</b> row has a dashed empty value slot and makes the Log
+    button inert. Within a tier, the exact state is carried by a glyph and a sentence, which are read only once
+    the eye is already on that row. “Not checked” is not a row state at all in this design — it is a property
+    of the device, so it is lifted to one sentence above the Log button and a lower threshold for the glance
+    tier. The reasoning, and what that compromise costs, is break 02.</p>
+  </div>
+
+  <div class="rail">
+
+    <figure class="mock">
+      <div class="phone"><div class="screen" data-ios="auto">
+        <div class="island"></div>
+        <div class="statusbar"><span>8:05</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="navbar plainbg" style="opacity:.5">
+          <div class="nav-row"><span></span><span class="nav-title">Sat 4 Oct</span><span></span></div>
+          <div class="large-title">Today</div>
+        </div>
+        <div class="content"><div class="scroller" style="opacity:.5">
+          <div class="card"><div class="totals">
+            <div class="energy">0 <small>kcal</small></div>
+            <div class="pair"><div><span class="lbl">Protein</span><span class="fig">0 <b>g</b></span></div>
+            <div><span class="lbl">Fibre</span><span class="fig">0 <b>g</b></span></div></div>
+          </div></div>
+        </div></div>
+        <div class="sheet-dim"></div>
+        <div class="sheet" style="height:496px">
+          <div class="grabber"></div>
+          <div class="sheet-nav"><span class="nav-btn plain">Cancel</span><span class="t">Breakfast</span><span style="width:46px"></span></div>
+          <div class="sheet-body">
+            <p class="footnote" style="padding:0 2px 9px">“oats, banana, milk, coffee”</p>
+            <div class="card">
+              <div class="rrow">
+                <div class="top"><span class="phrase">Haferflocken, Vollkorn</span><span class="kcal">185 kcal</span></div>
+                <div class="src"><svg><use href="#i-history"/></svg><span>50 g, as on 2 Oct</span></div>
+              </div>
+              <div class="rrow">
+                <div class="top"><span class="phrase">Banane, roh</span><span class="kcal">106 kcal</span></div>
+                <div class="src"><svg><use href="#i-history"/></svg><span>118 g, as on 2 Oct</span></div>
+              </div>
+              <div class="rrow">
+                <div class="top"><span class="phrase">Milch, 3,5 % Fett</span><span class="kcal">96 kcal</span></div>
+                <div class="src"><svg><use href="#i-history"/></svg><span>150 g, as on 2 Oct</span></div>
+              </div>
+              <div class="rrow">
+                <div class="top"><span class="phrase">Kaffee, schwarz</span><span class="kcal">5 kcal</span></div>
+                <div class="src"><svg><use href="#i-history"/></svg><span>250 g, as on 2 Oct</span></div>
+              </div>
+              <div class="sep-note">This whole line was logged 29 times. Tap a row to change it.</div>
+            </div>
+          </div>
+          <div class="sheet-foot">
+            <span class="wide-btn">Log 392 kcal</span>
+            <p class="foot-note">08:05 · Breakfast</p>
+          </div>
+        </div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">Phrase recall — the under-5-second path <span class="tag">03a</span></p>
+        <p class="cap">The sheet for a line that has been logged before is <b>almost empty of interface</b>.
+        Four one-line rows, one sentence saying where they came from, one button. No portion controls are open
+        because no portion is in question. This state exists to be dismissed by tapping Log without reading it,
+        and the layout is designed to make that safe: the four names and the total are the only things that
+        would differ if the recall were wrong.</p>
+        <p class="omit"><span class="lbl">Left out</span> Bucket selectors, gram fields, per-row nutrients,
+        confidence scores and a confirmation step. Also left out: an option to skip this sheet entirely. It
+        costs one tap, and it is the only place the user ever sees what was actually recorded.</p>
+      </figcaption>
+    </figure>
+
+    <figure class="mock">
+      <div class="phone"><div class="screen" data-ios="auto">
+        <div class="island"></div>
+        <div class="statusbar"><span>12:48</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="navbar plainbg" style="opacity:.5">
+          <div class="nav-row"><span></span><span class="nav-title">Sat 4 Oct</span><span></span></div>
+          <div class="large-title">Today</div>
+        </div>
+        <div class="content"><div class="scroller" style="opacity:.5">
+          <div class="card"><div class="totals">
+            <div class="energy">392 <small>kcal</small></div>
+            <div class="pair"><div><span class="lbl">Protein</span><span class="fig">14 <b>g</b></span></div>
+            <div><span class="lbl">Fibre</span><span class="fig">7 <b>g</b></span></div></div>
+          </div></div>
+        </div></div>
+        <div class="sheet-dim"></div>
+        <div class="sheet" style="height:612px">
+          <div class="grabber"></div>
+          <div class="sheet-nav"><span class="nav-btn plain">Cancel</span><span class="t">Lunch</span><span style="width:46px"></span></div>
+          <div class="sheet-body">
+            <p class="footnote" style="padding:0 2px 9px">“rice, chicken breast, apple, large coffee”</p>
+            <div class="card">
+              <div class="rrow">
+                <div class="top"><span class="phrase">Reis, weiß, gekocht</span><span class="kcal">234 kcal</span></div>
+                <div class="src"><svg><use href="#i-history"/></svg><span>180 g, as you usually have it</span></div>
+              </div>
+              <div class="rrow">
+                <div class="top"><span class="phrase">Hähnchenbrust, gegart</span><span class="kcal">248 kcal</span></div>
+                <div class="src"><svg><use href="#i-history"/></svg><span>150 g, as you usually have it</span></div>
+              </div>
+              <div class="rrow">
+                <div class="top"><span class="phrase">Apfel, mit Schale, roh</span><span class="kcal">95 kcal</span></div>
+                <div class="src"><svg><use href="#i-book"/></svg><span>Checked · Ciqual · 176 g, one medium</span></div>
+              </div>
+              <div class="rrow">
+                <div class="top"><span class="phrase">Kaffee, schwarz, ungesüßt</span><span class="kcal">5 kcal</span>
+                  <svg class="chev" width="13" height="13"><use href="#i-chevron"/></svg></div>
+                <div class="src"><svg><use href="#i-book"/></svg><span>Checked · Ciqual · 250 g, read from “large”</span></div>
+                <div class="alt">Also matched <b>Kaffeepulver, löslich</b>, 350 kcal per 100 g.
+                  Read that way this row is 875 kcal.</div>
+                <div class="bucket"><span>Less</span><span class="on">Usual</span><span>More</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="sheet-foot">
+            <span class="wide-btn">Log 582 kcal</span>
+            <p class="foot-note">1 row worth a glance · 12:48 · Lunch</p>
+          </div>
+        </div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">Three tiers on one sheet, and the coffee trap caught <span class="tag">03b</span></p>
+        <p class="cap">Four rows, three states, one tier boundary. Two rows come <b>from history</b> (clock
+        glyph, “as you usually have it”). The apple is <b>checked and certain</b> (book glyph, “Checked”, the
+        source table, the amount) and stays one line, because a certain match has nothing in it to decide. The
+        coffee is <b>checked and probable</b>, and it is the only row that changes shape: a chevron, an open
+        portion control, and — the part that actually does the work — <b>the runner-up named with its
+        consequence in kcal</b>. “Kaffeepulver, löslich, 350 kcal per 100 g. Read that way this row is 875
+        kcal.” A user can settle that in under a second without knowing anything about matching.</p>
+        <p class="cap">The count above the Log button, <b>“1 row worth a glance”</b>, is where the state
+        becomes findable at a glance rather than per row — it sits at the point of commitment, in plain ink,
+        and it is a count of rows rather than a score of anything.</p>
+        <p class="omit"><span class="lbl">Left out</span> A confidence percentage, a star rating, a tick on
+        the certain rows (a checkmark beside a food in a nutrition app reads as approval of the food), a
+        chevron on settled rows, and amber anywhere. Also left out: showing the runner-up on a <i>certain</i>
+        row — the model considered alternatives for every row, and surfacing them all would make four rows look
+        like four decisions.</p>
+      </figcaption>
+    </figure>
+
+    <figure class="mock">
+      <div class="phone"><div class="screen" data-ios="auto">
+        <div class="island"></div>
+        <div class="statusbar"><span>19:31</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="navbar plainbg" style="opacity:.5">
+          <div class="nav-row"><span></span><span class="nav-title">Sat 4 Oct</span><span></span></div>
+          <div class="large-title">Today</div>
+        </div>
+        <div class="content"><div class="scroller" style="opacity:.5">
+          <div class="card"><div class="totals">
+            <div class="energy">1,402 <small>kcal</small></div>
+            <div class="pair"><div><span class="lbl">Protein</span><span class="fig">71 <b>g</b></span></div>
+            <div><span class="lbl">Fibre</span><span class="fig">18 <b>g</b></span></div></div>
+          </div></div>
+        </div></div>
+        <div class="sheet-dim"></div>
+        <div class="sheet" style="height:618px">
+          <div class="grabber"></div>
+          <div class="sheet-nav"><span class="nav-btn plain">Cancel</span><span class="t">Dinner</span><span style="width:46px"></span></div>
+          <div class="sheet-body">
+            <p class="footnote" style="padding:0 2px 9px">“brot mit erdnussmus und quark”</p>
+            <div class="card">
+              <div class="rrow">
+                <div class="top"><span class="phrase">Brot, Roggenmischbrot</span><span class="kcal">138 kcal</span></div>
+                <div class="src"><svg><use href="#i-history"/></svg><span>60 g, as you usually have it</span></div>
+              </div>
+              <div class="rrow">
+                <div class="top"><span class="phrase">Erdnussmus, 100 % Erdnüsse</span><span class="kcal">182 kcal</span></div>
+                <div class="src"><svg><use href="#i-book"/></svg><span>Checked · 30 g, usual</span>
+                  <span class="badge">Open Food Facts</span></div>
+              </div>
+              <div class="rrow">
+                <div class="top"><span class="phrase">quark</span><span class="kcal none">no values</span></div>
+                <div class="src"><span>Six quark entries matched and none of them clearly. Pick one or
+                  remove the row.</span></div>
+                <span class="inline-btn"><svg width="13" height="13"><use href="#i-search"/></svg> Find food</span>
+              </div>
+            </div>
+            <p class="footnote">One row has no food behind it, so it has no nutrients and nothing to log.</p>
+          </div>
+          <div class="sheet-foot">
+            <span class="wide-btn off">Log</span>
+            <p class="foot-note">1 row needs a food</p>
+          </div>
+        </div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">Grounding: unsure blocks the button <span class="tag">03c</span></p>
+        <p class="cap">The grounding rule made visible. The model was handed six quark entries and declined to
+        pick, so the row carries <b>no number at all</b> — a dashed outline where a figure would be, not a zero,
+        not a guess, not a generic “Quark” fallback. <b>The Log button goes inert</b>, which is the strongest
+        signal available and needs no colour at all; the reason sits underneath it in words. The row keeps
+        <b>the user's own lowercase wording</b>, because the app does not dress up a thing it did not resolve.
+        “Nothing was retrieved at all” is drawn identically on purpose: the user's move is the same either way,
+        and the distinction is the app's problem, not theirs.</p>
+        <p class="cap">The peanut butter row is from <b>Open Food Facts</b> — the opt-in online source, used
+        because the bundled tables have no branded jar. It carries the neutral provenance pill the app already
+        uses and is otherwise an ordinary certain row. Provenance and certainty are two different facts and
+        they are drawn in two different places: the pill says where the numbers came from, the “Checked” says
+        the model agreed this is the food.</p>
+        <p class="omit"><span class="lbl">Left out</span> A guessed value, a “roughly 120 kcal?” prompt, and
+        red or amber anywhere. Also left out: logging the other two rows and leaving this one behind — a line
+        logs whole or not at all, because a half-logged meal is worse for the day total than an unlogged one.</p>
+      </figcaption>
+    </figure>
+
+    <figure class="mock">
+      <div class="phone"><div class="screen" data-ios="auto">
+        <div class="island"></div>
+        <div class="statusbar"><span>12:48</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="navbar plainbg" style="opacity:.5">
+          <div class="nav-row"><span></span><span class="nav-title">Sat 4 Oct</span><span></span></div>
+          <div class="large-title">Today</div>
+        </div>
+        <div class="content"><div class="scroller" style="opacity:.5">
+          <div class="card"><div class="totals">
+            <div class="energy">392 <small>kcal</small></div>
+            <div class="pair"><div><span class="lbl">Protein</span><span class="fig">14 <b>g</b></span></div>
+            <div><span class="lbl">Fibre</span><span class="fig">7 <b>g</b></span></div></div>
+          </div></div>
+        </div></div>
+        <div class="sheet-dim"></div>
+        <div class="sheet" style="height:636px">
+          <div class="grabber"></div>
+          <div class="sheet-nav"><span class="nav-btn plain">Cancel</span><span class="t">Lunch</span><span style="width:46px"></span></div>
+          <div class="sheet-body">
+            <p class="footnote" style="padding:0 2px 9px">“rice, chicken breast, apple, large coffee”</p>
+            <div class="card">
+              <div class="rrow">
+                <div class="top"><span class="phrase">Reis, weiß, gekocht</span><span class="kcal">234 kcal</span></div>
+                <div class="src"><svg><use href="#i-history"/></svg><span>180 g, as you usually have it</span></div>
+              </div>
+              <div class="rrow">
+                <div class="top"><span class="phrase">Hähnchenbrust, gegart</span><span class="kcal">248 kcal</span></div>
+                <div class="src"><svg><use href="#i-history"/></svg><span>150 g, as you usually have it</span></div>
+              </div>
+              <div class="rrow">
+                <div class="top"><span class="phrase">Apfel, mit Schale, roh</span><span class="kcal">95 kcal</span>
+                  <svg class="chev" width="13" height="13"><use href="#i-chevron"/></svg></div>
+                <div class="src"><svg><use href="#i-book"/></svg><span>Matched by name · Ciqual · 176 g, one medium</span></div>
+                <div class="bucket"><span>Less</span><span class="on">Usual</span><span>More</span></div>
+              </div>
+              <div class="rrow">
+                <div class="top"><span class="phrase">Kaffee, schwarz, ungesüßt</span><span class="kcal">5 kcal</span>
+                  <svg class="chev" width="13" height="13"><use href="#i-chevron"/></svg></div>
+                <div class="src"><svg><use href="#i-book"/></svg><span>Matched by name · Ciqual · 250 g, read from “large”</span></div>
+                <div class="bucket"><span>Less</span><span class="on">Usual</span><span>More</span></div>
+              </div>
+            </div>
+            <p class="footnote">Matching a name is all this iPhone does. Confirming that the match is the right
+            food needs Apple Intelligence.</p>
+          </div>
+          <div class="sheet-foot">
+            <span class="wide-btn">Log 582 kcal</span>
+            <p class="foot-note">2 rows worth a glance · 12:48 · Lunch</p>
+          </div>
+        </div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">The same line on a device that cannot check <span class="tag">03d</span></p>
+        <p class="cap">Identical sheet, identical structure, identical copy pattern — compare it with 03b row
+        for row. Three things differ, and all three are honest rather than apologetic. The glyph line says
+        <b>“Matched by name”</b> instead of “Checked”. <b>Both database rows are in the glance tier</b> rather
+        than one, because without a second pass the threshold for “settled” has to be the user's eye. And one
+        sentence states the device fact, in the footnote position where this app already puts caveats that
+        apply only when they apply.</p>
+        <p class="cap">This reverses what I had drawn before the checking pass existed, and it is better. The
+        earlier version carried no tell at all, which met the “must look normal” rule and left the user to
+        conclude the app was simply bad at understanding them. <b>“Matched by name” is not a degraded state,
+        it is an accurate description of what happened</b>, and it reads as information rather than as an
+        error. The cost is real and should be said out loud: two glance rows per meal instead of none is
+        roughly four extra seconds a day, every day, on hardware the user cannot change.</p>
+        <p class="omit"><span class="lbl">Left out</span> A banner, a badge on the sheet, an “unavailable”
+        notice, a prompt to turn Apple Intelligence on, and any difference in layout, order or control
+        vocabulary. Nothing here is disabled, nothing is greyed, and the Log button works.</p>
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════ DICTATION ══════════════════════════════ -->
+<section id="dictation" class="wrap">
+  <div class="shead">
+    <span class="snum">04 — Dictation</span>
+    <h2>Hands in a pan, phone on the counter</h2>
+  </div>
+
+  <div class="rail">
+
+    <figure class="mock">
+      <div class="phone"><div class="screen" data-ios="auto">
+        <div class="island"></div>
+        <div class="statusbar"><span>19:12</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="navbar plainbg">
+          <div class="nav-row"><span class="nav-btn plain">Cancel</span><span class="nav-title">Dinner</span><span style="width:46px"></span></div>
+        </div>
+        <div class="content"><div class="dictation">
+          <div class="dict-transcript">
+            <p>chicken curry with rice, <span class="tail">big portion</span></p>
+          </div>
+          <div class="chips" style="padding:0 10px 14px;flex-wrap:wrap;gap:7px">
+            <span class="chip"><svg><use href="#i-history"/></svg><span class="t">Hähnchencurry</span><span class="amt">more</span></span>
+            <span class="chip"><svg><use href="#i-history"/></svg><span class="t">Reis, gekocht</span><span class="amt">more</span></span>
+          </div>
+          <div class="wave" id="wave"></div>
+          <div class="hold"><svg width="19" height="19"><use href="#i-mic"/></svg> Release to log</div>
+          <p class="footnote" style="text-align:center;padding:0 20px 14px">Stays on the device.</p>
+        </div></div>
+        <div class="home"></div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">Dictation, speaking <span class="tag">04</span></p>
+        <p class="cap">Hold to talk, release to log. The transcript is set at 26 pt so it reads from a metre
+        away across a counter, and the words not yet confirmed by the recogniser are in the secondary ink so
+        the user can see the tail settling. Chips build while speaking, exactly as they do while typing — one
+        parse, one presentation, two input methods. <b>"big portion" lands as the More bucket on both rows</b>,
+        which is the clearest demonstration there is that buckets and not grams are the unit.</p>
+        <p class="omit"><span class="lbl">Left out</span> A Siri-style animated blob, a level meter that
+        implies loudness matters, a "Listening…" label, and a stop button. Release ends it. Also left out:
+        tap-to-start dictation — a mode you can leave running next to a hob is a mode that logs your flatmate.
+        That costs an accessibility path, noted below.</p>
+      </figcaption>
+    </figure>
+
+    <figure class="mock">
+      <div class="phone"><div class="screen" data-ios="auto">
+        <div class="island"></div>
+        <div class="statusbar"><span>8:06</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="navbar plainbg">
+          <div class="nav-row"><span class="nav-btn plain"><svg width="17" height="17"><use href="#i-back"/></svg></span>
+            <span class="nav-title">Settings</span><span style="width:30px"></span></div>
+          <div class="large-title" style="font-size:30px">Remembered lines</div>
+        </div>
+        <div class="content"><div class="scroller">
+          <p class="footnote" style="padding:2px 2px 12px">Lines you have logged before, and the amounts they
+          brought back. The app uses these without asking. Delete one to forget it.</p>
+          <div class="card">
+            <div class="row"><div class="body">
+              <div class="name">oats, banana, milk, coffee</div>
+              <div class="meta"><span>29 times</span><span>·</span><span>last 2 Oct</span></div>
+            </div><svg class="chev" width="13" height="13"><use href="#i-chevron"/></svg></div>
+            <div class="row"><div class="body">
+              <div class="name">rye bread with butter and cheese</div>
+              <div class="meta"><span>11 times</span><span>·</span><span>last 30 Sep</span></div>
+            </div><svg class="chev" width="13" height="13"><use href="#i-chevron"/></svg></div>
+            <div class="row"><div class="body">
+              <div class="name">brot mit erdnussmus und quark</div>
+              <div class="meta"><span>3 times</span><span>·</span><span>last 1 Oct</span></div>
+            </div><svg class="chev" width="13" height="13"><use href="#i-chevron"/></svg></div>
+            <div class="row"><div class="body">
+              <div class="name">lentil soup, big bowl</div>
+              <div class="meta"><span>7 times</span><span>·</span><span>last 28 Sep</span></div>
+            </div><svg class="chev" width="13" height="13"><use href="#i-chevron"/></svg></div>
+          </div>
+          <div class="ghead" style="font-size:15px">Single items</div>
+          <div class="card">
+            <div class="row"><div class="body"><div class="name">kimchi</div>
+              <div class="meta"><span>Kimchi, fermentiert</span><span>·</span><span>75 g</span></div></div>
+              <svg class="chev" width="13" height="13"><use href="#i-chevron"/></svg></div>
+            <div class="row"><div class="body"><div class="name">quark</div>
+              <div class="meta"><span>Speisequark, 20 % Fett i. Tr.</span><span>·</span><span>200 g</span></div></div>
+              <svg class="chev" width="13" height="13"><use href="#i-chevron"/></svg></div>
+          </div>
+        </div></div>
+        <div class="tabbar">
+          <span class="tab"><svg><use href="#i-list"/></svg>Today</span>
+          <span class="tab"><svg><use href="#i-chart"/></svg>Trends</span>
+          <span class="tab on"><svg><use href="#i-gear"/></svg>Settings</span>
+        </div>
+        <div class="home"></div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">Settings › Remembered lines <span class="tag">04b</span></p>
+        <p class="cap">The one concession to the no-curation rule. Recall has to be <b>inspectable and
+        deletable</b> or it is a black box that silently logs the wrong amount forever, and a user who typed
+        something embarrassing has no way to remove it. It lives in Settings, not in a tab, it has no create
+        button, no naming, no reordering and no search. You can read it and you can forget a line.</p>
+        <p class="omit"><span class="lbl">Left out</span> Editing a remembered line in place, pinning,
+        renaming, or logging from here. Logging from this screen would make it a meals library through the back
+        door, which is the thing the design is trying not to be.</p>
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ═════════════════════════ NORMAL DAY / BASELINE ═══════════════════════ -->
+<section id="baseline" class="wrap">
+  <div class="shead">
+    <span class="snum">05 — A normal day, and deviations from it</span>
+    <h2>A proposal is not a log</h2>
+    <p>Most days are the same day. Today can therefore offer the day's baseline before anything has been
+    typed — but a proposal that is indistinguishable from a record destroys the integrity of every total,
+    every average and everything written to Health. So the proposal is drawn as a <strong>separate dashed
+    card above the entries</strong>, never as rows inside a meal slot, and <strong>never inside the headline
+    figure</strong>.</p>
+  </div>
+
+  <div class="rail">
+
+    <figure class="mock">
+      <div class="phone"><div class="screen" data-ios="auto">
+        <div class="island"></div>
+        <div class="statusbar"><span>7:52</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="navbar plainbg">
+          <div class="nav-row">
+            <span class="nav-btn plain"><svg width="17" height="17"><use href="#i-back"/></svg></span>
+            <span class="nav-title">Mon 6 Oct</span>
+            <span class="nav-btn plain"><svg width="17" height="17"><use href="#i-gear"/></svg></span></div>
+          <div class="large-title">Today</div>
+        </div>
+        <div class="content"><div class="scroller">
+          <div class="card">
+            <div class="totals">
+              <div class="energy">0 <small>kcal</small></div>
+              <div class="pair">
+                <div><span class="lbl">Protein</span><span class="fig">0 <b>g</b></span></div>
+                <div><span class="lbl">Fibre</span><span class="fig">0 <b>g</b></span></div>
+              </div>
+              <p class="coverage-line">Nothing logged yet. Your usual Monday would come to 1,604 kcal.</p>
+            </div>
+          </div>
+
+          <div class="ghead">Your usual Monday</div>
+          <div class="card proposal">
+            <div class="phead"><svg width="15" height="15" style="color:var(--s-label2)"><use href="#i-history"/></svg>
+              Not logged<span class="badge">Proposal</span></div>
+            <div class="prow"><span class="nm">Breakfast · oats, banana, milk, coffee</span><span class="vv">392</span></div>
+            <div class="prow"><span class="nm">Lunch · rice, chicken breast, apple</span><span class="vv">577</span></div>
+            <div class="prow"><span class="nm">Dinner · rye bread, butter, cheese</span><span class="vv">509</span></div>
+            <div class="prow"><span class="nm">Snack · skyr</span><span class="vv">126</span></div>
+            <div class="pact"><span class="b1">Log all four</span><span class="b2">Adjust</span></div>
+          </div>
+          <p class="footnote">Nothing here is in your log or in Health until you log it. Typing over a meal
+          replaces that meal's proposal.</p>
+        </div>
+          <div class="composer-dock">
+            <div class="composer">
+              <span class="ph">What did you eat?</span>
+              <span class="mic"><svg width="18" height="18"><use href="#i-mic"/></svg></span>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <span class="tab on"><svg><use href="#i-list"/></svg>Today</span>
+          <span class="tab"><svg><use href="#i-chart"/></svg>Trends</span>
+          <span class="tab"><svg><use href="#i-gear"/></svg>Settings</span>
+        </div>
+        <div class="home"></div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">The baseline, proposed <span class="tag">05a</span></p>
+        <p class="cap">Four signals separate proposed from logged, and they are all structural rather than
+        chromatic: the card has a <b>dashed outline</b> where every logged card has a filled surface and a
+        shadow; it sits <b>outside the meal sections</b>; it says <b>"Not logged"</b> in words at the top; and
+        the headline reads <b>0 kcal</b> with the proposal's sum demoted to the coverage line. The baseline is
+        derived from what this weekday usually contains, so it needs no setup screen and nothing to maintain.</p>
+        <p class="omit"><span class="lbl">Left out</span> Any auto-logging, any "we logged this for you, undo?",
+        and any grey ghost rows inside the meal sections. A ghost row inside Breakfast reads as a row, and at
+        AX5 with a 44 pt row height the only difference left would be the opacity — which is exactly the kind
+        of distinction that disappears for the users who most need it.</p>
+      </figcaption>
+    </figure>
+
+    <figure class="mock">
+      <div class="phone"><div class="screen" data-ios="auto">
+        <div class="island"></div>
+        <div class="statusbar"><span>13:04</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="navbar plainbg">
+          <div class="nav-row">
+            <span class="nav-btn plain"><svg width="17" height="17"><use href="#i-back"/></svg></span>
+            <span class="nav-title">Mon 6 Oct</span>
+            <span class="nav-btn plain"><svg width="17" height="17"><use href="#i-gear"/></svg></span></div>
+          <div class="large-title">Today</div>
+        </div>
+        <div class="content"><div class="scroller">
+          <div class="card">
+            <div class="totals">
+              <div class="energy">1,164 <small>kcal</small></div>
+              <div class="pair">
+                <div><span class="lbl">Protein</span><span class="fig">58 <b>g</b></span></div>
+                <div><span class="lbl">Fibre</span><span class="fig">15 <b>g</b></span></div>
+              </div>
+              <p class="coverage-line">Breakfast and lunch logged. Dinner and a snack still proposed.</p>
+            </div>
+          </div>
+
+          <div class="ghead"><svg><use href="#i-sunrise"/></svg>Breakfast<span class="right">07:58</span></div>
+          <div class="card">
+            <div class="row"><div class="body"><div class="name">Haferflocken, Vollkorn</div>
+              <div class="meta"><span>50 g</span><span>·</span><span>usual</span></div></div><div class="val">185 kcal</div></div>
+            <div class="row"><div class="body"><div class="name">Banane, roh</div>
+              <div class="meta"><span>118 g</span><span>·</span><span>usual</span></div></div><div class="val">106 kcal</div></div>
+            <div class="row"><div class="body"><div class="name">Milch, 3,5 % Fett</div>
+              <div class="meta"><span>150 g</span><span>·</span><span>usual</span></div></div><div class="val">96 kcal</div></div>
+            <div class="row"><div class="body"><div class="name">Kaffee, schwarz</div>
+              <div class="meta"><span>250 g</span><span>·</span><span>usual</span></div></div><div class="val">5 kcal</div></div>
+          </div>
+
+          <div class="ghead"><svg><use href="#i-sun"/></svg>Lunch<span class="right">12:51</span></div>
+          <div class="card">
+            <div class="row"><div class="body"><div class="name">Döner Kebab mit Fladenbrot</div>
+              <div class="meta"><span>380 g</span><span>·</span><span>usual</span></div></div><div class="val">772 kcal</div></div>
+          </div>
+          <p class="footnote" style="padding-left:2px">Replaced your usual lunch.</p>
+
+          <div class="ghead">Still proposed</div>
+          <div class="card proposal">
+            <div class="phead"><svg width="15" height="15" style="color:var(--s-label2)"><use href="#i-history"/></svg>
+              Not logged<span class="badge">Proposal</span></div>
+            <div class="prow"><span class="nm">Dinner · rye bread, butter, cheese</span><span class="vv">509</span></div>
+            <div class="prow"><span class="nm">Snack · skyr</span><span class="vv">126</span></div>
+            <div class="pact"><span class="b1">Log both</span><span class="b2">Dismiss</span></div>
+          </div>
+        </div>
+          <div class="composer-dock">
+            <div class="composer">
+              <span class="ph">What did you eat?</span>
+              <span class="mic"><svg width="18" height="18"><use href="#i-mic"/></svg></span>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <span class="tab on"><svg><use href="#i-list"/></svg>Today</span>
+          <span class="tab"><svg><use href="#i-chart"/></svg>Trends</span>
+          <span class="tab"><svg><use href="#i-gear"/></svg>Settings</span>
+        </div>
+        <div class="home"></div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">The deviation <span class="tag">05b</span></p>
+        <p class="cap">Typing a kebab into the lunch slot removed lunch from the proposal and left the rest of
+        it standing. The proposal card falls down the screen as slots are filled, so it is always below what is
+        real — <b>the vertical order is the hierarchy</b>. One line in the secondary ink says what happened to
+        the proposal, because a thing silently disappearing is the surprise the plan's copy rule exists to
+        prevent. "Dismiss" is offered next to "Log both" so a day that goes off the rails has an exit that is
+        not a deletion.</p>
+        <p class="omit"><span class="lbl">Left out</span> Any note that the kebab is unusual, any comparison
+        between 772 and the 577 it replaced, and any prompt to update the baseline. The baseline follows the
+        data; the data is never asked to follow the baseline.</p>
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ════════════════════════════════ TRENDS ═══════════════════════════════ -->
+<section id="trends" class="wrap">
+  <div class="shead">
+    <span class="snum">06 — Trends</span>
+    <h2>Three measures, one hue, no verdict</h2>
+    <p>This screen reverses an explicit decision in <code>PLAN.md</code> ("no trend charts or history graphs"),
+    so it carries the most regulatory risk in the app. Everything about it is built to stay descriptive.</p>
+    <p><strong>On colour.</strong> The brand has one accent and the design rule says nutrient values are never
+    tinted — so a three-series rainbow was never available, and neither was tangerine on the data. Energy,
+    protein and fibre are drawn as <strong>small multiples</strong>: three charts, one measure each, one axis
+    each, a single warm-graphite ink. No dual axes, no legend (a single series needs none), no series colour at
+    all. Tangerine appears exactly once, on the selected range — the only thing on the screen you can operate.
+    The coverage strip is the one place with more than one class, and it uses an ordinal ramp of the same hue,
+    validated light and dark, not a second colour.</p>
+  </div>
+
+  <div class="rail">
+
+    <figure class="mock" style="grid-column:span 1">
+      <div class="phone"><div class="screen" data-ios="auto">
+        <div class="island"></div>
+        <div class="statusbar"><span>21:18</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="navbar plainbg">
+          <div class="large-title" style="padding-top:10px">Trends</div>
+        </div>
+        <div class="content"><div class="scroller" id="trends-scroller">
+          <div class="ios-seg" role="group" aria-label="Range">
+            <button type="button" data-range="w" aria-pressed="false">Week</button>
+            <button type="button" data-range="m" aria-pressed="false">Month</button>
+            <button type="button" data-range="q" aria-pressed="true">Quarter</button>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-head"><span class="chart-title">Energy</span><span class="chart-now" id="n-e">—</span></div>
+            <p class="chart-sub" id="s-e">—</p>
+            <div class="chart" id="c-e"></div>
+            <div class="tip" id="tip-e"></div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-head"><span class="chart-title">Data</span><span class="chart-now" id="n-c">—</span></div>
+            <p class="chart-sub" id="s-c">—</p>
+            <div class="chart" id="c-c"></div>
+            <div class="cov-legend">
+              <span><i style="background:var(--c-series)"></i>Logged</span>
+              <span><i style="background:var(--c-assumed)"></i>Partly assumed</span>
+              <span><i style="background:transparent;box-shadow:inset 0 0 0 1px var(--c-axis)"></i>Nothing logged</span>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-head"><span class="chart-title">Protein</span><span class="chart-now" id="n-p">—</span></div>
+            <p class="chart-sub" id="s-p">—</p>
+            <div class="chart" id="c-p"></div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-head"><span class="chart-title">Fibre</span><span class="chart-now" id="n-f">—</span></div>
+            <p class="chart-sub" id="s-f">—</p>
+            <div class="chart" id="c-f"></div>
+          </div>
+
+          <p class="footnote" style="padding:10px 4px 0">Averages use the days that have data. Days with
+          nothing logged are left out of the average, not counted as zero.</p>
+        </div></div>
+        <div class="tabbar">
+          <span class="tab"><svg><use href="#i-list"/></svg>Today</span>
+          <span class="tab on"><svg><use href="#i-chart"/></svg>Trends</span>
+          <span class="tab"><svg><use href="#i-gear"/></svg>Settings</span>
+        </div>
+        <div class="home"></div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">Trends, live <span class="tag">06</span></p>
+        <p class="cap">The range switcher works; so does the crosshair on the energy chart, which reports the
+        day's value <em>and</em> its coverage state together, because on this screen those are the same
+        question. Two things to look at. First, <b>the rolling-average line breaks</b> wherever fewer than four
+        of the seven days in the window have data — the August gap is a hole in the line, not a dip to zero and
+        not a straight line across. Second, <b>Week shows daily columns, not an average</b>, and says so: a
+        seven-day mean over seven days is one number, so the chart has to change meaning with the range.
+        A user-set reference line is permitted, and energy is drawn here with one set: a neutral hairline,
+        its value in plain ink, labelled “your reference”. It is off until the user sets it, it is never
+        suggested, and it is never called a target or a goal.</p>
+        <p class="omit"><span class="lbl">Left out</span> Red and green, up/down arrows, percentage change,
+        "best week", any shading of a region as good or bad, and any axis that starts somewhere flattering.
+        Also left out: a second series on any chart, and carbs, fat, sugar, sodium and saturated fat — five
+        more charts would make this a dashboard, and a dashboard invites interpretation.</p>
+      </figcaption>
+    </figure>
+
+    <figure class="mock">
+      <div class="phone"><div class="screen" data-ios="auto">
+        <div class="island"></div>
+        <div class="statusbar"><span>8:30</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="navbar plainbg">
+          <div class="nav-row">
+            <span class="nav-btn plain"><svg width="17" height="17"><use href="#i-back"/></svg></span>
+            <span class="nav-title">Mon 18 Aug</span>
+            <span class="nav-btn plain"><svg width="17" height="17"><use href="#i-gear"/></svg></span></div>
+          <div class="large-title">Past day</div>
+        </div>
+        <div class="content"><div class="scroller">
+          <div class="card">
+            <div class="totals">
+              <div class="energy" style="color:var(--s-label2)">— <small>kcal</small></div>
+              <div class="pair">
+                <div><span class="lbl">Protein</span><span class="fig" style="color:var(--s-label2)">—</span></div>
+                <div><span class="lbl">Fibre</span><span class="fig" style="color:var(--s-label2)">—</span></div>
+              </div>
+              <p class="coverage-line">Nothing logged on this day.</p>
+            </div>
+          </div>
+          <div class="card proposal" style="margin-top:14px">
+            <div class="phead"><svg width="15" height="15" style="color:var(--s-label2)"><use href="#i-history"/></svg>
+              Not logged<span class="badge">Proposal</span></div>
+            <div class="prow"><span class="nm">Your usual Monday</span><span class="vv">1,604</span></div>
+            <div class="pact"><span class="b1">Use for this day</span><span class="b2">Leave blank</span></div>
+          </div>
+          <p class="footnote">If you use it, the day counts as assumed rather than logged, and says so in
+          Trends.</p>
+
+          <div class="ghead" style="font-size:15px">That week</div>
+          <div class="card">
+            <div class="row"><div class="body"><div class="name">Sat 16 Aug</div>
+              <div class="meta"><span>Logged</span></div></div><div class="val q">2,320 kcal</div></div>
+            <div class="row"><div class="body"><div class="name">Sun 17 Aug</div>
+              <div class="meta"><span>Nothing logged</span></div></div><div class="val q">—</div></div>
+            <div class="row"><div class="body"><div class="name">Mon 18 Aug</div>
+              <div class="meta"><span>Nothing logged</span></div></div><div class="val q">—</div></div>
+            <div class="row"><div class="body"><div class="name">Tue 19 Aug</div>
+              <div class="meta"><span>Nothing logged</span></div></div><div class="val q">—</div></div>
+            <div class="row"><div class="body"><div class="name">Wed 20 Aug</div>
+              <div class="meta"><span>Nothing logged</span></div></div><div class="val q">—</div></div>
+            <div class="row"><div class="body"><div class="name">Thu 21 Aug</div>
+              <div class="meta"><span>Logged</span></div></div><div class="val q">2,120 kcal</div></div>
+          </div>
+          <p class="footnote">The 7-day average stops where fewer than four days have data and starts again
+          on 24 Aug.</p>
+        </div></div>
+        <div class="tabbar">
+          <span class="tab on"><svg><use href="#i-list"/></svg>Today</span>
+          <span class="tab"><svg><use href="#i-chart"/></svg>Trends</span>
+          <span class="tab"><svg><use href="#i-gear"/></svg>Settings</span>
+        </div>
+        <div class="home"></div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">A day you did not log <span class="tag">07</span></p>
+        <p class="cap">The totals are <b>em dashes, not zeros</b>. A zero is a claim that you ate nothing; a
+        dash is the truth, which is that the app does not know. This single substitution is what makes
+        incompleteness first-class, and it propagates: the day is excluded from every average rather than
+        dragging it down. The user can convert the day to the baseline, and the copy is explicit that doing so
+        makes it <b>assumed</b> — a third state, visible in the coverage strip, not quietly promoted to logged.</p>
+        <p class="omit"><span class="lbl">Left out</span> "You missed a day", a broken streak, a greyed-out
+        calendar cell that reads as a penalty, a reminder notification, and any count of how many days have
+        been missed. The week list reports; it does not tally.</p>
+      </figcaption>
+    </figure>
+
+    <figure class="mock">
+      <div class="phone"><div class="screen" data-ios="dark">
+        <div class="lockwall"></div>
+        <div class="island"></div>
+        <div class="statusbar" style="color:#fff"><span>9:41</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="lockwall t" style="background:none">
+          <div class="d">Saturday, 4 October</div>
+          <div class="h">9:41</div>
+        </div>
+        <div class="wgt">
+          <div class="wh"><svg><use href="#i-bite"/></svg> OMNOMNOM · 392 KCAL TODAY</div>
+          <div class="wrow"><span class="nm">oats, banana, milk, coffee</span><span class="kc">392</span>
+            <span class="go"><svg width="13" height="13"><use href="#i-plus"/></svg></span></div>
+          <div class="wrow"><span class="nm">rice, chicken breast, apple</span><span class="kc">577</span>
+            <span class="go"><svg width="13" height="13"><use href="#i-plus"/></svg></span></div>
+          <div class="wrow"><span class="nm">rye bread with butter and cheese</span><span class="kc">509</span>
+            <span class="go"><svg width="13" height="13"><use href="#i-plus"/></svg></span></div>
+        </div>
+        <div class="home" style="background:#fff"></div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">Lock Screen widget <span class="tag">08</span></p>
+        <p class="cap">The three lines most often typed at this hour, each one tap to log at the amounts they
+        last used — phrase recall with no sheet, because the widget cannot show one. The mark appears here, as
+        the brand kit permits, and the lines keep <b>the user's own lowercase wording</b> rather than database
+        names, since that is what makes them recognisable at a glance. Energy is reported in the header without
+        a target beside it.</p>
+        <p class="omit"><span class="lbl">Left out</span> A ring, a bar, a remaining figure, a macro
+        breakdown, and the day's protein and fibre. A widget that fits three numbers will be read as a score;
+        a widget that fits three actions is a shortcut. Also left out: a confirmation — the tap logs, and
+        opening the app within a minute offers to undo.</p>
+      </figcaption>
+    </figure>
+
+  </div>
+
+  <details class="data">
+    <summary>Values behind the Trends charts — last 21 days</summary>
+    <div class="tbl-wrap">
+      <table id="data-table">
+        <thead><tr><th scope="col">Day</th><th scope="col">Coverage</th><th scope="col">Energy kcal</th>
+          <th scope="col">Protein g</th><th scope="col">Fibre g</th><th scope="col">7-day energy</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </details>
+</section>
+
+<!-- ════════════════════════════════ EDGES ═══════════════════════════════ -->
+<section id="edges" class="wrap">
+  <div class="shead">
+    <span class="snum">07 — The two edges</span>
+    <h2>A partial day, and a device without Apple Intelligence</h2>
+  </div>
+
+  <div class="rail">
+
+    <figure class="mock">
+      <div class="phone"><div class="screen" data-ios="auto">
+        <div class="island"></div>
+        <div class="statusbar"><span>22:40</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="navbar plainbg">
+          <div class="nav-row">
+            <span class="nav-btn plain"><svg width="17" height="17"><use href="#i-back"/></svg></span>
+            <span class="nav-title">Thu 2 Oct</span>
+            <span class="nav-btn plain"><svg width="17" height="17"><use href="#i-gear"/></svg></span></div>
+          <div class="large-title">Past day</div>
+        </div>
+        <div class="content"><div class="scroller">
+          <div class="card">
+            <div class="totals">
+              <div class="energy">1,412 <small>kcal</small></div>
+              <div class="pair">
+                <div><span class="lbl">Protein</span><span class="fig">71 <b>g</b></span></div>
+                <div><span class="lbl">Fibre</span><span class="fig">18 <b>g</b></span></div>
+              </div>
+              <p class="coverage-line">Breakfast and lunch logged. Dinner assumed from your usual Thursday.
+              Nothing for the evening.</p>
+            </div>
+          </div>
+
+          <div class="ghead"><svg><use href="#i-sunrise"/></svg>Breakfast<span class="right">08:10</span></div>
+          <div class="card">
+            <div class="row"><div class="body"><div class="name">Haferflocken, Vollkorn</div>
+              <div class="meta"><span>50 g</span><span>·</span><span>usual</span></div></div><div class="val">185 kcal</div></div>
+            <div class="row"><div class="body"><div class="name">Banane, roh</div>
+              <div class="meta"><span>118 g</span><span>·</span><span>usual</span></div></div><div class="val">106 kcal</div></div>
+          </div>
+
+          <div class="ghead"><svg><use href="#i-sun"/></svg>Lunch<span class="right">12:35</span></div>
+          <div class="card">
+            <div class="row"><div class="body"><div class="name">Kürbissuppe</div>
+              <div class="meta"><span>400 g</span><span>·</span><span>more</span><span class="badge">Estimated</span></div></div>
+              <div class="val">268 kcal</div></div>
+            <div class="row"><div class="body"><div class="name">Brot, Roggenmischbrot</div>
+              <div class="meta"><span>60 g</span><span>·</span><span>usual</span><span class="badge">Not in Health</span></div></div>
+              <div class="val">138 kcal</div></div>
+          </div>
+
+          <div class="ghead"><svg><use href="#i-moon"/></svg>Dinner<span class="right">assumed</span></div>
+          <div class="card proposal">
+            <div class="phead"><svg width="15" height="15" style="color:var(--s-label2)"><use href="#i-history"/></svg>
+              Assumed, not logged<span class="badge">Assumed</span></div>
+            <div class="prow"><span class="nm">Your usual Thursday dinner</span><span class="vv">715</span></div>
+            <div class="pact"><span class="b1">Log it</span><span class="b2">It was different</span></div>
+          </div>
+          <p class="footnote">Assumed figures are in the day total and marked in Trends. Nothing assumed is
+          written to Health.</p>
+
+          <div class="ghead"><svg><use href="#i-carrot"/></svg>Snack<span class="right">missing</span></div>
+          <div class="card"><div class="row"><div class="body">
+            <div class="name" style="color:var(--s-label2)">Nothing logged after 19:00</div>
+          </div></div></div>
+        </div></div>
+        <div class="tabbar">
+          <span class="tab on"><svg><use href="#i-list"/></svg>Today</span>
+          <span class="tab"><svg><use href="#i-chart"/></svg>Trends</span>
+          <span class="tab"><svg><use href="#i-gear"/></svg>Settings</span>
+        </div>
+        <div class="home"></div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">A partial day: logged, assumed, missing <span class="tag">09</span></p>
+        <p class="cap">Three states on one screen, each with its own structure. <b>Logged</b> is a filled card
+        with per-item rows. <b>Assumed</b> is the dashed card, counted in the day total and excluded from
+        Health. <b>Missing</b> is a card with a sentence in it and nothing to act on, because the absence of a
+        snack is still information about the day. The coverage line at the top narrates all three in one
+        sentence rather than as a fraction — "3 of 4 slots" would be a score, and a score is the thing this
+        product must not produce.</p>
+        <p class="omit"><span class="lbl">Left out</span> A percentage complete, a progress bar over the four
+        slots, a "complete your day" prompt, and any attempt to pad the missing evening. The assumed dinner
+        counts toward the day; the missing snack counts as nothing at all, and the two are drawn differently
+        on purpose.</p>
+      </figcaption>
+    </figure>
+
+    <figure class="mock">
+      <div class="phone"><div class="screen" data-ios="auto">
+        <div class="island"></div>
+        <div class="statusbar"><span>12:49</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="navbar plainbg" style="opacity:.5">
+          <div class="nav-row"><span></span><span class="nav-title">Sat 4 Oct</span><span></span></div>
+          <div class="large-title">Today</div>
+        </div>
+        <div class="content"><div class="scroller" style="opacity:.5">
+          <div class="card"><div class="totals">
+            <div class="energy">392 <small>kcal</small></div>
+            <div class="pair"><div><span class="lbl">Protein</span><span class="fig">14 <b>g</b></span></div>
+            <div><span class="lbl">Fibre</span><span class="fig">7 <b>g</b></span></div></div>
+          </div></div>
+        </div></div>
+        <div class="sheet-dim"></div>
+        <div class="sheet" style="height:596px">
+          <div class="grabber"></div>
+          <div class="sheet-nav"><span class="nav-btn plain">Cancel</span><span class="t">Lunch</span><span style="width:46px"></span></div>
+          <div class="sheet-body">
+            <p class="footnote" style="padding:0 2px 9px">“a big bowl of the curry from tuesday”</p>
+            <div class="card">
+              <div class="rrow">
+                <div class="top"><span class="phrase">curry</span><span class="kcal none">no values</span></div>
+                <div class="src"><span>Several foods match “curry”. Pick one.</span></div>
+                <span class="inline-btn"><svg width="13" height="13"><use href="#i-search"/></svg> Find food</span>
+              </div>
+            </div>
+            <p class="footnote">Read as one item with no amount. Rephrasing as a list — “chicken curry, rice,
+            big portion” — usually reads better.</p>
+            <div class="ghead" style="font-size:15px;padding-top:18px">Lines you have logged</div>
+            <div class="card">
+              <div class="row"><div class="body"><div class="name">chicken curry with rice, big portion</div>
+                <div class="meta"><svg width="12" height="12"><use href="#i-history"/></svg><span>Tue 30 Sep · 884 kcal</span></div></div>
+                <svg class="chev" width="13" height="13"><use href="#i-chevron"/></svg></div>
+            </div>
+          </div>
+          <div class="sheet-foot">
+            <span class="wide-btn off">Log</span>
+            <p class="foot-note">1 row needs a food</p>
+          </div>
+        </div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">Apple Intelligence unavailable <span class="tag">10</span></p>
+        <p class="cap">The deterministic fallback splits on separators, matches fragments against the food
+        index and reads amounts from a small grammar of numbers, units and size words. On a list — "oats,
+        banana, coffee" — it is <b>indistinguishable from the model path</b>, which is the requirement. On a
+        sentence with a reference in it, it produces one unmatched row and no amount. The design response is
+        two things that cost nothing: a line suggesting the phrasing that works, and the matching remembered
+        line offered directly underneath, which in practice resolves this case in one tap.</p>
+        <p class="cap">This is the <b>second</b> thing the missing model costs, and it is not the same as the
+        first. Screen 03d is about matches that cannot be <i>checked</i>; this is about a sentence that cannot
+        be <i>read</i>. One is handled by moving rows into the glance tier, the other by failing to produce a
+        row at all. A user experiences them as one thing — “it understood less” — which is why the sentence on
+        03d is worded about matching rather than about the device's cleverness in general.</p>
+        <p class="omit"><span class="lbl">Left out</span> Any badge, banner or asterisk on the composer. The
+        tell lives on the sheet, next to the rows it explains, and nowhere else. Also left out: a prompt to
+        enable Apple Intelligence, which on most affected devices is not a setting but a purchase.</p>
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════ JOURNEYS ══════════════════════════════ -->
+<section id="journeys" class="wrap">
+  <div class="shead">
+    <span class="snum">08 — User journeys</span>
+    <h2>Measured against five and twenty seconds</h2>
+    <p>Targets from <code>PLAN.md</code>: <strong>a repeat meal in under 5 s and 3 taps</strong>, <strong>a
+    meal never logged before in under 20 s</strong>. Seconds below are wall-clock estimates including reading
+    and typing, at roughly 28 words per minute of thumb typing — fast for a phone, slow for a keyboard. A tap
+    is a discrete deliberate touch; typing is counted as time, not as taps. Where a journey misses, it says so.</p>
+  </div>
+
+  <div class="journey">
+    <div class="j-head"><span class="j-id">J1</span><h3 class="j-title">Typing a routine breakfast</h3>
+      <span class="j-total">2 taps · 8.1 s typed &nbsp;|&nbsp; 2 taps · 3.3 s recalled</span></div>
+    <p class="j-target">Target: under 20 s as a new meal <span class="hit">met</span> ·
+      under 5 s as a repeat <span class="hit">met from the second time on</span></p>
+    <div class="flow">
+      <div class="step"><span class="sn">01</span><span class="sw">Today</span>
+        <p class="sd">Tap the composer. Keyboard up, two most-typed morning lines shown.</p>
+        <span class="sc">1 tap · <em>0.6 s</em></span></div>
+      <div class="step"><span class="sn">02</span><span class="sw">Composer</span>
+        <p class="sd">Type “oats, banana, milk, coffee”. 25 characters. Chips settle behind the cursor.</p>
+        <span class="sc">0 taps · <em>6.4 s</em></span></div>
+      <div class="step"><span class="sn">03</span><span class="sw">Resolution sheet</span>
+        <p class="sd">Four one-line rows, all recalled. Nothing to decide. Tap Log 392 kcal.</p>
+        <span class="sc">1 tap · <em>1.1 s</em></span></div>
+      <div class="step"><span class="sn">04</span><span class="sw">Today</span>
+        <p class="sd">Rows appear under Breakfast. No banner on a clean success — the rows are the receipt.</p>
+        <span class="sc">0 taps · <em>0 s</em></span></div>
+    </div>
+    <p class="j-note">The typed path <b>cannot reach 5 seconds</b> and never will: 25 characters is six seconds
+    of thumb before anything else happens. What reaches 5 seconds is the second step collapsing — from the
+    second morning on, the line is in the “you usually type” list, so step 02 becomes <b>one tap on the line
+    instead of typing it</b>: 2 taps, 3.3 s end to end. <b>That is the whole argument for phrase recall.</b>
+    One-line input is not fast; <i>remembering</i> one-line input is.</p>
+  </div>
+
+  <div class="journey">
+    <div class="j-head"><span class="j-id">J2</span><h3 class="j-title">Dictating while cooking</h3>
+      <span class="j-total">2 taps · 7.4 s</span></div>
+    <p class="j-target">Target: under 20 s <span class="hit">met</span></p>
+    <div class="flow">
+      <div class="step"><span class="sn">01</span><span class="sw">Today</span>
+        <p class="sd">Press and hold the mic in the composer. Dictation takes over the screen.</p>
+        <span class="sc">1 press · <em>0.7 s</em></span></div>
+      <div class="step"><span class="sn">02</span><span class="sw">Dictation</span>
+        <p class="sd">“chicken curry with rice, big portion”. Transcript and chips build while speaking.</p>
+        <span class="sc">0 taps · <em>4.1 s</em></span></div>
+      <div class="step"><span class="sn">03</span><span class="sw">Release</span>
+        <p class="sd">Parse settles. Both rows recalled from Tuesday; “big portion” sets both to More.</p>
+        <span class="sc">0 taps · <em>1.2 s</em></span></div>
+      <div class="step"><span class="sn">04</span><span class="sw">Resolution sheet</span>
+        <p class="sd">Two settled rows, nothing open. Tap Log 884 kcal.</p>
+        <span class="sc">1 tap · <em>1.4 s</em></span></div>
+    </div>
+    <p class="j-note">Comfortably inside the target, and the seconds are not the problem here. The problem is
+    that both touches are touches: <b>hands that are wet or greasy fail a press-and-hold</b>, and the one input
+    method designed for busy hands still requires two reliable contacts with glass. A hands-free trigger is an
+    App Intent — “Hey Siri, log chicken curry with rice, big portion” — which routes through the same parse and
+    the same sheet, deferred for confirmation. That is not drawn here and should be.</p>
+  </div>
+
+  <div class="journey">
+    <div class="j-head"><span class="j-id">J3</span><h3 class="j-title">Something the database does not know</h3>
+      <span class="j-total">5 taps · 16.3 s</span></div>
+    <p class="j-target">Target: under 20 s <span class="hit">met, with 3.7 s of headroom</span></p>
+    <div class="flow">
+      <div class="step"><span class="sn">01</span><span class="sw">Today</span>
+        <p class="sd">Tap the composer.</p><span class="sc">1 tap · <em>0.6 s</em></span></div>
+      <div class="step"><span class="sn">02</span><span class="sw">Composer</span>
+        <p class="sd">Type “brot mit erdnussmus und quark”. 29 characters.</p>
+        <span class="sc">0 taps · <em>7.6 s</em></span></div>
+      <div class="step"><span class="sn">03</span><span class="sw">Sheet</span>
+        <p class="sd">Bread recalled, Erdnussmus checked, “quark” unsure across six entries. Tap Find food.</p>
+        <span class="sc">1 tap · <em>2.2 s</em></span></div>
+      <div class="step"><span class="sn">04</span><span class="sw">Find food</span>
+        <p class="sd">Opens with “quark” prefilled, six entries listed. Tap “Speisequark, 20 % Fett i. Tr.”</p>
+        <span class="sc">1 tap · <em>3.1 s</em></span></div>
+      <div class="step"><span class="sn">05</span><span class="sw">Sheet</span>
+        <p class="sd">Row now has values and a bucket at Usual. Tap Log 538 kcal.</p>
+        <span class="sc">1 tap · <em>1.9 s</em></span></div>
+      <div class="step"><span class="sn">06</span><span class="sw">Next time</span>
+        <p class="sd">The pairing is kept without being asked. The same line now resolves whole.</p>
+        <span class="sc">0 taps · <em>0 s</em></span></div>
+    </div>
+    <p class="j-note">Met, but the margin is thin and it depends on one assumption: <b>that the right food is
+    on the first screen of search results</b>. If the user has to type a second query or scroll, step 04 costs
+    6–8 s instead of 3.1 and the journey lands at 20–22 s — at or over target. The honest reading is that 20 s is met
+    for a food the database words the way the user does, and missed for one it does not. No remembering prompt
+    is shown; the pairing is kept silently and is removable in Settings › Remembered lines, which is the only
+    way to keep this under five steps.</p>
+  </div>
+
+  <div class="journey">
+    <div class="j-head"><span class="j-id">J4</span><h3 class="j-title">A day you did not log</h3>
+      <span class="j-total">0 taps required · 2 taps · 3.4 s if accepted</span></div>
+    <p class="j-target">No target applies — this journey is about what the app does when the user does nothing</p>
+    <div class="flow">
+      <div class="step"><span class="sn">01</span><span class="sw">Today, past day</span>
+        <p class="sd">Totals read “—”, not 0. One sentence: “Nothing logged on this day.”</p>
+        <span class="sc">0 taps · <em>—</em></span></div>
+      <div class="step"><span class="sn">02</span><span class="sw">Offer</span>
+        <p class="sd">The usual-weekday proposal, dashed, with “Use for this day” and “Leave blank”.</p>
+        <span class="sc">0 taps · <em>—</em></span></div>
+      <div class="step"><span class="sn">03a</span><span class="sw">Leave blank</span>
+        <p class="sd">The day stays empty and is excluded from every average, not counted as zero.</p>
+        <span class="sc">0 taps · <em>0 s</em></span></div>
+      <div class="step"><span class="sn">03b</span><span class="sw">Use for this day</span>
+        <p class="sd">Day becomes assumed: in the totals, in the average, marked in the coverage strip, not in Health.</p>
+        <span class="sc">2 taps · <em>3.4 s</em></span></div>
+      <div class="step"><span class="sn">04</span><span class="sw">Trends</span>
+        <p class="sd">Empty cell in the strip; the rolling line breaks where the window drops under four days.</p>
+        <span class="sc">0 taps · <em>—</em></span></div>
+    </div>
+    <p class="j-note">The design work here is subtraction. There is no notification, no streak to break, no
+    count of missed days, no red cell and no "complete your log" prompt. <b>A missing day is drawn as the
+    absence of ink</b> — an empty cell with a hairline floor — which is the one mark that cannot be read as a
+    verdict. The rolling average breaking rather than bridging is the same decision: an unbroken line across
+    four blank days would be the app asserting something it does not know.</p>
+  </div>
+
+  <div class="journey">
+    <div class="j-head"><span class="j-id">J5</span><h3 class="j-title">Reviewing the month on Trends</h3>
+      <span class="j-total">2 taps · ~17 s of reading</span></div>
+    <p class="j-target">No logging target — the measure here is what the user concludes</p>
+    <div class="flow">
+      <div class="step"><span class="sn">01</span><span class="sw">Tab bar</span>
+        <p class="sd">Tap Trends. Opens on Quarter, the range the premise is written for.</p>
+        <span class="sc">1 tap · <em>0.5 s</em></span></div>
+      <div class="step"><span class="sn">02</span><span class="sw">Energy + Data</span>
+        <p class="sd">Reads the line and then, immediately under it, which days it is made of.</p>
+        <span class="sc">0 taps · <em>8.5 s</em></span></div>
+      <div class="step"><span class="sn">03</span><span class="sw">Range</span>
+        <p class="sd">Tap Month. Same form, 30 days, subtitle restates what the average covers.</p>
+        <span class="sc">1 tap · <em>0.7 s</em></span></div>
+      <div class="step"><span class="sn">04</span><span class="sw">Protein, Fibre</span>
+        <p class="sd">Scrolls past two more small multiples on their own axes.</p>
+        <span class="sc">0 taps · <em>7.2 s</em></span></div>
+    </div>
+    <p class="j-note">What the user can conclude, and nothing more: energy has sat near 2,300 for six weeks;
+    protein near 97 g; fibre moves more than either and its low stretches line up with the weeks that have
+    gaps. <b>The app states none of that.</b> The Data chart sits directly beneath Energy rather than at the
+    bottom of the screen precisely so that the second thing read after a trend is what the trend is made of —
+    without it the user draws a conclusion about August from four days of data.</p>
+  </div>
+
+  <div class="journey">
+    <div class="j-head"><span class="j-id">J6</span><h3 class="j-title">Apple Intelligence unavailable</h3>
+      <span class="j-total">2 taps · 8.1 s on a list &nbsp;|&nbsp; 4 taps · 15.9 s on a sentence</span></div>
+    <p class="j-target">Target: under 20 s <span class="hit">met both ways</span> ·
+      "must look normal, not broken" <span class="miss">met at a cost</span></p>
+    <div class="flow">
+      <div class="step"><span class="sn">01</span><span class="sw">Composer</span>
+        <p class="sd">Identical screen. No badge, no notice, no difference in the chips.</p>
+        <span class="sc">1 tap · <em>0.6 s</em></span></div>
+      <div class="step"><span class="sn">02</span><span class="sw">List phrasing</span>
+        <p class="sd">“oats, banana, milk, coffee” — separators plus the food index plus a unit grammar. Same result.</p>
+        <span class="sc">0 taps · <em>6.4 s</em></span></div>
+      <div class="step"><span class="sn">03</span><span class="sw">Sentence phrasing</span>
+        <p class="sd">“a big bowl of the curry from tuesday” — one unmatched row, no amount.</p>
+        <span class="sc">0 taps · <em>+1.5 s</em></span></div>
+      <div class="step"><span class="sn">04</span><span class="sw">Recovery</span>
+        <p class="sd">The matching remembered line is offered under the row. Tap it, then Log.</p>
+        <span class="sc">2 taps · <em>+3.8 s</em></span></div>
+    </div>
+    <p class="j-note">The target is met and the screen never looks broken. Two separate costs though, and
+    only one of them is now covered. Match checking is handled honestly — the sheet says <b>“Matched by name”</b>
+    and moves both database rows into the glance tier (screen 03d), which adds roughly four seconds a day.
+    Sentence parsing is not: <b>nothing distinguishes “the parser is simpler on this device” from “you phrased
+    it badly”</b>, so a user on an older iPhone learns over weeks that the app does not understand them. That
+    gap is worth closing with the same move — one sentence, stated as fact, next to the row it explains. See
+    break 07.</p>
+  </div>
+
+  <div class="journey">
+    <div class="j-head"><span class="j-id">J7</span><h3 class="j-title">The normal day, and a deviation from it</h3>
+      <span class="j-total">1 tap · 2.1 s accepted &nbsp;|&nbsp; +2 taps · 9.6 s to deviate</span></div>
+    <p class="j-target">Target: under 5 s for a repeat <span class="hit">met — a whole day in one tap</span></p>
+    <div class="flow">
+      <div class="step"><span class="sn">01</span><span class="sw">Today, morning</span>
+        <p class="sd">Proposal card: four slots, dashed, “Not logged”. Headline still reads 0 kcal.</p>
+        <span class="sc">0 taps · <em>—</em></span></div>
+      <div class="step"><span class="sn">02</span><span class="sw">Accept</span>
+        <p class="sd">Tap “Log all four”. Four meal sections appear; the card goes.</p>
+        <span class="sc">1 tap · <em>2.1 s</em></span></div>
+      <div class="step"><span class="sn">03</span><span class="sw">Lunch is different</span>
+        <p class="sd">Tap the composer, type “döner kebab”. 11 characters.</p>
+        <span class="sc">1 tap · <em>4.4 s</em></span></div>
+      <div class="step"><span class="sn">04</span><span class="sw">Sheet</span>
+        <p class="sd">One row, database-resolved, bucket at Usual. Logging it into Lunch replaces the proposal there.</p>
+        <span class="sc">1 tap · <em>3.1 s</em></span></div>
+      <div class="step"><span class="sn">05</span><span class="sw">Today</span>
+        <p class="sd">Kebab under Lunch, one line saying it replaced the usual, the rest of the proposal intact.</p>
+        <span class="sc">0 taps · <em>2.1 s</em></span></div>
+    </div>
+    <p class="j-note">A whole normal day in one tap is the fastest path in the product by a wide margin, and
+    that is the problem with it. <b>The cheaper accepting a day gets, the more the log drifts toward a record
+    of the user's habits rather than their eating</b> — and the 7-day average reads the same either way. The
+    mock defends this with the assumed state and with keeping anything assumed out of Health, but a user who
+    taps “Log all four” is logging, not assuming, and the app then has no way to tell the difference. The
+    alternative — a one-tap accept that writes the day as <i>assumed</i> and offers to confirm it in the
+    evening — is slower and more honest, and I would argue for it.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ WHERE IT BROKE ═══════════════════════════ -->
+<section id="breaks" class="wrap">
+  <div class="shead">
+    <span class="snum">09 — Where the premise broke down</span>
+    <h2>Nine places the design would not draw</h2>
+    <p>These are the points where following the brief produced something I could not defend, or where two
+    rules in the brief contradict each other. They are the most useful part of this document.</p>
+  </div>
+
+  <div class="breaks">
+
+    <div class="brk"><span class="n">BREAK 01</span>
+      <h3>“Usual” has no meaning the first time, and the bucket model knows it</h3>
+      <p>Less / Usual / More is defined as 0.7× / 1× / 1.4× of what you last had. For a food never logged,
+      there is no “what you last had”, so the multiplier has nothing to multiply. The sheet falls back to the
+      database's own portion, which means the <b>same control means two different things on two rows of the
+      same sheet</b>: on a recalled row, “Usual” is a measured fact about this user; on a first-time row it is
+      a population average from Ciqual.</p>
+      <p>Drawn as: the first-time row spells out the grams underneath (“75 g · first time, read from ‘big
+      spoon’”) and the recalled row does not. That is a patch, not a fix. The real fix is a different control
+      for a first-time row — a portion picker, not a multiplier — which reintroduces the thing the premise
+      removed.</p>
+      <span class="drawn">Where to see it</span><p style="margin:0">Screen 03b, the Kimchi row.</p></div>
+
+    <div class="brk"><span class="n">BREAK 02</span>
+      <h3>Five match states will not fit on one sheet; three tiers will</h3>
+      <p>From history, checked-and-certain, checked-and-probable, unsure, and not-checked are five states, and
+      I could not make five legible without reaching for colour, which is forbidden, or for five badges, which
+      is worse. What works is <b>three tiers with structure doing the encoding</b>: settled (one line, nothing
+      to operate), glance (taller, chevron, open portion control, runner-up named), blocked (dashed empty value,
+      Log inert). The remaining distinctions ride a glyph and a sentence inside a tier, which are read only
+      after the eye has already landed.</p>
+      <p>Three things fall out of that, and a reviewer should push on all of them. <b>First</b>, from-history
+      and checked-certain are drawn the same way and differ only in a sentence. That is deliberate — a user
+      scanning a settled sheet has no decision to make either way — but it does mean the sheet cannot answer
+      “which of these did the model touch?” at a glance. <b>Second</b>, the only state with a reliable
+      at-a-glance signal is <i>blocked</i>, because it is the only one that changes something global. Probable
+      rows are found by height, and height is a weak signal in a four-row list and a weaker one at accessibility
+      type sizes, where every row is tall. The count above the Log button (“1 row worth a glance”) exists to
+      cover that, and it is the single load-bearing element of this design. <b>Third</b>, not-checked is not a
+      row state at all here. It applies to every eligible row at once, so encoding it per row doubles the
+      vocabulary for nothing; it became one sentence and a lower glance threshold. If a device can ever check
+      <i>some</i> rows and not others, that decision collapses.</p>
+      <span class="drawn">Where to see it</span><p style="margin:0">Screens 03a–03d, in that order, are the
+      tier system under increasing load.</p></div>
+
+    <div class="brk"><span class="n">BREAK 03</span>
+      <h3>Fibre survives ±20% as a day total and does not survive it as a trend</h3>
+      <p>Energy at ±15–20% is fine: a 400 kcal error on 2,300 moves the 7-day line by 57 kcal, inside the
+      noise. Fibre does not behave that way. A single lentil portion is 8–10 g of fibre, a third of a typical
+      day, so one bucket chosen wrong moves the day by 12% and a week of the same habit moves the rolling
+      average by more than the signal anyone is looking for.</p>
+      <p>The brief names energy, protein and fibre as co-equal headlines. On the evidence of drawing the
+      chart, <b>they are not co-equal</b>: the fibre chart is the one where the rolling average is mostly
+      reporting bucket choices. I drew it anyway, with the same restraint as the others, but it is the first
+      thing I would cut, or the first thing I would give a wider visible band.</p></div>
+
+    <div class="brk"><span class="n">BREAK 04</span>
+      <h3>“Incompleteness is first-class” and “no judgement” pull in opposite directions</h3>
+      <p>Making incompleteness visible means counting it, and every count of logged versus missing is one
+      formatting decision away from a score. “3 of 4 meals” is a fraction. A progress bar over the day's slots
+      is a completion metric. A coverage percentage on Trends is a grade for the user's diligence rather than
+      their diet — which is arguably worse, because it is a grade the app will absolutely deliver and the
+      regulatory line was drawn around nutrition, not behaviour.</p>
+      <p>Drawn as: coverage is always a <b>sentence naming what is there</b> (“Breakfast and lunch logged.
+      Dinner assumed. Nothing for the evening.”) and never a ratio, and the Trends strip shows days without
+      summarising them. The strip's subtitle states a count because an average has to say what it covers —
+      that is the one number I could not avoid, and it is deliberately about the data, not the user.</p></div>
+
+    <div class="brk"><span class="n">BREAK 05</span>
+      <h3>Removing the meals library removed the tab bar</h3>
+      <p>The original brief had a Meals tab. With no curation, there is nothing to put in it: recall is
+      invisible, and a screen listing remembered lines that you can log from is a meals library wearing a
+      different hat. So Meals is gone, and so is Library, since custom foods and recipes were mostly a way to
+      build meals.</p>
+      <p>What is left is <b>Today, Trends, Settings</b> — three tabs, which happens to satisfy the plan's
+      “three tabs, no more”, but one of them is Settings, which is a weak third destination. The honest shape
+      of this app is now <b>one screen with a chart attached</b>, and a tab bar is arguably the wrong chrome
+      for it. I drew the tab bar because Trends has to be reachable in one tap from Today for J5 to work. A
+      segmented control in the Today navigation bar would also do it.</p></div>
+
+    <div class="brk"><span class="n">BREAK 06</span>
+      <h3>A proposal that is cheap to accept stops being a proposal</h3>
+      <p>The baseline card is drawn to be unmistakably not-logged: dashed, outside the sections, excluded from
+      the headline figure. All of that holds right up to the moment the user taps “Log all four”, at which
+      point a day nobody ate becomes a day of logged entries indistinguishable from a day they typed — and it
+      is written to Health.</p>
+      <p>One tap for a whole day is the fastest path in the product, so it will be the most-used one, so <b>the
+      modal day in the database will be a day nobody actually recorded</b>. The design cannot prevent this; it
+      can only make the distinction visible for as long as it is true. The alternative worth arguing about is
+      accepting the baseline as <i>assumed</i> rather than logged, which keeps it out of Health and keeps it
+      marked in Trends, at the cost of being slower and less satisfying. See J7.</p></div>
+
+    <div class="brk"><span class="n">BREAK 07</span>
+      <h3>“Looks normal” and “is honest about what it did” were in conflict, and honesty won</h3>
+      <p>The original rule was that the deterministic path must look normal rather than broken: no badge, no
+      banner, no asterisk. Drawn that way, a user without Apple Intelligence gets worse matches and worse parses
+      forever and <b>has no way to learn why</b>. They conclude the app does not understand them, which is true,
+      and that it is badly made, which is the wrong conclusion from the right evidence.</p>
+      <p>Screen 03d resolves it for matching, and the resolution is not a compromise: the row says
+      <b>“Matched by name”</b> where a checked row says “Checked”. That is a plain description of what the app
+      did, not a warning and not an apology, and the sheet's structure, order, controls and copy pattern are
+      unchanged. It satisfies both rules at once because it never claims anything is wrong. The lesson
+      generalises: <b>“looks normal” fails only when the honest version is phrased as a defect.</b></p>
+      <p>What is still unresolved is parsing. Screen 10 shows a sentence the fallback cannot read, and the only
+      tell there is a phrasing hint addressed to the user — advice about their wording rather than a fact about
+      the device. The same move would fix it, and one line in Settings, said once where the user agreed to it,
+      is what <code>DESIGN.md</code> asks for anyway.</p>
+      <span class="drawn">Where to see it</span><p style="margin:0">Screen 03d against 03b; screen 10 for the
+      part that is still open.</p></div>
+
+    <div class="brk"><span class="n">BREAK 08</span>
+      <h3>The range switcher changes what the chart means</h3>
+      <p>The premise is a 7-day rolling average read over months. A Week range cannot show that — seven days
+      is one point. So Week shows daily columns instead, which is a different statistic answering a different
+      question, behind a control that looks like a zoom.</p>
+      <p>Drawn as: the subtitle changes with the range and says which it is (“7-day average” versus “daily
+      totals”), and the mark changes from a line to columns so the switch is visible rather than implied. It
+      works, but a reviewer should know that <b>one control is doing two jobs</b>. Dropping Week entirely is a
+      defensible alternative, and it is what the premise actually implies.</p></div>
+
+    <div class="brk"><span class="n">BREAK 09</span>
+      <h3>Two primary actions want the same thumb</h3>
+      <p>The plan requires primary actions at the bottom. The composer is pinned at the bottom of Today; the
+      resolution sheet's Log button is pinned at the bottom of the sheet; dictation's hold-to-talk is pinned at
+      the bottom too. Each is right on its own screen, and the result is <b>three different things living at
+      the same coordinate</b> in a sequence that takes four seconds.</p>
+      <p>The risk is a mislog: Log sits roughly where the composer's mic was a second earlier. Drawn as: the
+      sheet's Log button is full width while the composer's controls are not, so the target changes shape as
+      well as function, and the sheet animates up rather than appearing. That is mitigation, not a solution.
+      It needs testing on a device before anyone trusts it, and it is the one thing in this document a
+      prototype would settle in an afternoon.</p></div>
+
+  </div>
+</section>
+
+</main>
+
+<footer class="wrap">
+  <p>Food names and composition follow the generic European tables the app bundles — Ciqual and the German BLS
+  — so names read as “Apfel, mit Schale, roh” rather than as brands. Nutrient values are rounded from those
+  tables: oats ≈ 370 kcal/100 g, banana ≈ 90, black coffee ≈ 2, rye bread ≈ 230, butter ≈ 750, linseed oil
+  ≈ 884. The 90 days of Trends data are synthetic and clearly marked as a sample; nothing here is anyone's
+  record.</p>
+  <p>Chart palette: a single warm-graphite hue, two ordinal steps plus an empty track, validated against the
+  card surface in both appearances (light 2.53:1, dark 3.68:1 for the lighter step; monotone lightness; hue
+  spread 2°). No categorical palette is used because no chart carries more than one series.</p>
+  <p>Mocks only. No Swift source was touched, and nothing here is a commitment.</p>
+</footer>
+
+<script>
+/* ──────────────────────────── appearance switch ─────────────────────────── */
+(function(){
+  var seg = document.querySelectorAll('.seg button');
+  function set(mode){
+    document.body.dataset.screens = mode;
+    seg.forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.mode === mode)); });
+  }
+  seg.forEach(function(b){ b.addEventListener('click', function(){ set(b.dataset.mode); }); });
+  try {
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) set('dark');
+  } catch (e) { /* no matchMedia: stay light */ }
+})();
+
+/* ─────────────────────────── dictation waveform ─────────────────────────── */
+(function(){
+  var w = document.getElementById('wave');
+  if (!w) return;
+  var h = [7,13,22,30,19,11,25,33,16,9,20,28,34,21,12,8,17,26,31,23,14,10,19,27,15,8,12,20,9,6];
+  h.forEach(function(v){ var i = document.createElement('i'); i.style.height = v + 'px'; w.appendChild(i); });
+})();
+
+/* ───────────────────────────────── trends ──────────────────────────────── */
+(function(){
+/* 90 days of synthetic data: [MM-DD, coverage l|a|n, kcal, protein g, fibre g] */
+const DAYS = [["07-06","l",2370,114,32],["07-07","l",2310,113,28],["07-08","a",2100,101,31],["07-09","l",2310,106,29],["07-10","l",2470,93,14],["07-11","n",null,null,null],["07-12","l",2820,89,25],["07-13","a",2030,121,29],["07-14","l",2460,88,31],["07-15","a",2330,102,24],["07-16","l",1960,87,23],["07-17","l",2280,80,26],["07-18","l",2740,106,16],["07-19","a",2550,90,14],["07-20","l",2370,95,26],["07-21","l",2210,82,29],["07-22","l",2040,85,22],["07-23","l",2480,73,18],["07-24","a",2240,93,18],["07-25","l",2520,81,16],["07-26","n",null,null,null],["07-27","l",2400,102,28],["07-28","a",2190,92,26],["07-29","l",2410,111,29],["07-30","l",2500,83,29],["07-31","l",2040,82,35],["08-01","l",2520,98,22],["08-02","l",2610,82,20],["08-03","n",null,null,null],["08-04","l",1980,111,34],["08-05","l",2080,85,20],["08-06","a",2500,86,33],["08-07","l",1890,94,28],["08-08","l",2520,93,23],["08-09","l",2570,91,22],["08-10","l",2360,106,37],["08-11","l",2250,105,29],["08-12","l",2100,104,36],["08-13","l",1590,94,26],["08-14","a",2080,108,28],["08-15","n",null,null,null],["08-16","l",2320,84,21],["08-17","n",null,null,null],["08-18","n",null,null,null],["08-19","n",null,null,null],["08-20","n",null,null,null],["08-21","l",2120,89,24],["08-22","l",2540,69,20],["08-23","a",2510,114,33],["08-24","l",2140,108,18],["08-25","l",1970,98,27],["08-26","l",2190,98,34],["08-27","l",1670,109,40],["08-28","l",2140,101,30],["08-29","a",2530,108,31],["08-30","l",2180,78,14],["08-31","a",1910,75,28],["09-01","l",1800,109,35],["09-02","l",2370,66,22],["09-03","l",2320,98,23],["09-04","a",2470,122,27],["09-05","l",2320,110,21],["09-06","l",2320,89,37],["09-07","l",2230,69,24],["09-08","l",2480,81,27],["09-09","l",2350,100,33],["09-10","l",2070,102,30],["09-11","l",2060,75,20],["09-12","l",2680,83,15],["09-13","n",null,null,null],["09-14","l",2120,99,26],["09-15","l",2300,112,25],["09-16","l",1890,83,25],["09-17","l",2410,109,26],["09-18","l",2370,82,26],["09-19","l",2650,84,17],["09-20","l",2260,86,16],["09-21","l",1640,103,22],["09-22","l",1730,98,33],["09-23","l",2250,93,30],["09-24","a",2350,99,28],["09-25","l",2280,72,31],["09-26","l",2740,108,31],["09-27","l",2550,123,17],["09-28","l",2340,103,23],["09-29","l",1970,98,28],["09-30","l",2370,115,27],["10-01","l",2390,100,21],["10-02","a",1990,122,25],["10-03","l",2580,97,31]];
+
+const MONTH = {'07':'Jul','08':'Aug','09':'Sep','10':'Oct'};
+const W = 316, PAD_L = 30, PAD_R = 10, PAD_T = 8;
+
+function fmt(n){ return n == null ? '—' : n.toLocaleString('en-GB'); }
+
+/* 7-day rolling mean over the days that have data; null when fewer than
+   minDays of the window are known, so the line breaks instead of asserting. */
+function rolling(vals, k, minDays){
+  var out = [];
+  for (var i = 0; i < vals.length; i++){
+    var s = 0, n = 0;
+    for (var j = Math.max(0, i - k + 1); j <= i; j++){ if (vals[j] != null){ s += vals[j]; n++; } }
+    out.push(n >= minDays ? s / n : null);
+  }
+  return out;
+}
+
+function niceDomain(vals, padFrac){
+  var v = vals.filter(function(x){ return x != null; });
+  if (!v.length) return [0, 1, [0, 1]];
+  var lo = Math.min.apply(null, v), hi = Math.max.apply(null, v);
+  var span = (hi - lo) || Math.abs(hi) || 1;
+  lo -= span * padFrac; hi += span * padFrac;
+  var raw = (hi - lo) / 3;
+  var mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  var step = [1, 2, 2.5, 5, 10].map(function(m){ return m * mag; })
+                               .filter(function(s){ return s >= raw; })[0] || 10 * mag;
+  var t0 = Math.floor(lo / step) * step, t1 = Math.ceil(hi / step) * step;
+  var ticks = [];
+  for (var t = t0; t <= t1 + step / 2; t += step) ticks.push(Math.round(t * 1000) / 1000);
+  return [t0, t1, ticks];
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+/* one measure, one series, one axis — small multiple */
+function lineChart(rows, opts){
+  var H = opts.h, plotH = H - PAD_T - 18;
+  var d = niceDomain(rows.concat(opts.ref != null ? [opts.ref] : []), 0.12);
+  var lo = d[0], hi = d[1], ticks = d[2];
+  var x = function(i){ return PAD_L + (W - PAD_L - PAD_R) * (rows.length < 2 ? 0.5 : i / (rows.length - 1)); };
+  var y = function(v){ return PAD_T + plotH - (v - lo) / (hi - lo) * plotH; };
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(opts.alt) + '">';
+
+  ticks.forEach(function(t){
+    s += '<line x1="' + PAD_L + '" x2="' + (W - PAD_R) + '" y1="' + y(t).toFixed(1) + '" y2="' + y(t).toFixed(1) +
+         '" stroke="var(--c-grid)" stroke-width="1"/>';
+    s += '<text x="' + (PAD_L - 6) + '" y="' + (y(t) + 3.4).toFixed(1) + '" text-anchor="end" font-size="9" ' +
+         'fill="var(--c-muted)" font-family="inherit" style="font-variant-numeric:tabular-nums">' + fmt(t) + '</text>';
+  });
+
+  /* segments, broken wherever the average is not defined */
+  var seg = [], cur = [];
+  rows.forEach(function(v, i){
+    if (v == null){ if (cur.length) seg.push(cur); cur = []; }
+    else cur.push([x(i), y(v)]);
+  });
+  if (cur.length) seg.push(cur);
+
+  seg.forEach(function(p){
+    if (p.length > 1){
+      var base = PAD_T + plotH;
+      var area = 'M' + p[0][0].toFixed(1) + ',' + base + 'L' +
+                 p.map(function(q){ return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join('L') +
+                 'L' + p[p.length - 1][0].toFixed(1) + ',' + base + 'Z';
+      s += '<path d="' + area + '" fill="var(--c-wash)"/>';
+    }
+    var line = 'M' + p.map(function(q){ return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join('L');
+    s += '<path d="' + line + '" fill="none" stroke="var(--c-series)" stroke-width="2" ' +
+         'stroke-linecap="round" stroke-linejoin="round"/>';
+    if (p.length === 1){
+      s += '<circle cx="' + p[0][0].toFixed(1) + '" cy="' + p[0][1].toFixed(1) +
+           '" r="2.5" fill="var(--c-series)"/>';
+    }
+  });
+
+  if (opts.ref != null){
+    s += '<line x1="' + PAD_L + '" x2="' + (W - PAD_R) + '" y1="' + y(opts.ref).toFixed(1) + '" y2="' +
+         y(opts.ref).toFixed(1) + '" stroke="var(--c-axis)" stroke-width="1" stroke-dasharray="3 3"/>';
+    s += '<text x="' + (W - PAD_R) + '" y="' + (y(opts.ref) - 5).toFixed(1) + '" text-anchor="end" ' +
+         'font-size="9" fill="var(--c-muted)" font-family="inherit">your reference ' + fmt(opts.ref) + '</text>';
+  }
+
+  /* one end marker with a surface ring, and one direct label */
+  var last = -1;
+  for (var i = rows.length - 1; i >= 0; i--){ if (rows[i] != null){ last = i; break; } }
+  if (last >= 0){
+    s += '<circle cx="' + x(last).toFixed(1) + '" cy="' + y(rows[last]).toFixed(1) +
+         '" r="4" fill="var(--c-series)" stroke="var(--c-surface)" stroke-width="2"/>';
+  }
+
+  /* x labels: first of each month present */
+  var seen = {};
+  opts.labels.forEach(function(lbl, i){
+    var m = lbl.slice(0, 2);
+    if (seen[m] || !MONTH[m]) return;
+    seen[m] = 1;
+    if (x(i) > W - PAD_R - 18) return;
+    s += '<text x="' + x(i).toFixed(1) + '" y="' + (H - 4) + '" font-size="9" fill="var(--c-muted)" ' +
+         'font-family="inherit" text-anchor="middle">' + MONTH[m] + '</text>';
+  });
+  s += '<line x1="' + PAD_L + '" x2="' + (W - PAD_R) + '" y1="' + (PAD_T + plotH) + '" y2="' + (PAD_T + plotH) +
+       '" stroke="var(--c-axis)" stroke-width="1"/>';
+  s += '</svg>';
+  return { svg: s, x: x, y: y, h: H };
+}
+
+function colChart(vals, labels, opts){
+  var H = opts.h, plotH = H - PAD_T - 18;
+  var d = niceDomain(vals.concat([0]), 0.04);
+  var lo = Math.min(0, d[0]), hi = d[1], ticks = d[2].filter(function(t){ return t >= lo; });
+  var n = vals.length, inner = W - PAD_L - PAD_R;
+  var band = inner / n, bw = Math.min(24, band - 6);
+  var y = function(v){ return PAD_T + plotH - (v - lo) / (hi - lo) * plotH; };
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(opts.alt) + '">';
+  ticks.forEach(function(t){
+    s += '<line x1="' + PAD_L + '" x2="' + (W - PAD_R) + '" y1="' + y(t).toFixed(1) + '" y2="' + y(t).toFixed(1) +
+         '" stroke="var(--c-grid)" stroke-width="1"/>' +
+         '<text x="' + (PAD_L - 6) + '" y="' + (y(t) + 3.4).toFixed(1) + '" text-anchor="end" font-size="9" ' +
+         'fill="var(--c-muted)" font-family="inherit" style="font-variant-numeric:tabular-nums">' + fmt(t) + '</text>';
+  });
+  vals.forEach(function(v, i){
+    if (v == null) return;
+    var cx = PAD_L + band * (i + 0.5), top = y(v), base = y(lo);
+    var r = Math.min(4, bw / 2);
+    s += '<path d="M' + (cx - bw / 2) + ',' + base + 'L' + (cx - bw / 2) + ',' + (top + r) +
+         'Q' + (cx - bw / 2) + ',' + top + ' ' + (cx - bw / 2 + r) + ',' + top +
+         'L' + (cx + bw / 2 - r) + ',' + top + 'Q' + (cx + bw / 2) + ',' + top + ' ' + (cx + bw / 2) + ',' + (top + r) +
+         'L' + (cx + bw / 2) + ',' + base + 'Z" fill="var(--c-series)"/>';
+  });
+  labels.forEach(function(lbl, i){
+    s += '<text x="' + (PAD_L + band * (i + 0.5)).toFixed(1) + '" y="' + (H - 4) + '" font-size="9" ' +
+         'fill="var(--c-muted)" font-family="inherit" text-anchor="middle">' + lbl.slice(3) + '</text>';
+  });
+  s += '<line x1="' + PAD_L + '" x2="' + (W - PAD_R) + '" y1="' + y(lo) + '" y2="' + y(lo) +
+       '" stroke="var(--c-axis)" stroke-width="1"/></svg>';
+  return { svg: s, h: H };
+}
+
+/* coverage: an ordinal ramp of the series hue — logged, partly assumed, and an
+   empty track for a day with nothing. Absence is drawn as the absence of ink. */
+function coverage(states){
+  var H = 30, top = 2, h = 18;
+  var n = states.length, inner = W - PAD_L - PAD_R;
+  var gap = n > 40 ? 1 : 2, cw = Math.max(1.6, inner / n - gap);
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" ' +
+          'aria-label="Which days have data, day by day">';
+  states.forEach(function(st, i){
+    var x = PAD_L + inner * (i / n);
+    if (st === 'n'){
+      s += '<rect x="' + x.toFixed(1) + '" y="' + (top + h - 1.5) + '" width="' + cw.toFixed(1) +
+           '" height="1.5" fill="var(--c-axis)"/>';
+    } else {
+      s += '<rect x="' + x.toFixed(1) + '" y="' + top + '" width="' + cw.toFixed(1) + '" height="' + h +
+           '" rx="' + Math.min(1.2, cw / 2) + '" fill="' +
+           (st === 'l' ? 'var(--c-series)' : 'var(--c-assumed)') + '"/>';
+    }
+  });
+  var seen = {};
+  states.forEach(function(_, i){
+    var m = DATA_SLICE[i][0].slice(0, 2);
+    if (seen[m] || !MONTH[m]) return;
+    seen[m] = 1;
+    var x = PAD_L + inner * (i / n);
+    if (x > W - PAD_R - 18) return;
+    s += '<text x="' + x.toFixed(1) + '" y="' + (H - 2) + '" font-size="9" fill="var(--c-muted)" ' +
+         'font-family="inherit" text-anchor="start">' + MONTH[m] + '</text>';
+  });
+  s += '</svg>';
+  return { svg: s, h: H };
+}
+
+var DATA_SLICE = DAYS;
+var geom = null;
+
+function render(range){
+  var n = range === 'w' ? 7 : range === 'm' ? 30 : 90;
+  var slice = DAYS.slice(-n);
+  DATA_SLICE = slice;
+
+  var labels = slice.map(function(r){ return r[0]; });
+  var states = slice.map(function(r){ return r[1]; });
+  var e = slice.map(function(r){ return r[2]; });
+  var p = slice.map(function(r){ return r[3]; });
+  var f = slice.map(function(r){ return r[4]; });
+
+  var known = states.filter(function(s){ return s !== 'n'; }).length;
+  var assumed = states.filter(function(s){ return s === 'a'; }).length;
+  var blank = n - known;
+
+  function lastOf(a){ for (var i = a.length - 1; i >= 0; i--) if (a[i] != null) return a[i]; return null; }
+  function meanOf(a){ var v = a.filter(function(x){ return x != null; });
+    return v.length ? v.reduce(function(s, x){ return s + x; }, 0) / v.length : null; }
+
+  if (range === 'w'){
+    var ce = colChart(e, labels, { h: 118, alt: 'Daily energy for the last seven days' });
+    document.getElementById('c-e').innerHTML = ce.svg;
+    document.getElementById('s-e').textContent = 'Daily totals. Seven days is one point of a 7-day average, ' +
+      'so this range shows the days themselves.';
+    document.getElementById('n-e').textContent = fmt(lastOf(e)) + ' kcal';
+    document.getElementById('c-p').innerHTML = colChart(p, labels, { h: 88, alt: 'Daily protein, last seven days' }).svg;
+    document.getElementById('c-f').innerHTML = colChart(f, labels, { h: 88, alt: 'Daily fibre, last seven days' }).svg;
+    document.getElementById('s-p').textContent = 'Daily totals, grams.';
+    document.getElementById('s-f').textContent = 'Daily totals, grams.';
+    geom = null;
+  } else {
+    var re = rolling(e, 7, 4), rp = rolling(p, 7, 4), rf = rolling(f, 7, 4);
+    var g = lineChart(re, { h: 126, labels: labels, ref: 2200, alt: 'Seven-day average energy over ' + n + ' days' });
+    document.getElementById('c-e').innerHTML = g.svg;
+    geom = g;
+    document.getElementById('n-e').textContent = fmt(Math.round(lastOf(re))) + ' kcal';
+    document.getElementById('s-e').textContent = '7-day average · ' + known + ' of ' + n + ' days have data';
+    document.getElementById('c-p').innerHTML =
+      lineChart(rp, { h: 88, labels: labels, alt: 'Seven-day average protein over ' + n + ' days' }).svg;
+    document.getElementById('c-f').innerHTML =
+      lineChart(rf, { h: 88, labels: labels, alt: 'Seven-day average fibre over ' + n + ' days' }).svg;
+    document.getElementById('s-p').textContent = '7-day average, grams';
+    document.getElementById('s-f').textContent = '7-day average, grams';
+  }
+
+  document.getElementById('n-p').textContent =
+    (range === 'w' ? fmt(lastOf(p)) : fmt(Math.round(meanOf(p)))) + ' g';
+  document.getElementById('n-f').textContent =
+    (range === 'w' ? fmt(lastOf(f)) : fmt(Math.round(meanOf(f)))) + ' g';
+
+  document.getElementById('c-c').innerHTML = coverage(states).svg;
+  document.getElementById('n-c').textContent = known + '/' + n + ' days';
+  document.getElementById('s-c').textContent =
+    (blank === 0 ? 'Every day has data' : blank + (blank === 1 ? ' day' : ' days') + ' with nothing logged') +
+    (assumed ? ' · ' + assumed + ' partly assumed' : '');
+}
+
+document.querySelectorAll('.ios-seg button').forEach(function(b){
+  b.addEventListener('click', function(){
+    document.querySelectorAll('.ios-seg button').forEach(function(o){
+      o.setAttribute('aria-pressed', String(o === b));
+    });
+    render(b.dataset.range);
+  });
+});
+
+/* crosshair + tooltip on the energy chart: the day's value and its coverage
+   state together, because on this screen they are the same question. */
+(function(){
+  var host = document.getElementById('c-e'), tip = document.getElementById('tip-e');
+  if (!host || !tip) return;
+  var COV = { l: 'logged', a: 'partly assumed', n: 'nothing logged' };
+
+  function move(ev){
+    if (!geom || !DATA_SLICE.length){ tip.style.opacity = 0; return; }
+    var svg = host.querySelector('svg');
+    if (!svg) return;
+    var r = svg.getBoundingClientRect();
+    var px = ((ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left) / r.width * W;
+    var frac = (px - PAD_L) / (W - PAD_L - PAD_R);
+    var i = Math.round(frac * (DATA_SLICE.length - 1));
+    if (i < 0) i = 0;
+    if (i > DATA_SLICE.length - 1) i = DATA_SLICE.length - 1;
+    var row = DATA_SLICE[i];
+    var day = row[0].slice(3) + ' ' + (MONTH[row[0].slice(0, 2)] || '');
+    tip.innerHTML = '<b>' + day + '</b> &nbsp;' +
+      (row[2] == null ? '<span class="m">no entries</span>'
+                      : '<b>' + fmt(row[2]) + '</b> kcal &nbsp;<span class="m">' + COV[row[1]] + '</span>');
+    var hostRect = host.getBoundingClientRect();
+    var card = host.closest('.chart-card').getBoundingClientRect();
+    var left = hostRect.left - card.left + (geom.x(i) / W) * hostRect.width;
+    tip.style.opacity = 1;
+    tip.style.top = (hostRect.top - card.top - 6) + 'px';
+    var tw = tip.offsetWidth || 150;
+    tip.style.left = Math.max(4, Math.min(card.width - tw - 4, left - tw / 2)) + 'px';
+  }
+  host.addEventListener('mousemove', move);
+  host.addEventListener('touchmove', function(e){ move(e); }, { passive: true });
+  host.addEventListener('mouseleave', function(){ tip.style.opacity = 0; });
+})();
+
+/* table view — the accessibility fallback for the charts */
+(function(){
+  var tb = document.querySelector('#data-table tbody');
+  if (!tb) return;
+  var e = DAYS.map(function(r){ return r[2]; });
+  var re = rolling(e, 7, 4);
+  var COV = { l: 'Logged', a: 'Partly assumed', n: 'Nothing logged' };
+  DAYS.slice(-21).forEach(function(r, k){
+    var i = DAYS.length - 21 + k;
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td>' + r[0].slice(3) + ' ' + (MONTH[r[0].slice(0, 2)] || '') + '</td>' +
+      '<td>' + COV[r[1]] + '</td>' +
+      '<td>' + fmt(r[2]) + '</td><td>' + fmt(r[3]) + '</td><td>' + fmt(r[4]) + '</td>' +
+      '<td>' + (re[i] == null ? '—' : fmt(Math.round(re[i]))) + '</td>';
+    tb.appendChild(tr);
+  });
+})();
+
+render('q');
+})();
+</script>
+</body>
+</html>
