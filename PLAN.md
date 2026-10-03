@@ -828,6 +828,10 @@ The risks revision 4 adds, worst first.
 
 **Four tabs and a composer is a bigger surface.** Revision 3 kept three tabs partly to keep the fast path fast. Trends is a fourth, and the composer adds a persistent control to the busiest screen in the app. The counter-argument is that the composer *replaces* the Add sheet as the default path rather than joining it, so the common case gets shorter even as the surface grows. Worth re-checking against the yardstick once it is drawn.
 
+**The twenty-second target is measured on a population selected against it.** Drawing the journeys exposed this and it is worth stating carefully, because it makes a reassuring number untrustworthy. Logging something new clears twenty seconds comfortably *when the database words the food the way the user does*. But a food whose wording matched would have been resolved by the matcher and would never have reached that journey in the first place, so the cases that actually arrive there are exactly the ones where the wording did not match — and those need a search, possibly a second screen of it, and land at or over the target. The measurement is not wrong; the thing being measured is selected against. The fix is not a design change: it is instrumentation on real lines, counting how often an item reaches the search at all, which is another reason the matcher is the critical path.
+
+**A failed parse has no honest tell, and a failed match does.** "Matched by name" works because matching without the model is a reasonable thing the app did, which a plain description can carry. There is no equivalent sentence for a line the fallback parser could not break up, because the honest description there is that the device cannot do something another device can. What the mocks fall back to is phrasing advice aimed at the user, which is worse: it reads as the user's fault. Unresolved, and it needs an answer before the composer ships, since it is the one place in the redesign where the no-Apple-Intelligence path still reads as a defect rather than as a difference.
+
 ## Sources
 
 - [Open Food Facts data and reuse conditions](https://world.openfoodfacts.org/data)

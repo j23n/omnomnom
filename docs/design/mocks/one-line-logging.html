@@ -172,7 +172,7 @@ figcaption{min-width:0}
   --s-shadow:0 1px 3px rgba(0,0,0,.07);
   /* chart tokens — warm graphite, single hue, validated against #FFFFFF */
   --c-surface:#FFFFFF; --c-series:#44403B; --c-wash:rgba(68,64,59,.10);
-  --c-assumed:#A8A29A; --c-grid:#E8E4DE; --c-axis:#CFC9C1; --c-muted:#8B8279;
+  --c-partial:#8A847B; --c-assumed:#B6B0A7; --c-grid:#E8E4DE; --c-axis:#CFC9C1; --c-muted:#8B8279;
 }
 .screen[data-ios="dark"],
 body[data-screens="dark"] .screen[data-ios="auto"]{
@@ -183,7 +183,7 @@ body[data-screens="dark"] .screen[data-ios="auto"]{
   --s-glass:rgba(30,30,32,.74); --s-glass-line:rgba(235,235,245,.14);
   --s-shadow:none;
   --c-surface:#1C1C1E; --c-series:#E6E1DA; --c-wash:rgba(230,225,218,.10);
-  --c-assumed:#7A746C; --c-grid:#2E2B28; --c-axis:#3C3934; --c-muted:#948D85;
+  --c-partial:#9A938A; --c-assumed:#5E584F; --c-grid:#2E2B28; --c-axis:#3C3934; --c-muted:#948D85;
 }
 
 /* status bar / island / home indicator */
@@ -231,7 +231,7 @@ body[data-screens="dark"] .screen[data-ios="auto"]{
   background:var(--s-glass);backdrop-filter:saturate(1.8) blur(22px);-webkit-backdrop-filter:saturate(1.8) blur(22px);
   box-shadow:0 -.5px 0 var(--s-glass-line);position:relative;z-index:5
 }
-.tab{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--s-label3);font:500 10px/1 var(--f-ui);width:74px}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--s-label3);font:500 10px/1 var(--f-ui);width:62px}
 .tab svg{width:25px;height:25px}
 .tab.on{color:var(--s-tint)}
 
@@ -357,7 +357,9 @@ body[data-screens="dark"] .screen[data-ios="auto"] .key{background:#6B6B70;box-s
   font:600 17px/50px var(--f-ui);letter-spacing:-.01em;text-align:center
 }
 .wide-btn.off{background:var(--s-fill);color:var(--s-label3)}
-.foot-note{text-align:center;font:400 12.5px/1.35 var(--f-ui);color:var(--s-label2);margin-top:9px}
+.foot-count{text-align:center;font:600 15px/1.35 var(--f-ui);color:var(--s-label);margin-top:11px;
+  letter-spacing:-.01em}
+.foot-note{text-align:center;font:400 12.5px/1.35 var(--f-ui);color:var(--s-label2);margin-top:5px}
 
 /* resolution rows */
 .rrow{padding:12px 14px;position:relative}
@@ -382,9 +384,24 @@ body[data-screens="dark"] .screen[data-ios="auto"] .key{background:#6B6B70;box-s
 .recall-flag{display:inline-flex;align-items:center;gap:4px;color:var(--s-label2);flex:none}
 .bucket{display:flex;gap:2px;background:var(--s-fill);border-radius:9px;padding:2px;margin-top:10px}
 .bucket span{
-  flex:1;text-align:center;font:500 13px/1 var(--f-ui);padding:7px 4px;border-radius:7px;color:var(--s-label2)
+  flex:1;text-align:center;font:500 13px/1 var(--f-ui);padding:7px 2px;border-radius:7px;color:var(--s-label2)
 }
 .bucket span.on{background:var(--s-card);color:var(--s-label);box-shadow:0 1px 2px rgba(0,0,0,.10)}
+/* a food with no history gets its own portions by name, never a multiplier */
+.portions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.portions span{
+  font:400 13px/1 var(--f-ui);padding:8px 11px;border-radius:15px;color:var(--s-label2);
+  box-shadow:inset 0 0 0 1px var(--s-sep);white-space:nowrap
+}
+.portions span.on{background:var(--s-fill2);color:var(--s-label);font-weight:500;box-shadow:none}
+.gramfield{display:flex;align-items:center;gap:9px;margin-top:10px}
+.gramfield .f{
+  flex:1;height:38px;border-radius:10px;background:var(--s-fill);display:flex;align-items:center;
+  padding:0 13px;font:400 17px/1 var(--f-ui);font-variant-numeric:tabular-nums;
+  box-shadow:inset 0 0 0 1px var(--s-tint)
+}
+.gramfield .f .cv{display:inline-block;width:2px;height:20px;background:var(--s-tint);margin-left:2px}
+.gramfield .u{font:400 15px/1 var(--f-ui);color:var(--s-label2);flex:none}
 .inline-btn{
   margin-top:10px;display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 13px;border-radius:16px;
   background:var(--s-fill);color:var(--s-tint);font:500 14px/1 var(--f-ui)
@@ -513,7 +530,18 @@ body[data-screens="dark"] .screen[data-ios="auto"] .key{background:#6B6B70;box-s
 .breaks{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:12px;overflow:hidden}
 .brk{background:var(--plane);padding:22px 22px 20px}
 .brk h3{margin:0 0 9px;font-size:19px}
-.brk .n{font:700 11px/1 var(--f-ui);letter-spacing:.12em;color:var(--accent-ink);display:block;margin-bottom:11px}
+.brk .n{font:700 11px/1 var(--f-ui);letter-spacing:.12em;color:var(--accent-ink);display:flex;
+  align-items:center;gap:10px;margin-bottom:11px}
+.brk .st{
+  font:600 10px/1 var(--f-ui);letter-spacing:.09em;text-transform:uppercase;
+  border:1px solid var(--rule);border-radius:5px;padding:5px 7px;color:var(--ink-3)
+}
+.brk .st.open{border-color:var(--accent);color:var(--accent-ink)}
+.brk .how{
+  margin:14px 0 0;padding:12px 14px;background:var(--paper);border:1px solid var(--rule);border-radius:9px;
+  font-size:15px;line-height:1.5;color:var(--ink-2)
+}
+.brk .how b{color:var(--ink);font-weight:600}
 .brk p{margin:0 0 10px;font-size:16px;line-height:1.56;color:var(--ink-2)}
 .brk p:last-child{margin-bottom:0}
 .brk .drawn{
@@ -612,8 +640,8 @@ footer p{max-width:64ch;margin:0 0 9px}
     <li><dt>Target resolution</dt><p>Day totals, ±15–20%, read as a 7-day average. Not meal accuracy.</p></li>
     <li><dt>Primary input</dt><p>One typed or dictated line. No search screen, no gram field by default.</p></li>
     <li><dt>Grounding</dt><p>Every value comes from a Ciqual/BLS row. The model names foods, never numbers.</p></li>
-    <li><dt>Repetition</dt><p>Remembered invisibly from what was typed. No saved meals to name or curate.</p></li>
-    <li><dt>Incompleteness</dt><p>Logged, assumed and missing are three different things and stay visible.</p></li>
+    <li><dt>Repetition</dt><p>Remembered invisibly from what was typed. Amounts come back only where there is history.</p></li>
+    <li><dt>Incompleteness</dt><p>Complete, partial, assumed and empty are four different days, named and never divided.</p></li>
   </ul>
 </div>
 
@@ -736,6 +764,7 @@ footer p{max-width:64ch;margin:0 0 9px}
         <div class="tabbar">
           <span class="tab on"><svg><use href="#i-list"/></svg>Today</span>
           <span class="tab"><svg><use href="#i-chart"/></svg>Trends</span>
+          <span class="tab"><svg><use href="#i-book"/></svg>Library</span>
           <span class="tab"><svg><use href="#i-gear"/></svg>Settings</span>
         </div>
         <div class="home"></div>
@@ -823,6 +852,7 @@ footer p{max-width:64ch;margin:0 0 9px}
         <div class="tabbar">
           <span class="tab on"><svg><use href="#i-list"/></svg>Today</span>
           <span class="tab"><svg><use href="#i-chart"/></svg>Trends</span>
+          <span class="tab"><svg><use href="#i-book"/></svg>Library</span>
           <span class="tab"><svg><use href="#i-gear"/></svg>Settings</span>
         </div>
         <div class="home"></div>
@@ -1007,6 +1037,15 @@ footer p{max-width:64ch;margin:0 0 9px}
     350 kcal/100 g alongside <i>Kaffee, schwarz</i> at 2, and a 250 g cup logged against the wrong one is
     875 kcal instead of 5 — a 40% error on the whole day from one row. That is the failure the model's second
     pass exists to catch, and screen 03b is it being caught.</p>
+    <p><strong>Checking is all or nothing for a line.</strong> Either every retrieved row on a line was
+    checked or none was, and a check that fails or times out partway counts as no check for the whole line.
+    That is why “not checked” is a property of the screen carried by one sentence rather than a per-row mark —
+    it is now a stated requirement rather than a drawing convenience.</p>
+    <p><strong>Amounts follow history, not convenience.</strong> A food this person has eaten before gets the
+    multiplier — Less / Usual / More / Double at 0.7× / 1× / 1.4× / 2× of what they last had. A food eaten for
+    the first time gets no multiplier at all: it offers its own portions by name, or a plain gram field where
+    the table holds no portions. One control never means a measured fact on one row and a population guess on
+    the next. Screen 03e is the three cases together.</p>
     <p><strong>Five states did not survive contact with the sheet.</strong> What I could draw legibly is
     <strong>three tiers</strong>, carried by structure rather than colour: a <b>settled</b> row is one line
     with nothing to operate; a <b>glance</b> row is taller, names the runner-up it rejected, and carries a
@@ -1065,6 +1104,7 @@ footer p{max-width:64ch;margin:0 0 9px}
           </div>
           <div class="sheet-foot">
             <span class="wide-btn">Log 392 kcal</span>
+            <p class="foot-count">Nothing to decide</p>
             <p class="foot-note">08:05 · Breakfast</p>
           </div>
         </div>
@@ -1125,13 +1165,14 @@ footer p{max-width:64ch;margin:0 0 9px}
                 <div class="src"><svg><use href="#i-book"/></svg><span>Checked · Ciqual · 250 g, read from “large”</span></div>
                 <div class="alt">Also matched <b>Kaffeepulver, löslich</b>, 350 kcal per 100 g.
                   Read that way this row is 875 kcal.</div>
-                <div class="bucket"><span>Less</span><span class="on">Usual</span><span>More</span></div>
+                <div class="portions"><span>1 cup, 125 g</span><span class="on">1 large cup, 250 g</span><span>Grams</span></div>
               </div>
             </div>
           </div>
           <div class="sheet-foot">
             <span class="wide-btn">Log 582 kcal</span>
-            <p class="foot-note">1 row worth a glance · 12:48 · Lunch</p>
+            <p class="foot-count">1 row worth a glance</p>
+            <p class="foot-note">12:48 · Lunch</p>
           </div>
         </div>
       </div></div>
@@ -1145,11 +1186,17 @@ footer p{max-width:64ch;margin:0 0 9px}
         consequence in kcal</b>. “Kaffeepulver, löslich, 350 kcal per 100 g. Read that way this row is 875
         kcal.” A user can settle that in under a second without knowing anything about matching.</p>
         <p class="cap">The count above the Log button, <b>“1 row worth a glance”</b>, is where the state
-        becomes findable at a glance rather than per row — it sits at the point of commitment, in plain ink,
-        and it is a count of rows rather than a score of anything.</p>
+        becomes findable rather than hunted for — it sits at the point of commitment, in plain ink, and it
+        counts rows rather than scoring anything. It is set at the weight of the button's own label rather
+        than as a caption, because <b>it is the single load-bearing element of this screen</b>: row height is
+        a weak signal in a four-row list and nearly worthless at accessibility type sizes, where every row is
+        tall and the tier boundary disappears. <b>If one thing on this page is put in front of a real user,
+        it should be this line.</b> The question to ask is whether anyone reads it before tapping Log, and
+        whether “worth a glance” sends them to the right row without a second cue.</p>
         <p class="omit"><span class="lbl">Left out</span> A confidence percentage, a star rating, a tick on
         the certain rows (a checkmark beside a food in a nutrition app reads as approval of the food), a
-        chevron on settled rows, and amber anywhere. Also left out: showing the runner-up on a <i>certain</i>
+        chevron on settled rows, a bucket control on the coffee (it is a first-time food, so it gets its own
+        named portions instead — see 03e), and amber anywhere. Also left out: showing the runner-up on a <i>certain</i>
         row — the model considered alternatives for every row, and surfacing them all would make four rows look
         like four decisions.</p>
       </figcaption>
@@ -1186,7 +1233,7 @@ footer p{max-width:64ch;margin:0 0 9px}
               </div>
               <div class="rrow">
                 <div class="top"><span class="phrase">Erdnussmus, 100 % Erdnüsse</span><span class="kcal">182 kcal</span></div>
-                <div class="src"><svg><use href="#i-book"/></svg><span>Checked · 30 g, usual</span>
+                <div class="src"><svg><use href="#i-book"/></svg><span>Checked · 2 tablespoons, 30 g</span>
                   <span class="badge">Open Food Facts</span></div>
               </div>
               <div class="rrow">
@@ -1200,7 +1247,7 @@ footer p{max-width:64ch;margin:0 0 9px}
           </div>
           <div class="sheet-foot">
             <span class="wide-btn off">Log</span>
-            <p class="foot-note">1 row needs a food</p>
+            <p class="foot-count">1 row needs a food</p>
           </div>
         </div>
       </div></div>
@@ -1260,14 +1307,14 @@ footer p{max-width:64ch;margin:0 0 9px}
               <div class="rrow">
                 <div class="top"><span class="phrase">Apfel, mit Schale, roh</span><span class="kcal">95 kcal</span>
                   <svg class="chev" width="13" height="13"><use href="#i-chevron"/></svg></div>
-                <div class="src"><svg><use href="#i-book"/></svg><span>Matched by name · Ciqual · 176 g, one medium</span></div>
-                <div class="bucket"><span>Less</span><span class="on">Usual</span><span>More</span></div>
+                <div class="src"><svg><use href="#i-book"/></svg><span>Matched by name · Ciqual</span></div>
+                <div class="portions"><span>1 small, 130 g</span><span class="on">1 medium, 176 g</span><span>Grams</span></div>
               </div>
               <div class="rrow">
                 <div class="top"><span class="phrase">Kaffee, schwarz, ungesüßt</span><span class="kcal">5 kcal</span>
                   <svg class="chev" width="13" height="13"><use href="#i-chevron"/></svg></div>
-                <div class="src"><svg><use href="#i-book"/></svg><span>Matched by name · Ciqual · 250 g, read from “large”</span></div>
-                <div class="bucket"><span>Less</span><span class="on">Usual</span><span>More</span></div>
+                <div class="src"><svg><use href="#i-book"/></svg><span>Matched by name · Ciqual · read from “large”</span></div>
+                <div class="portions"><span>1 cup, 125 g</span><span class="on">1 large cup, 250 g</span><span>Grams</span></div>
               </div>
             </div>
             <p class="footnote">Matching a name is all this iPhone does. Confirming that the match is the right
@@ -1275,7 +1322,8 @@ footer p{max-width:64ch;margin:0 0 9px}
           </div>
           <div class="sheet-foot">
             <span class="wide-btn">Log 582 kcal</span>
-            <p class="foot-note">2 rows worth a glance · 12:48 · Lunch</p>
+            <p class="foot-count">2 rows worth a glance</p>
+            <p class="foot-note">12:48 · Lunch</p>
           </div>
         </div>
       </div></div>
@@ -1287,6 +1335,11 @@ footer p{max-width:64ch;margin:0 0 9px}
         than one, because without a second pass the threshold for “settled” has to be the user's eye. And one
         sentence states the device fact, in the footnote position where this app already puts caveats that
         apply only when they apply.</p>
+        <p class="cap">That one sentence is load-bearing and it is now a requirement rather than a choice:
+        <b>checking is all or nothing for a line</b>. Either every retrieved row was checked or none was, and
+        a check that fails or times out partway counts as no check for the whole line. Because the property
+        can never be true of some rows and false of others, it belongs to the screen, and one sentence can
+        carry it honestly. A per-row mark would be a vocabulary paying for a distinction that cannot occur.</p>
         <p class="cap">This reverses what I had drawn before the checking pass existed, and it is better. The
         earlier version carried no tell at all, which met the “must look normal” rule and left the user to
         conclude the app was simply bad at understanding them. <b>“Matched by name” is not a degraded state,
@@ -1296,6 +1349,80 @@ footer p{max-width:64ch;margin:0 0 9px}
         <p class="omit"><span class="lbl">Left out</span> A banner, a badge on the sheet, an “unavailable”
         notice, a prompt to turn Apple Intelligence on, and any difference in layout, order or control
         vocabulary. Nothing here is disabled, nothing is greyed, and the Log button works.</p>
+      </figcaption>
+    </figure>
+
+    <figure class="mock">
+      <div class="phone"><div class="screen" data-ios="auto">
+        <div class="island"></div>
+        <div class="statusbar"><span>19:24</span><span class="right">
+          <svg width="19" height="12"><use href="#i-cell"/></svg>
+          <svg width="17" height="12"><use href="#i-wifi"/></svg>
+          <svg width="27" height="13"><use href="#i-batt"/></svg></span></div>
+        <div class="navbar plainbg" style="opacity:.5">
+          <div class="nav-row"><span></span><span class="nav-title">Sat 4 Oct</span><span></span></div>
+          <div class="large-title">Today</div>
+        </div>
+        <div class="content"><div class="scroller" style="opacity:.5">
+          <div class="card"><div class="totals">
+            <div class="energy">1,402 <small>kcal</small></div>
+            <div class="pair"><div><span class="lbl">Protein</span><span class="fig">71 <b>g</b></span></div>
+            <div><span class="lbl">Fibre</span><span class="fig">18 <b>g</b></span></div></div>
+          </div></div>
+        </div></div>
+        <div class="sheet-dim"></div>
+        <div class="sheet" style="height:690px">
+          <div class="grabber"></div>
+          <div class="sheet-nav"><span class="nav-btn plain">Cancel</span><span class="t">Dinner</span><span style="width:46px"></span></div>
+          <div class="sheet-body">
+            <p class="footnote" style="padding:0 2px 9px">“big bowl of lentil soup, bread with butter”</p>
+            <div class="card">
+              <div class="rrow">
+                <div class="top"><span class="phrase">Linsensuppe</span><span class="kcal">487 kcal</span>
+                  <svg class="chev" width="13" height="13"><use href="#i-chevron"/></svg></div>
+                <div class="src"><svg><use href="#i-history"/></svg><span>You last had 300 g · read “big bowl” as More</span></div>
+                <div class="bucket"><span>Less</span><span>Usual</span><span class="on">More</span><span>Double</span></div>
+                <div class="alt" style="border-left-color:transparent;padding-left:0;margin-top:8px">420 g</div>
+              </div>
+              <div class="rrow">
+                <div class="top"><span class="phrase">Brot, Roggenmischbrot</span><span class="kcal">92 kcal</span>
+                  <svg class="chev" width="13" height="13"><use href="#i-chevron"/></svg></div>
+                <div class="src"><svg><use href="#i-book"/></svg><span>Checked · BLS · first time, so pick a portion</span></div>
+                <div class="portions"><span class="on">1 slice, 40 g</span><span>2 slices, 80 g</span><span>Grams</span></div>
+              </div>
+              <div class="rrow">
+                <div class="top"><span class="phrase">Butter</span><span class="kcal">75 kcal</span>
+                  <svg class="chev" width="13" height="13"><use href="#i-chevron"/></svg></div>
+                <div class="src"><svg><use href="#i-book"/></svg><span>Checked · BLS · no portions in the table</span></div>
+                <div class="gramfield"><span class="f">10<span class="cv"></span></span><span class="u">grams</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="sheet-foot">
+            <span class="wide-btn">Log 654 kcal</span>
+            <p class="foot-count">3 rows worth a glance</p>
+            <p class="foot-note">19:24 · Dinner</p>
+          </div>
+        </div>
+      </div></div>
+      <figcaption>
+        <p class="cap-title">Amount: with history, and without <span class="tag">03e</span></p>
+        <p class="cap">Three amount controls on one sheet, and <b>which one a row gets is decided by whether
+        that person has eaten the food before</b> — never by what is convenient. The lentil soup has history,
+        so it gets the multiplier: <b>Less / Usual / More / Double</b> at 0.7× / 1× / 1.4× / 2× of the 300 g
+        they last had, with the resulting grams printed underneath and “big bowl” already resolved to More. The
+        bread has none, so it is offered <b>its own portions by name</b> — “1 slice, 40 g” — which is a claim
+        the database can actually support. The butter has no portion rows at all, so it falls to a <b>plain
+        gram field</b>, focused, with the number pad up.</p>
+        <p class="cap">This is break 01 closed. The old sheet put “Usual” on both kinds of row, where it meant
+        a measured fact about this person on one and a Ciqual population average on the next — one control,
+        two meanings, no way to tell them apart. <b>A multiplier with nothing to multiply is now simply
+        absent</b>, and its absence is the signal that this food is new.</p>
+        <p class="omit"><span class="lbl">Left out</span> A greyed-out or disabled bucket control on
+        first-time rows. A disabled control still teaches the user that buckets are the real answer and this
+        row is deficient; an absent one teaches nothing. Also left out: Double on a first-time row under any
+        name, a default portion pre-chosen for a food with several, and a gram field on a row that has
+        portions.</p>
       </figcaption>
     </figure>
 
@@ -1395,6 +1522,7 @@ footer p{max-width:64ch;margin:0 0 9px}
         <div class="tabbar">
           <span class="tab"><svg><use href="#i-list"/></svg>Today</span>
           <span class="tab"><svg><use href="#i-chart"/></svg>Trends</span>
+          <span class="tab"><svg><use href="#i-book"/></svg>Library</span>
           <span class="tab on"><svg><use href="#i-gear"/></svg>Settings</span>
         </div>
         <div class="home"></div>
@@ -1462,10 +1590,11 @@ footer p{max-width:64ch;margin:0 0 9px}
             <div class="prow"><span class="nm">Lunch · rice, chicken breast, apple</span><span class="vv">577</span></div>
             <div class="prow"><span class="nm">Dinner · rye bread, butter, cheese</span><span class="vv">509</span></div>
             <div class="prow"><span class="nm">Snack · skyr</span><span class="vv">126</span></div>
-            <div class="pact"><span class="b1">Log all four</span><span class="b2">Adjust</span></div>
+            <div class="pact"><span class="b1">Accept all four</span><span class="b2">Adjust</span></div>
           </div>
-          <p class="footnote">Nothing here is in your log or in Health until you log it. Typing over a meal
-          replaces that meal's proposal.</p>
+          <p class="footnote">Nothing here is in your log or in Health until you accept it. Accepting marks
+          the day assumed: it goes to Health, and Trends counts it as assumed rather than complete. Typing over
+          a meal replaces that meal's proposal.</p>
         </div>
           <div class="composer-dock">
             <div class="composer">
@@ -1477,6 +1606,7 @@ footer p{max-width:64ch;margin:0 0 9px}
         <div class="tabbar">
           <span class="tab on"><svg><use href="#i-list"/></svg>Today</span>
           <span class="tab"><svg><use href="#i-chart"/></svg>Trends</span>
+          <span class="tab"><svg><use href="#i-book"/></svg>Library</span>
           <span class="tab"><svg><use href="#i-gear"/></svg>Settings</span>
         </div>
         <div class="home"></div>
@@ -1488,6 +1618,11 @@ footer p{max-width:64ch;margin:0 0 9px}
         shadow; it sits <b>outside the meal sections</b>; it says <b>"Not logged"</b> in words at the top; and
         the headline reads <b>0 kcal</b> with the proposal's sum demoted to the coverage line. The baseline is
         derived from what this weekday usually contains, so it needs no setup screen and nothing to maintain.</p>
+        <p class="cap">Accepting it does not turn it into an ordinary logged day. The day becomes
+        <b>assumed</b>: real enough to write to Health, not asserted carefully enough for the app to be silent
+        about it, so it carries the Assumed badge on every row and counts as assumed in Trends for as long as
+        it stands. The button therefore says <b>Accept</b> rather than Log, and the footnote states both halves
+        of the bargain before the tap rather than after it.</p>
         <p class="omit"><span class="lbl">Left out</span> Any auto-logging, any "we logged this for you, undo?",
         and any grey ghost rows inside the meal sections. A ghost row inside Breakfast reads as a row, and at
         AX5 with a 44 pt row height the only difference left would be the opacity — which is exactly the kind
@@ -1546,7 +1681,7 @@ footer p{max-width:64ch;margin:0 0 9px}
               Not logged<span class="badge">Proposal</span></div>
             <div class="prow"><span class="nm">Dinner · rye bread, butter, cheese</span><span class="vv">509</span></div>
             <div class="prow"><span class="nm">Snack · skyr</span><span class="vv">126</span></div>
-            <div class="pact"><span class="b1">Log both</span><span class="b2">Dismiss</span></div>
+            <div class="pact"><span class="b1">Accept both</span><span class="b2">Dismiss</span></div>
           </div>
         </div>
           <div class="composer-dock">
@@ -1559,6 +1694,7 @@ footer p{max-width:64ch;margin:0 0 9px}
         <div class="tabbar">
           <span class="tab on"><svg><use href="#i-list"/></svg>Today</span>
           <span class="tab"><svg><use href="#i-chart"/></svg>Trends</span>
+          <span class="tab"><svg><use href="#i-book"/></svg>Library</span>
           <span class="tab"><svg><use href="#i-gear"/></svg>Settings</span>
         </div>
         <div class="home"></div>
@@ -1569,7 +1705,7 @@ footer p{max-width:64ch;margin:0 0 9px}
         it standing. The proposal card falls down the screen as slots are filled, so it is always below what is
         real — <b>the vertical order is the hierarchy</b>. One line in the secondary ink says what happened to
         the proposal, because a thing silently disappearing is the surprise the plan's copy rule exists to
-        prevent. "Dismiss" is offered next to "Log both" so a day that goes off the rails has an exit that is
+        prevent. “Dismiss” is offered next to “Accept both” so a day that goes off the rails has an exit that is
         not a deletion.</p>
         <p class="omit"><span class="lbl">Left out</span> Any note that the kebab is unusual, any comparison
         between 772 and the 577 it replaced, and any prompt to update the baseline. The baseline follows the
@@ -1610,7 +1746,6 @@ footer p{max-width:64ch;margin:0 0 9px}
         </div>
         <div class="content"><div class="scroller" id="trends-scroller">
           <div class="ios-seg" role="group" aria-label="Range">
-            <button type="button" data-range="w" aria-pressed="false">Week</button>
             <button type="button" data-range="m" aria-pressed="false">Month</button>
             <button type="button" data-range="q" aria-pressed="true">Quarter</button>
           </div>
@@ -1627,8 +1762,9 @@ footer p{max-width:64ch;margin:0 0 9px}
             <p class="chart-sub" id="s-c">—</p>
             <div class="chart" id="c-c"></div>
             <div class="cov-legend">
-              <span><i style="background:var(--c-series)"></i>Logged</span>
-              <span><i style="background:var(--c-assumed)"></i>Partly assumed</span>
+              <span><i style="background:var(--c-series)"></i>Complete</span>
+              <span><i style="background:var(--c-partial)"></i>Partial</span>
+              <span><i style="background:var(--c-assumed)"></i>Assumed</span>
               <span><i style="background:transparent;box-shadow:inset 0 0 0 1px var(--c-axis)"></i>Nothing logged</span>
             </div>
           </div>
@@ -1645,12 +1781,14 @@ footer p{max-width:64ch;margin:0 0 9px}
             <div class="chart" id="c-f"></div>
           </div>
 
-          <p class="footnote" style="padding:10px 4px 0">Averages use the days that have data. Days with
-          nothing logged are left out of the average, not counted as zero.</p>
+          <p class="footnote" style="padding:10px 4px 0">Days with nothing logged are left out of the mean
+          rather than counted as zero. Days you accepted from your usual day are in it, and every mean says
+          how many.</p>
         </div></div>
         <div class="tabbar">
           <span class="tab"><svg><use href="#i-list"/></svg>Today</span>
           <span class="tab on"><svg><use href="#i-chart"/></svg>Trends</span>
+          <span class="tab"><svg><use href="#i-book"/></svg>Library</span>
           <span class="tab"><svg><use href="#i-gear"/></svg>Settings</span>
         </div>
         <div class="home"></div>
@@ -1659,15 +1797,20 @@ footer p{max-width:64ch;margin:0 0 9px}
         <p class="cap-title">Trends, live <span class="tag">06</span></p>
         <p class="cap">The range switcher works; so does the crosshair on the energy chart, which reports the
         day's value <em>and</em> its coverage state together, because on this screen those are the same
-        question. Two things to look at. First, <b>the rolling-average line breaks</b> wherever fewer than four
-        of the seven days in the window have data — the August gap is a hole in the line, not a dip to zero and
-        not a straight line across. Second, <b>Week shows daily columns, not an average</b>, and says so: a
-        seven-day mean over seven days is one number, so the chart has to change meaning with the range.
+        question. Three things to look at. First, <b>the rolling mean breaks wherever fewer than four of the
+        seven days in its window have data</b> — it does not bridge the gap. The four blank days in August are
+        a hole in the line, not a dip toward zero and not a straight segment drawn across; a bridged line would
+        be the app asserting a figure for days it knows nothing about. Second, <b>the range is Month or
+        Quarter and nothing shorter</b>: a seven-day mean cannot be drawn over seven days, so a Week tab could
+        only have shown a different statistic behind a control that looks like a zoom. Third, <b>every mean
+        says what it is made of</b> — “mean of 67 complete days, 7 partial, 7 assumed” — as a named count, never
+        as a fraction or a percentage.
         A user-set reference line is permitted, and energy is drawn here with one set: a neutral hairline,
         its value in plain ink, labelled “your reference”. It is off until the user sets it, it is never
         suggested, and it is never called a target or a goal.</p>
         <p class="omit"><span class="lbl">Left out</span> Red and green, up/down arrows, percentage change,
-        "best week", any shading of a region as good or bad, and any axis that starts somewhere flattering.
+        a Week range, a coverage percentage, a ratio of any kind, “best week”, any shading of a region as good
+        or bad, and any axis that starts somewhere flattering.
         Also left out: a second series on any chart, and carbs, fat, sugar, sodium and saturated fat — five
         more charts would make this a dashboard, and a dashboard invites interpretation.</p>
       </figcaption>
@@ -1702,10 +1845,10 @@ footer p{max-width:64ch;margin:0 0 9px}
             <div class="phead"><svg width="15" height="15" style="color:var(--s-label2)"><use href="#i-history"/></svg>
               Not logged<span class="badge">Proposal</span></div>
             <div class="prow"><span class="nm">Your usual Monday</span><span class="vv">1,604</span></div>
-            <div class="pact"><span class="b1">Use for this day</span><span class="b2">Leave blank</span></div>
+            <div class="pact"><span class="b1">Accept for this day</span><span class="b2">Leave blank</span></div>
           </div>
-          <p class="footnote">If you use it, the day counts as assumed rather than logged, and says so in
-          Trends.</p>
+          <p class="footnote">Accepting it marks the day assumed. The figures go to Health like any other
+          entry, and Trends draws the day as assumed rather than complete.</p>
 
           <div class="ghead" style="font-size:15px">That week</div>
           <div class="card">
@@ -1728,6 +1871,7 @@ footer p{max-width:64ch;margin:0 0 9px}
         <div class="tabbar">
           <span class="tab on"><svg><use href="#i-list"/></svg>Today</span>
           <span class="tab"><svg><use href="#i-chart"/></svg>Trends</span>
+          <span class="tab"><svg><use href="#i-book"/></svg>Library</span>
           <span class="tab"><svg><use href="#i-gear"/></svg>Settings</span>
         </div>
         <div class="home"></div>
@@ -1737,8 +1881,9 @@ footer p{max-width:64ch;margin:0 0 9px}
         <p class="cap">The totals are <b>em dashes, not zeros</b>. A zero is a claim that you ate nothing; a
         dash is the truth, which is that the app does not know. This single substitution is what makes
         incompleteness first-class, and it propagates: the day is excluded from every average rather than
-        dragging it down. The user can convert the day to the baseline, and the copy is explicit that doing so
-        makes it <b>assumed</b> — a third state, visible in the coverage strip, not quietly promoted to logged.</p>
+        dragging it down. The user can accept the baseline for the day, and the copy is explicit that doing so
+        makes it <b>assumed</b> — one of four states in the coverage strip, written to Health like anything
+        else, and never quietly promoted to complete.</p>
         <p class="omit"><span class="lbl">Left out</span> "You missed a day", a broken streak, a greyed-out
         calendar cell that reads as a penalty, a reminder notification, and any count of how many days have
         been missed. The week list reports; it does not tally.</p>
@@ -1828,7 +1973,7 @@ footer p{max-width:64ch;margin:0 0 9px}
                 <div><span class="lbl">Fibre</span><span class="fig">18 <b>g</b></span></div>
               </div>
               <p class="coverage-line">Breakfast and lunch logged. Dinner assumed from your usual Thursday.
-              Nothing for the evening.</p>
+              No snack logged.</p>
             </div>
           </div>
 
@@ -1851,39 +1996,49 @@ footer p{max-width:64ch;margin:0 0 9px}
           </div>
 
           <div class="ghead"><svg><use href="#i-moon"/></svg>Dinner<span class="right">assumed</span></div>
-          <div class="card proposal">
-            <div class="phead"><svg width="15" height="15" style="color:var(--s-label2)"><use href="#i-history"/></svg>
-              Assumed, not logged<span class="badge">Assumed</span></div>
-            <div class="prow"><span class="nm">Your usual Thursday dinner</span><span class="vv">715</span></div>
-            <div class="pact"><span class="b1">Log it</span><span class="b2">It was different</span></div>
+          <div class="card">
+            <div class="row"><div class="body"><div class="name">Linsen, Teller-, gegart</div>
+              <div class="meta"><span>300 g</span><span>·</span><span>usual</span><span class="badge">Assumed</span></div></div>
+              <div class="val">348 kcal</div></div>
+            <div class="row"><div class="body"><div class="name">Brot, Roggenmischbrot</div>
+              <div class="meta"><span>60 g</span><span>·</span><span>usual</span><span class="badge">Assumed</span></div></div>
+              <div class="val">138 kcal</div></div>
+            <div class="row"><div class="body"><div class="name">Gouda, 45 % Fett i. Tr.</div>
+              <div class="meta"><span>60 g</span><span>·</span><span>usual</span><span class="badge">Assumed</span></div></div>
+              <div class="val">229 kcal</div></div>
+            <div class="sep-note">Accepted from your usual Thursday. In the day total and in Health, counted as
+            assumed in Trends. Type what you had to replace it.</div>
           </div>
-          <p class="footnote">Assumed figures are in the day total and marked in Trends. Nothing assumed is
-          written to Health.</p>
 
           <div class="ghead"><svg><use href="#i-carrot"/></svg>Snack<span class="right">missing</span></div>
           <div class="card"><div class="row"><div class="body">
-            <div class="name" style="color:var(--s-label2)">Nothing logged after 19:00</div>
+            <div class="name" style="color:var(--s-label2)">No snack logged</div>
           </div></div></div>
         </div></div>
         <div class="tabbar">
           <span class="tab on"><svg><use href="#i-list"/></svg>Today</span>
           <span class="tab"><svg><use href="#i-chart"/></svg>Trends</span>
+          <span class="tab"><svg><use href="#i-book"/></svg>Library</span>
           <span class="tab"><svg><use href="#i-gear"/></svg>Settings</span>
         </div>
         <div class="home"></div>
       </div></div>
       <figcaption>
         <p class="cap-title">A partial day: logged, assumed, missing <span class="tag">09</span></p>
-        <p class="cap">Three states on one screen, each with its own structure. <b>Logged</b> is a filled card
-        with per-item rows. <b>Assumed</b> is the dashed card, counted in the day total and excluded from
-        Health. <b>Missing</b> is a card with a sentence in it and nothing to act on, because the absence of a
-        snack is still information about the day. The coverage line at the top narrates all three in one
-        sentence rather than as a fraction — "3 of 4 slots" would be a score, and a score is the thing this
-        product must not produce.</p>
-        <p class="omit"><span class="lbl">Left out</span> A percentage complete, a progress bar over the four
-        slots, a "complete your day" prompt, and any attempt to pad the missing evening. The assumed dinner
-        counts toward the day; the missing snack counts as nothing at all, and the two are drawn differently
-        on purpose.</p>
+        <p class="cap">Three of the four day states on one screen. <b>Logged</b> is a filled card with
+        per-item rows. <b>Assumed</b> is also a filled card with per-item rows — because an accepted baseline
+        is real: it is in the day total and in Health — but every row carries the Assumed badge and one line
+        under the card says where it came from and how to replace it. <b>Missing</b> is a card holding a
+        sentence and nothing to act on, because the absence of a snack is still information about the day.</p>
+        <p class="cap">The coverage line narrates all three in one sentence and <b>never divides them</b>.
+        “3 of 4 slots” is a fraction, and a fraction of logged-versus-missing grades the user's diligence
+        rather than their diet, which is the worse of the two things this product must not do. The rule holds
+        on Trends as well: counts are named — “67 complete days, 7 partial, 7 assumed” — and never expressed
+        as a share.</p>
+        <p class="omit"><span class="lbl">Left out</span> A percentage complete, a ratio, a progress bar over
+        the four slots, a “complete your day” prompt, and any attempt to pad the missing evening. The assumed
+        dinner counts toward the day; the missing snack counts as nothing at all, and the two are drawn
+        differently on purpose.</p>
       </figcaption>
     </figure>
 
@@ -1929,7 +2084,7 @@ footer p{max-width:64ch;margin:0 0 9px}
           </div>
           <div class="sheet-foot">
             <span class="wide-btn off">Log</span>
-            <p class="foot-note">1 row needs a food</p>
+            <p class="foot-count">1 row needs a food</p>
           </div>
         </div>
       </div></div>
@@ -1968,9 +2123,9 @@ footer p{max-width:64ch;margin:0 0 9px}
 
   <div class="journey">
     <div class="j-head"><span class="j-id">J1</span><h3 class="j-title">Typing a routine breakfast</h3>
-      <span class="j-total">2 taps · 8.1 s typed &nbsp;|&nbsp; 2 taps · 3.3 s recalled</span></div>
-    <p class="j-target">Target: under 20 s as a new meal <span class="hit">met</span> ·
-      under 5 s as a repeat <span class="hit">met from the second time on</span></p>
+      <span class="j-total">first time 2 taps · 8.1 s &nbsp;|&nbsp; repeat 2 taps · 3.3 s</span></div>
+    <p class="j-target">Target: under 20 s for a meal never logged before <span class="hit">met at 8.1 s</span> ·
+      under 5 s for a repeat <span class="hit">met at 3.3 s</span></p>
     <div class="flow">
       <div class="step"><span class="sn">01</span><span class="sw">Today</span>
         <p class="sd">Tap the composer. Keyboard up, two most-typed morning lines shown.</p>
@@ -1985,11 +2140,13 @@ footer p{max-width:64ch;margin:0 0 9px}
         <p class="sd">Rows appear under Breakfast. No banner on a clean success — the rows are the receipt.</p>
         <span class="sc">0 taps · <em>0 s</em></span></div>
     </div>
-    <p class="j-note">The typed path <b>cannot reach 5 seconds</b> and never will: 25 characters is six seconds
-    of thumb before anything else happens. What reaches 5 seconds is the second step collapsing — from the
-    second morning on, the line is in the “you usually type” list, so step 02 becomes <b>one tap on the line
-    instead of typing it</b>: 2 taps, 3.3 s end to end. <b>That is the whole argument for phrase recall.</b>
-    One-line input is not fast; <i>remembering</i> one-line input is.</p>
+    <p class="j-note">Both targets are met, and they are met by two different paths, which is the point.
+    The typed path is governed by the twenty-second target and lands at 8.1 s with room to spare. It cannot
+    reach five seconds and never will — 25 characters is six seconds of thumb before anything else happens —
+    but five seconds governs a <i>repeat</i>, and from the second morning on the line is in the “you usually
+    type” list, so step 02 collapses to <b>one tap on the line instead of typing it</b>: 2 taps, 3.3 s end to
+    end. <b>That is the whole argument for phrase recall.</b> One-line input is not fast; <i>remembering</i>
+    one-line input is.</p>
   </div>
 
   <div class="journey">
@@ -2057,20 +2214,20 @@ footer p{max-width:64ch;margin:0 0 9px}
         <p class="sd">Totals read “—”, not 0. One sentence: “Nothing logged on this day.”</p>
         <span class="sc">0 taps · <em>—</em></span></div>
       <div class="step"><span class="sn">02</span><span class="sw">Offer</span>
-        <p class="sd">The usual-weekday proposal, dashed, with “Use for this day” and “Leave blank”.</p>
+        <p class="sd">The usual-weekday proposal, dashed, with “Accept for this day” and “Leave blank”.</p>
         <span class="sc">0 taps · <em>—</em></span></div>
       <div class="step"><span class="sn">03a</span><span class="sw">Leave blank</span>
         <p class="sd">The day stays empty and is excluded from every average, not counted as zero.</p>
         <span class="sc">0 taps · <em>0 s</em></span></div>
-      <div class="step"><span class="sn">03b</span><span class="sw">Use for this day</span>
-        <p class="sd">Day becomes assumed: in the totals, in the average, marked in the coverage strip, not in Health.</p>
+      <div class="step"><span class="sn">03b</span><span class="sw">Accept for this day</span>
+        <p class="sd">Day becomes assumed: in the totals, in Health, drawn as its own state in the coverage strip.</p>
         <span class="sc">2 taps · <em>3.4 s</em></span></div>
       <div class="step"><span class="sn">04</span><span class="sw">Trends</span>
         <p class="sd">Empty cell in the strip; the rolling line breaks where the window drops under four days.</p>
         <span class="sc">0 taps · <em>—</em></span></div>
     </div>
     <p class="j-note">The design work here is subtraction. There is no notification, no streak to break, no
-    count of missed days, no red cell and no "complete your log" prompt. <b>A missing day is drawn as the
+    count of missed days, no ratio, no red cell and no “complete your log” prompt. <b>A missing day is drawn as the
     absence of ink</b> — an empty cell with a hairline floor — which is the one mark that cannot be read as a
     verdict. The rolling average breaking rather than bridging is the same decision: an unbroken line across
     four blank days would be the app asserting something it does not know.</p>
@@ -2088,7 +2245,7 @@ footer p{max-width:64ch;margin:0 0 9px}
         <p class="sd">Reads the line and then, immediately under it, which days it is made of.</p>
         <span class="sc">0 taps · <em>8.5 s</em></span></div>
       <div class="step"><span class="sn">03</span><span class="sw">Range</span>
-        <p class="sd">Tap Month. Same form, 30 days, subtitle restates what the average covers.</p>
+        <p class="sd">Tap Month. Same form, 30 days, subtitle renames what the mean is made of.</p>
         <span class="sc">1 tap · <em>0.7 s</em></span></div>
       <div class="step"><span class="sn">04</span><span class="sw">Protein, Fibre</span>
         <p class="sd">Scrolls past two more small multiples on their own axes.</p>
@@ -2098,7 +2255,8 @@ footer p{max-width:64ch;margin:0 0 9px}
     protein near 97 g; fibre moves more than either and its low stretches line up with the weeks that have
     gaps. <b>The app states none of that.</b> The Data chart sits directly beneath Energy rather than at the
     bottom of the screen precisely so that the second thing read after a trend is what the trend is made of —
-    without it the user draws a conclusion about August from four days of data.</p>
+    without it the user draws a conclusion about August from four days of data. There is no Week range to drop
+    into, so there is no point at which the chart quietly stops being a rolling mean.</p>
   </div>
 
   <div class="journey">
@@ -2131,14 +2289,14 @@ footer p{max-width:64ch;margin:0 0 9px}
 
   <div class="journey">
     <div class="j-head"><span class="j-id">J7</span><h3 class="j-title">The normal day, and a deviation from it</h3>
-      <span class="j-total">1 tap · 2.1 s accepted &nbsp;|&nbsp; +2 taps · 9.6 s to deviate</span></div>
+      <span class="j-total">accept 1 tap · 2.1 s &nbsp;|&nbsp; deviate +2 taps · 9.6 s</span></div>
     <p class="j-target">Target: under 5 s for a repeat <span class="hit">met — a whole day in one tap</span></p>
     <div class="flow">
       <div class="step"><span class="sn">01</span><span class="sw">Today, morning</span>
         <p class="sd">Proposal card: four slots, dashed, “Not logged”. Headline still reads 0 kcal.</p>
         <span class="sc">0 taps · <em>—</em></span></div>
       <div class="step"><span class="sn">02</span><span class="sw">Accept</span>
-        <p class="sd">Tap “Log all four”. Four meal sections appear; the card goes.</p>
+        <p class="sd">Tap “Accept all four”. Four meal sections appear, every row badged Assumed.</p>
         <span class="sc">1 tap · <em>2.1 s</em></span></div>
       <div class="step"><span class="sn">03</span><span class="sw">Lunch is different</span>
         <p class="sd">Tap the composer, type “döner kebab”. 11 characters.</p>
@@ -2150,13 +2308,14 @@ footer p{max-width:64ch;margin:0 0 9px}
         <p class="sd">Kebab under Lunch, one line saying it replaced the usual, the rest of the proposal intact.</p>
         <span class="sc">0 taps · <em>2.1 s</em></span></div>
     </div>
-    <p class="j-note">A whole normal day in one tap is the fastest path in the product by a wide margin, and
-    that is the problem with it. <b>The cheaper accepting a day gets, the more the log drifts toward a record
-    of the user's habits rather than their eating</b> — and the 7-day average reads the same either way. The
-    mock defends this with the assumed state and with keeping anything assumed out of Health, but a user who
-    taps “Log all four” is logging, not assuming, and the app then has no way to tell the difference. The
-    alternative — a one-tap accept that writes the day as <i>assumed</i> and offers to confirm it in the
-    evening — is slower and more honest, and I would argue for it.</p>
+    <p class="j-note">A whole normal day in one tap is the fastest path in the product by a wide margin,
+    and it used to be the most dangerous: <b>the cheaper accepting a day gets, the more the log drifts toward
+    a record of the user's habits rather than their eating</b>, and a mean reads the same either way. That is
+    now settled rather than argued. An accepted day is <b>assumed</b>, not logged: it goes to Health, because
+    a day the user asserted is real, but every row says Assumed, the coverage strip draws it as its own state,
+    and every mean that includes it says so. The speed survives; the claim does not get stronger than the
+    evidence. Typing over one slot replaces that slot only, and the replaced rows become ordinary logged
+    entries while the rest of the day stays assumed.</p>
   </div>
 </section>
 
@@ -2164,27 +2323,37 @@ footer p{max-width:64ch;margin:0 0 9px}
 <section id="breaks" class="wrap">
   <div class="shead">
     <span class="snum">09 — Where the premise broke down</span>
-    <h2>Nine places the design would not draw</h2>
+    <h2>Ten places the design would not draw</h2>
     <p>These are the points where following the brief produced something I could not defend, or where two
     rules in the brief contradict each other. They are the most useful part of this document.</p>
+    <p>Six have since been settled and the mocks above show the settled design; each one carries what the
+    decision was and where to see it. One is accepted as a known limitation. <strong>Three are still open</strong> and are marked as such — the
+    sentence-parse tell on a device without Apple Intelligence, the thumb collision between the mic and the
+    Log button, and J3's dependence on the right food being on the first screen of search results. None of
+    those has an answer yet and none should be read as closed.</p>
   </div>
 
   <div class="breaks">
 
-    <div class="brk"><span class="n">BREAK 01</span>
+    <div class="brk"><span class="n">BREAK 01 <span class="st">Settled</span></span>
       <h3>“Usual” has no meaning the first time, and the bucket model knows it</h3>
       <p>Less / Usual / More is defined as 0.7× / 1× / 1.4× of what you last had. For a food never logged,
       there is no “what you last had”, so the multiplier has nothing to multiply. The sheet falls back to the
       database's own portion, which means the <b>same control means two different things on two rows of the
       same sheet</b>: on a recalled row, “Usual” is a measured fact about this user; on a first-time row it is
       a population average from Ciqual.</p>
-      <p>Drawn as: the first-time row spells out the grams underneath (“75 g · first time, read from ‘big
-      spoon’”) and the recalled row does not. That is a patch, not a fix. The real fix is a different control
-      for a first-time row — a portion picker, not a multiplier — which reintroduces the thing the premise
-      removed.</p>
-      <span class="drawn">Where to see it</span><p style="margin:0">Screen 03b, the Kimchi row.</p></div>
+      <p class="how"><b>Settled.</b> The multiplier now exists only where there is something to multiply. A
+      food with history gets <b>Less / Usual / More / Double</b> at 0.7× / 1× / 1.4× / 2× of what that person
+      last had. A food eaten for the first time gets <b>no multiplier at all</b>: it offers its own portions
+      by name (“1 slice, 40 g”), or a plain gram field where the table holds no portions. The absence of the
+      control is now the signal that the food is new, which is better than any label would have been.</p>
+      <p>What it cost: a first-time row is taller and needs a real decision, so the twenty-second path
+      carries one more choice than it did. That is the right trade — the alternative was a control that
+      silently meant two different things.</p>
+      <span class="drawn">Where to see it</span><p style="margin:0">Screen 03e, all three amount controls
+      side by side; screens 03b and 03d for first-time rows in context.</p></div>
 
-    <div class="brk"><span class="n">BREAK 02</span>
+    <div class="brk"><span class="n">BREAK 02 <span class="st">Settled in part</span></span>
       <h3>Five match states will not fit on one sheet; three tiers will</h3>
       <p>From history, checked-and-certain, checked-and-probable, unsure, and not-checked are five states, and
       I could not make five legible without reaching for colour, which is forbidden, or for five badges, which
@@ -2201,59 +2370,79 @@ footer p{max-width:64ch;margin:0 0 9px}
       type sizes, where every row is tall. The count above the Log button (“1 row worth a glance”) exists to
       cover that, and it is the single load-bearing element of this design. <b>Third</b>, not-checked is not a
       row state at all here. It applies to every eligible row at once, so encoding it per row doubles the
-      vocabulary for nothing; it became one sentence and a lower glance threshold. If a device can ever check
-      <i>some</i> rows and not others, that decision collapses.</p>
-      <span class="drawn">Where to see it</span><p style="margin:0">Screens 03a–03d, in that order, are the
-      tier system under increasing load.</p></div>
+      vocabulary for nothing; it became one sentence and a lower glance threshold.</p>
+      <p class="how"><b>Settled in part.</b> Checking is now <b>all or nothing for a line</b> — either every
+      retrieved row was checked or none was, and a check that fails or times out partway counts as no check
+      for the whole line. The per-row/per-screen question therefore cannot arise, and the one-sentence
+      treatment is a requirement rather than a workaround. <b>Still open:</b> whether the glance count above
+      the Log button actually does the job the whole tier system hands it. Row height is a weak signal in a
+      four-row list and nearly worthless at accessibility sizes, so that one line carries the probable state
+      alone. It is the first thing to put in front of a real user.</p>
+      <span class="drawn">Where to see it</span><p style="margin:0">Screens 03a–03e are the tier system under
+      increasing load; the count sits above the Log button on each.</p></div>
 
-    <div class="brk"><span class="n">BREAK 03</span>
+    <div class="brk"><span class="n">BREAK 03 <span class="st">Accepted limitation</span></span>
       <h3>Fibre survives ±20% as a day total and does not survive it as a trend</h3>
       <p>Energy at ±15–20% is fine: a 400 kcal error on 2,300 moves the 7-day line by 57 kcal, inside the
       noise. Fibre does not behave that way. A single lentil portion is 8–10 g of fibre, a third of a typical
       day, so one bucket chosen wrong moves the day by 12% and a week of the same habit moves the rolling
       average by more than the signal anyone is looking for.</p>
       <p>The brief names energy, protein and fibre as co-equal headlines. On the evidence of drawing the
-      chart, <b>they are not co-equal</b>: the fibre chart is the one where the rolling average is mostly
-      reporting bucket choices. I drew it anyway, with the same restraint as the others, but it is the first
-      thing I would cut, or the first thing I would give a wider visible band.</p></div>
+      chart, <b>they are not co-equal</b>: the fibre chart is the one where the rolling mean is mostly
+      reporting bucket choices.</p>
+      <p class="how"><b>Accepted as a known limitation.</b> Fibre stays in the headline, and this entry is on
+      record as the reason it is the first thing to cut if the headline ever has to shrink. The thing to watch
+      is <b>bias, not noise</b>: a monthly mean dilutes a user who guesses high one day and low the next, and
+      does nothing at all about a user who guesses high every day. If the fibre line sits consistently above
+      or below what a weighed week says, that is bucket bias and no amount of averaging will remove it.</p></div>
 
-    <div class="brk"><span class="n">BREAK 04</span>
+    <div class="brk"><span class="n">BREAK 04 <span class="st">Settled</span></span>
       <h3>“Incompleteness is first-class” and “no judgement” pull in opposite directions</h3>
       <p>Making incompleteness visible means counting it, and every count of logged versus missing is one
       formatting decision away from a score. “3 of 4 meals” is a fraction. A progress bar over the day's slots
       is a completion metric. A coverage percentage on Trends is a grade for the user's diligence rather than
       their diet — which is arguably worse, because it is a grade the app will absolutely deliver and the
       regulatory line was drawn around nutrition, not behaviour.</p>
-      <p>Drawn as: coverage is always a <b>sentence naming what is there</b> (“Breakfast and lunch logged.
-      Dinner assumed. Nothing for the evening.”) and never a ratio, and the Trends strip shows days without
-      summarising them. The strip's subtitle states a count because an average has to say what it covers —
-      that is the one number I could not avoid, and it is deliberately about the data, not the user.</p></div>
+      <p class="how"><b>Settled: coverage is named, never divided.</b> No percentage, no ratio, no progress
+      bar, anywhere — “19 of 30 days” is out along with “63%”. Today says what is there in a sentence
+      (“Breakfast and lunch logged. Dinner assumed from your usual Thursday. No snack logged.”) and Trends
+      names its counts (“67 complete days, 7 partial, 7 assumed”). A mean has to say what it covers, so it
+      says it as named days. A proportion would have graded diligence rather than diet, which is the worse of
+      the two failures available here.</p>
+      <span class="drawn">Where to see it</span><p style="margin:0">The coverage line on every Today frame;
+      the Data chart's subtitle and the energy chart's subtitle on Trends.</p></div>
 
-    <div class="brk"><span class="n">BREAK 05</span>
-      <h3>Removing the meals library removed the tab bar</h3>
-      <p>The original brief had a Meals tab. With no curation, there is nothing to put in it: recall is
-      invisible, and a screen listing remembered lines that you can log from is a meals library wearing a
-      different hat. So Meals is gone, and so is Library, since custom foods and recipes were mostly a way to
-      build meals.</p>
-      <p>What is left is <b>Today, Trends, Settings</b> — three tabs, which happens to satisfy the plan's
-      “three tabs, no more”, but one of them is Settings, which is a weak third destination. The honest shape
-      of this app is now <b>one screen with a chart attached</b>, and a tab bar is arguably the wrong chrome
-      for it. I drew the tab bar because Trends has to be reachable in one tap from Today for J5 to work. A
-      segmented control in the Today navigation bar would also do it.</p></div>
+    <div class="brk"><span class="n">BREAK 05 <span class="st">Settled</span></span>
+      <h3>Dropping the meals library nearly took the Library with it</h3>
+      <p>The Meals tab is gone, correctly: with no curation there is nothing to put in it, and a screen of
+      remembered lines you can log from is a meals library wearing a different hat. I then over-corrected and
+      dropped the Library too, on the reasoning that custom foods and recipes were mostly a way to build
+      meals. They are not.</p>
+      <p class="how"><b>Settled: the Library stays.</b> Custom foods, scanned products and recipes still need
+      a home, and the Settings list of remembered lines covers phrases only. The tab bar is four — <b>Today ·
+      Trends · Library · Settings</b> — which exceeds the plan's “three tabs, no more”, and that line in
+      <code>PLAN.md</code> is the thing that moved, not the app. Trends stays one tap from Today, which is
+      what J5 needs.</p>
+      <span class="drawn">Where to see it</span><p style="margin:0">The tab bar on every frame that has one.
+      A Library screen itself is not mocked; the tab bar being honest is what mattered.</p></div>
 
-    <div class="brk"><span class="n">BREAK 06</span>
+    <div class="brk"><span class="n">BREAK 06 <span class="st">Settled</span></span>
       <h3>A proposal that is cheap to accept stops being a proposal</h3>
       <p>The baseline card is drawn to be unmistakably not-logged: dashed, outside the sections, excluded from
-      the headline figure. All of that holds right up to the moment the user taps “Log all four”, at which
-      point a day nobody ate becomes a day of logged entries indistinguishable from a day they typed — and it
-      is written to Health.</p>
+      the headline figure. All of that held right up to the moment the user tapped “Log all four”, at which
+      point a day nobody ate became a day of logged entries indistinguishable from a day they typed.</p>
       <p>One tap for a whole day is the fastest path in the product, so it will be the most-used one, so <b>the
-      modal day in the database will be a day nobody actually recorded</b>. The design cannot prevent this; it
-      can only make the distinction visible for as long as it is true. The alternative worth arguing about is
-      accepting the baseline as <i>assumed</i> rather than logged, which keeps it out of Health and keeps it
-      marked in Trends, at the cost of being slower and less satisfying. See J7.</p></div>
+      modal day in the database would have been a day nobody actually recorded</b>.</p>
+      <p class="how"><b>Settled: an accepted baseline is its own state.</b> A day accepted from a proposal is
+      <b>assumed</b> — real enough to write to Health, because the user asserted it, and not asserted
+      carefully enough for the app to be silent about it. Every row carries the Assumed badge, the coverage
+      strip draws four states rather than three, and any mean that includes assumed days says so: “mean of 67
+      complete days, 7 partial, 7 assumed”. The speed survives and the claim never gets stronger than the
+      evidence behind it.</p>
+      <span class="drawn">Where to see it</span><p style="margin:0">Screens 05a and 05b for the bargain stated
+      before the tap; screen 09 for an accepted day in place; the Data chart and every subtitle on Trends.</p></div>
 
-    <div class="brk"><span class="n">BREAK 07</span>
+    <div class="brk"><span class="n">BREAK 07 <span class="st open">Open</span></span>
       <h3>“Looks normal” and “is honest about what it did” were in conflict, and honesty won</h3>
       <p>The original rule was that the deterministic path must look normal rather than broken: no badge, no
       banner, no asterisk. Drawn that way, a user without Apple Intelligence gets worse matches and worse parses
@@ -2264,24 +2453,29 @@ footer p{max-width:64ch;margin:0 0 9px}
       did, not a warning and not an apology, and the sheet's structure, order, controls and copy pattern are
       unchanged. It satisfies both rules at once because it never claims anything is wrong. The lesson
       generalises: <b>“looks normal” fails only when the honest version is phrased as a defect.</b></p>
-      <p>What is still unresolved is parsing. Screen 10 shows a sentence the fallback cannot read, and the only
-      tell there is a phrasing hint addressed to the user — advice about their wording rather than a fact about
-      the device. The same move would fix it, and one line in Settings, said once where the user agreed to it,
-      is what <code>DESIGN.md</code> asks for anyway.</p>
+      <p class="how"><b>Still open, and narrowed to one thing.</b> Matching is settled — the all-or-nothing
+      rule makes the single sentence correct by construction. <b>Parsing is not.</b> Screen 10 shows a
+      sentence the fallback cannot read, and the only tell there is a phrasing hint addressed to the user:
+      advice about their wording rather than a fact about their device. The same move would close it — one
+      line, stated as fact, said once in Settings where the user agreed to it, which is what
+      <code>DESIGN.md</code> asks for anyway. Nobody has decided whether that line exists.</p>
       <span class="drawn">Where to see it</span><p style="margin:0">Screen 03d against 03b; screen 10 for the
       part that is still open.</p></div>
 
-    <div class="brk"><span class="n">BREAK 08</span>
+    <div class="brk"><span class="n">BREAK 08 <span class="st">Settled</span></span>
       <h3>The range switcher changes what the chart means</h3>
       <p>The premise is a 7-day rolling average read over months. A Week range cannot show that — seven days
       is one point. So Week shows daily columns instead, which is a different statistic answering a different
       question, behind a control that looks like a zoom.</p>
-      <p>Drawn as: the subtitle changes with the range and says which it is (“7-day average” versus “daily
-      totals”), and the mark changes from a line to columns so the switch is visible rather than implied. It
-      works, but a reviewer should know that <b>one control is doing two jobs</b>. Dropping Week entirely is a
-      defensible alternative, and it is what the premise actually implies.</p></div>
+      <p class="how"><b>Settled: the Week range is gone.</b> Trends offers Month and Quarter and nothing
+      shorter, so the control is a range and only a range, and the chart means the same thing at both
+      settings. The related decision stands and is now stated in the caption: the rolling mean <b>breaks</b>
+      wherever fewer than four of the seven days in its window have data rather than bridging the gap, because
+      a line drawn across four blank days is the app asserting figures it does not have.</p>
+      <span class="drawn">Where to see it</span><p style="margin:0">Screen 06 — switch between Month and
+      Quarter, and look at the August gap in the energy line.</p></div>
 
-    <div class="brk"><span class="n">BREAK 09</span>
+    <div class="brk"><span class="n">BREAK 09 <span class="st open">Open</span></span>
       <h3>Two primary actions want the same thumb</h3>
       <p>The plan requires primary actions at the bottom. The composer is pinned at the bottom of Today; the
       resolution sheet's Log button is pinned at the bottom of the sheet; dictation's hold-to-talk is pinned at
@@ -2289,9 +2483,26 @@ footer p{max-width:64ch;margin:0 0 9px}
       the same coordinate</b> in a sequence that takes four seconds.</p>
       <p>The risk is a mislog: Log sits roughly where the composer's mic was a second earlier. Drawn as: the
       sheet's Log button is full width while the composer's controls are not, so the target changes shape as
-      well as function, and the sheet animates up rather than appearing. That is mitigation, not a solution.
-      It needs testing on a device before anyone trusts it, and it is the one thing in this document a
-      prototype would settle in an afternoon.</p></div>
+      well as function, and the sheet animates up rather than appearing.</p>
+      <p class="how"><b>Still open.</b> That is mitigation, not a solution, and nothing in the mocks proves it
+      works. It needs a device and a thumb, and it is the one item here a prototype would settle in an
+      afternoon.</p></div>
+
+    <div class="brk"><span class="n">BREAK 10 <span class="st open">Open</span></span>
+      <h3>The twenty-second target rests on the first screen of search results</h3>
+      <p>J3 — a food the database does not know — lands at 16.3 s against a 20 s target, which reads as met.
+      It is met on one assumption: that tapping <b>Find food</b> puts the right row on the first screen. If it
+      does not, and the user types a second query or scrolls, that step costs 6–8 s instead of 3.1 and the
+      journey lands at <b>20–22 s, at or over target</b>.</p>
+      <p>So the honest reading is that twenty seconds holds for a food the database words the way the user
+      does, and fails for one it does not — which is precisely the population of foods that reach this journey
+      in the first place, since a food whose wording matched would have been resolved without it. The
+      measurement is not wrong; the thing being measured is selected against.</p>
+      <p class="how"><b>Still open.</b> Nothing in the mocks fixes this, and no decision has been taken. The
+      lever is search quality on exactly the queries that got this far — a user's own unmatched phrasing — and
+      that is a ranking problem, not a layout one. Worth instrumenting before it is designed: how often is the
+      answer in the first screen today?</p>
+      <span class="drawn">Where to see it</span><p style="margin:0">Journey J3, step 04, and its note.</p></div>
 
   </div>
 </section>
@@ -2304,9 +2515,11 @@ footer p{max-width:64ch;margin:0 0 9px}
   tables: oats ≈ 370 kcal/100 g, banana ≈ 90, black coffee ≈ 2, rye bread ≈ 230, butter ≈ 750, linseed oil
   ≈ 884. The 90 days of Trends data are synthetic and clearly marked as a sample; nothing here is anyone's
   record.</p>
-  <p>Chart palette: a single warm-graphite hue, two ordinal steps plus an empty track, validated against the
-  card surface in both appearances (light 2.53:1, dark 3.68:1 for the lighter step; monotone lightness; hue
-  spread 2°). No categorical palette is used because no chart carries more than one series.</p>
+  <p>Chart palette: a single warm-graphite hue. The coverage strip is a three-step ordinal ramp of that hue
+  — complete, partial, assumed — plus an empty track for a day with nothing, validated against the card
+  surface in both appearances (monotone lightness, adjacent gaps clear, light end 2.15:1 on the light card and
+  2.42:1 on the dark one, hue spread 5° and 4°). No categorical palette is used, because no chart carries more
+  than one series.</p>
   <p>Mocks only. No Swift source was touched, and nothing here is a commitment.</p>
 </footer>
 
@@ -2335,7 +2548,7 @@ footer p{max-width:64ch;margin:0 0 9px}
 /* ───────────────────────────────── trends ──────────────────────────────── */
 (function(){
 /* 90 days of synthetic data: [MM-DD, coverage l|a|n, kcal, protein g, fibre g] */
-const DAYS = [["07-06","l",2370,114,32],["07-07","l",2310,113,28],["07-08","a",2100,101,31],["07-09","l",2310,106,29],["07-10","l",2470,93,14],["07-11","n",null,null,null],["07-12","l",2820,89,25],["07-13","a",2030,121,29],["07-14","l",2460,88,31],["07-15","a",2330,102,24],["07-16","l",1960,87,23],["07-17","l",2280,80,26],["07-18","l",2740,106,16],["07-19","a",2550,90,14],["07-20","l",2370,95,26],["07-21","l",2210,82,29],["07-22","l",2040,85,22],["07-23","l",2480,73,18],["07-24","a",2240,93,18],["07-25","l",2520,81,16],["07-26","n",null,null,null],["07-27","l",2400,102,28],["07-28","a",2190,92,26],["07-29","l",2410,111,29],["07-30","l",2500,83,29],["07-31","l",2040,82,35],["08-01","l",2520,98,22],["08-02","l",2610,82,20],["08-03","n",null,null,null],["08-04","l",1980,111,34],["08-05","l",2080,85,20],["08-06","a",2500,86,33],["08-07","l",1890,94,28],["08-08","l",2520,93,23],["08-09","l",2570,91,22],["08-10","l",2360,106,37],["08-11","l",2250,105,29],["08-12","l",2100,104,36],["08-13","l",1590,94,26],["08-14","a",2080,108,28],["08-15","n",null,null,null],["08-16","l",2320,84,21],["08-17","n",null,null,null],["08-18","n",null,null,null],["08-19","n",null,null,null],["08-20","n",null,null,null],["08-21","l",2120,89,24],["08-22","l",2540,69,20],["08-23","a",2510,114,33],["08-24","l",2140,108,18],["08-25","l",1970,98,27],["08-26","l",2190,98,34],["08-27","l",1670,109,40],["08-28","l",2140,101,30],["08-29","a",2530,108,31],["08-30","l",2180,78,14],["08-31","a",1910,75,28],["09-01","l",1800,109,35],["09-02","l",2370,66,22],["09-03","l",2320,98,23],["09-04","a",2470,122,27],["09-05","l",2320,110,21],["09-06","l",2320,89,37],["09-07","l",2230,69,24],["09-08","l",2480,81,27],["09-09","l",2350,100,33],["09-10","l",2070,102,30],["09-11","l",2060,75,20],["09-12","l",2680,83,15],["09-13","n",null,null,null],["09-14","l",2120,99,26],["09-15","l",2300,112,25],["09-16","l",1890,83,25],["09-17","l",2410,109,26],["09-18","l",2370,82,26],["09-19","l",2650,84,17],["09-20","l",2260,86,16],["09-21","l",1640,103,22],["09-22","l",1730,98,33],["09-23","l",2250,93,30],["09-24","a",2350,99,28],["09-25","l",2280,72,31],["09-26","l",2740,108,31],["09-27","l",2550,123,17],["09-28","l",2340,103,23],["09-29","l",1970,98,28],["09-30","l",2370,115,27],["10-01","l",2390,100,21],["10-02","a",1990,122,25],["10-03","l",2580,97,31]];
+const DAYS = [["07-06","c",2370,114,32],["07-07","c",2310,113,28],["07-08","a",2180,99,26],["07-09","c",2310,106,29],["07-10","c",2470,93,14],["07-11","e",null,null,null],["07-12","c",2820,89,25],["07-13","p",2030,121,29],["07-14","c",2460,88,31],["07-15","a",2180,99,26],["07-16","c",1960,87,23],["07-17","c",2280,80,26],["07-18","c",2740,106,16],["07-19","p",2550,90,14],["07-20","c",2370,95,26],["07-21","c",2210,82,29],["07-22","c",2040,85,22],["07-23","c",2480,73,18],["07-24","a",2180,99,26],["07-25","c",2520,81,16],["07-26","e",null,null,null],["07-27","c",2400,102,28],["07-28","p",2190,92,26],["07-29","c",2410,111,29],["07-30","c",2500,83,29],["07-31","c",2040,82,35],["08-01","c",2520,98,22],["08-02","c",2610,82,20],["08-03","e",null,null,null],["08-04","c",1980,111,34],["08-05","c",2080,85,20],["08-06","a",2180,99,26],["08-07","c",1890,94,28],["08-08","c",2520,93,23],["08-09","c",2570,91,22],["08-10","c",2360,106,37],["08-11","c",2250,105,29],["08-12","c",2100,104,36],["08-13","c",1590,94,26],["08-14","p",2080,108,28],["08-15","e",null,null,null],["08-16","c",2320,84,21],["08-17","e",null,null,null],["08-18","e",null,null,null],["08-19","e",null,null,null],["08-20","e",null,null,null],["08-21","c",2120,89,24],["08-22","c",2540,69,20],["08-23","a",2440,91,22],["08-24","c",2140,108,18],["08-25","c",1970,98,27],["08-26","c",2190,98,34],["08-27","c",1670,109,40],["08-28","c",2140,101,30],["08-29","p",2530,108,31],["08-30","c",2180,78,14],["08-31","a",2180,99,26],["09-01","c",1800,109,35],["09-02","c",2370,66,22],["09-03","c",2320,98,23],["09-04","p",2470,122,27],["09-05","c",2320,110,21],["09-06","c",2320,89,37],["09-07","c",2230,69,24],["09-08","c",2480,81,27],["09-09","c",2350,100,33],["09-10","c",2070,102,30],["09-11","c",2060,75,20],["09-12","c",2680,83,15],["09-13","e",null,null,null],["09-14","c",2120,99,26],["09-15","c",2300,112,25],["09-16","c",1890,83,25],["09-17","c",2410,109,26],["09-18","c",2370,82,26],["09-19","c",2650,84,17],["09-20","c",2260,86,16],["09-21","c",1640,103,22],["09-22","c",1730,98,33],["09-23","c",2250,93,30],["09-24","a",2180,99,26],["09-25","c",2280,72,31],["09-26","c",2740,108,31],["09-27","c",2550,123,17],["09-28","c",2340,103,23],["09-29","c",1970,98,28],["09-30","c",2370,115,27],["10-01","c",2390,100,21],["10-02","p",1990,122,25],["10-03","c",2580,97,31]];
 
 const MONTH = {'07':'Jul','08':'Aug','09':'Sep','10':'Oct'};
 const W = 316, PAD_L = 30, PAD_R = 10, PAD_T = 8;
@@ -2444,40 +2657,10 @@ function lineChart(rows, opts){
   return { svg: s, x: x, y: y, h: H };
 }
 
-function colChart(vals, labels, opts){
-  var H = opts.h, plotH = H - PAD_T - 18;
-  var d = niceDomain(vals.concat([0]), 0.04);
-  var lo = Math.min(0, d[0]), hi = d[1], ticks = d[2].filter(function(t){ return t >= lo; });
-  var n = vals.length, inner = W - PAD_L - PAD_R;
-  var band = inner / n, bw = Math.min(24, band - 6);
-  var y = function(v){ return PAD_T + plotH - (v - lo) / (hi - lo) * plotH; };
-  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(opts.alt) + '">';
-  ticks.forEach(function(t){
-    s += '<line x1="' + PAD_L + '" x2="' + (W - PAD_R) + '" y1="' + y(t).toFixed(1) + '" y2="' + y(t).toFixed(1) +
-         '" stroke="var(--c-grid)" stroke-width="1"/>' +
-         '<text x="' + (PAD_L - 6) + '" y="' + (y(t) + 3.4).toFixed(1) + '" text-anchor="end" font-size="9" ' +
-         'fill="var(--c-muted)" font-family="inherit" style="font-variant-numeric:tabular-nums">' + fmt(t) + '</text>';
-  });
-  vals.forEach(function(v, i){
-    if (v == null) return;
-    var cx = PAD_L + band * (i + 0.5), top = y(v), base = y(lo);
-    var r = Math.min(4, bw / 2);
-    s += '<path d="M' + (cx - bw / 2) + ',' + base + 'L' + (cx - bw / 2) + ',' + (top + r) +
-         'Q' + (cx - bw / 2) + ',' + top + ' ' + (cx - bw / 2 + r) + ',' + top +
-         'L' + (cx + bw / 2 - r) + ',' + top + 'Q' + (cx + bw / 2) + ',' + top + ' ' + (cx + bw / 2) + ',' + (top + r) +
-         'L' + (cx + bw / 2) + ',' + base + 'Z" fill="var(--c-series)"/>';
-  });
-  labels.forEach(function(lbl, i){
-    s += '<text x="' + (PAD_L + band * (i + 0.5)).toFixed(1) + '" y="' + (H - 4) + '" font-size="9" ' +
-         'fill="var(--c-muted)" font-family="inherit" text-anchor="middle">' + lbl.slice(3) + '</text>';
-  });
-  s += '<line x1="' + PAD_L + '" x2="' + (W - PAD_R) + '" y1="' + y(lo) + '" y2="' + y(lo) +
-       '" stroke="var(--c-axis)" stroke-width="1"/></svg>';
-  return { svg: s, h: H };
-}
-
-/* coverage: an ordinal ramp of the series hue — logged, partly assumed, and an
-   empty track for a day with nothing. Absence is drawn as the absence of ink. */
+/* coverage: an ordinal ramp of the series hue — complete, partial, assumed, and
+   an empty track for a day with nothing. Four steps of one hue, ordered by how
+   much of the day is a record rather than an inference; absence is drawn as the
+   absence of ink. Validated --ordinal against both card surfaces. */
 function coverage(states){
   var H = 30, top = 2, h = 18;
   var n = states.length, inner = W - PAD_L - PAD_R;
@@ -2486,13 +2669,13 @@ function coverage(states){
           'aria-label="Which days have data, day by day">';
   states.forEach(function(st, i){
     var x = PAD_L + inner * (i / n);
-    if (st === 'n'){
+    if (st === 'e'){
       s += '<rect x="' + x.toFixed(1) + '" y="' + (top + h - 1.5) + '" width="' + cw.toFixed(1) +
            '" height="1.5" fill="var(--c-axis)"/>';
     } else {
+      var paint = st === 'c' ? 'var(--c-series)' : st === 'p' ? 'var(--c-partial)' : 'var(--c-assumed)';
       s += '<rect x="' + x.toFixed(1) + '" y="' + top + '" width="' + cw.toFixed(1) + '" height="' + h +
-           '" rx="' + Math.min(1.2, cw / 2) + '" fill="' +
-           (st === 'l' ? 'var(--c-series)' : 'var(--c-assumed)') + '"/>';
+           '" rx="' + Math.min(1.2, cw / 2) + '" fill="' + paint + '"/>';
     }
   });
   var seen = {};
@@ -2513,7 +2696,8 @@ var DATA_SLICE = DAYS;
 var geom = null;
 
 function render(range){
-  var n = range === 'w' ? 7 : range === 'm' ? 30 : 90;
+  var n = range === 'm' ? 30 : 90;
+  var period = range === 'm' ? 'this month' : 'this quarter';
   var slice = DAYS.slice(-n);
   DATA_SLICE = slice;
 
@@ -2523,50 +2707,42 @@ function render(range){
   var p = slice.map(function(r){ return r[3]; });
   var f = slice.map(function(r){ return r[4]; });
 
-  var known = states.filter(function(s){ return s !== 'n'; }).length;
-  var assumed = states.filter(function(s){ return s === 'a'; }).length;
-  var blank = n - known;
+  function count(k){ return states.filter(function(s){ return s === k; }).length; }
+  var complete = count('c'), partial = count('p'), assumed = count('a'), empty = count('e');
 
-  function lastOf(a){ for (var i = a.length - 1; i >= 0; i--) if (a[i] != null) return a[i]; return null; }
   function meanOf(a){ var v = a.filter(function(x){ return x != null; });
     return v.length ? v.reduce(function(s, x){ return s + x; }, 0) / v.length : null; }
+  function lastOf(a){ for (var i = a.length - 1; i >= 0; i--) if (a[i] != null) return a[i]; return null; }
 
-  if (range === 'w'){
-    var ce = colChart(e, labels, { h: 118, alt: 'Daily energy for the last seven days' });
-    document.getElementById('c-e').innerHTML = ce.svg;
-    document.getElementById('s-e').textContent = 'Daily totals. Seven days is one point of a 7-day average, ' +
-      'so this range shows the days themselves.';
-    document.getElementById('n-e').textContent = fmt(lastOf(e)) + ' kcal';
-    document.getElementById('c-p').innerHTML = colChart(p, labels, { h: 88, alt: 'Daily protein, last seven days' }).svg;
-    document.getElementById('c-f').innerHTML = colChart(f, labels, { h: 88, alt: 'Daily fibre, last seven days' }).svg;
-    document.getElementById('s-p').textContent = 'Daily totals, grams.';
-    document.getElementById('s-f').textContent = 'Daily totals, grams.';
-    geom = null;
-  } else {
-    var re = rolling(e, 7, 4), rp = rolling(p, 7, 4), rf = rolling(f, 7, 4);
-    var g = lineChart(re, { h: 126, labels: labels, ref: 2200, alt: 'Seven-day average energy over ' + n + ' days' });
-    document.getElementById('c-e').innerHTML = g.svg;
-    geom = g;
-    document.getElementById('n-e').textContent = fmt(Math.round(lastOf(re))) + ' kcal';
-    document.getElementById('s-e').textContent = '7-day average · ' + known + ' of ' + n + ' days have data';
-    document.getElementById('c-p').innerHTML =
-      lineChart(rp, { h: 88, labels: labels, alt: 'Seven-day average protein over ' + n + ' days' }).svg;
-    document.getElementById('c-f').innerHTML =
-      lineChart(rf, { h: 88, labels: labels, alt: 'Seven-day average fibre over ' + n + ' days' }).svg;
-    document.getElementById('s-p').textContent = '7-day average, grams';
-    document.getElementById('s-f').textContent = '7-day average, grams';
-  }
+  /* An average says what it is made of, and names days rather than dividing them. */
+  var basis = 'mean of ' + complete + ' complete ' + (complete === 1 ? 'day' : 'days') +
+              (partial ? ', ' + partial + ' partial' : '') +
+              (assumed ? ', ' + assumed + ' assumed' : '');
 
-  document.getElementById('n-p').textContent =
-    (range === 'w' ? fmt(lastOf(p)) : fmt(Math.round(meanOf(p)))) + ' g';
-  document.getElementById('n-f').textContent =
-    (range === 'w' ? fmt(lastOf(f)) : fmt(Math.round(meanOf(f)))) + ' g';
+  var re = rolling(e, 7, 4), rp = rolling(p, 7, 4), rf = rolling(f, 7, 4);
+  var g = lineChart(re, { h: 126, labels: labels, ref: 2200,
+                          alt: 'Seven-day rolling mean energy over ' + n + ' days' });
+  document.getElementById('c-e').innerHTML = g.svg;
+  geom = g;
+  document.getElementById('n-e').textContent = fmt(Math.round(lastOf(re))) + ' kcal';
+  document.getElementById('s-e').textContent = '7-day rolling mean · ' + basis;
+
+  document.getElementById('c-p').innerHTML =
+    lineChart(rp, { h: 88, labels: labels, alt: 'Seven-day rolling mean protein over ' + n + ' days' }).svg;
+  document.getElementById('c-f').innerHTML =
+    lineChart(rf, { h: 88, labels: labels, alt: 'Seven-day rolling mean fibre over ' + n + ' days' }).svg;
+  document.getElementById('s-p').textContent = '7-day rolling mean, grams · ' + basis;
+  document.getElementById('s-f').textContent = '7-day rolling mean, grams · ' + basis;
+  document.getElementById('n-p').textContent = fmt(Math.round(meanOf(p))) + ' g';
+  document.getElementById('n-f').textContent = fmt(Math.round(meanOf(f))) + ' g';
 
   document.getElementById('c-c').innerHTML = coverage(states).svg;
-  document.getElementById('n-c').textContent = known + '/' + n + ' days';
+  document.getElementById('n-c').textContent = complete + ' complete';
   document.getElementById('s-c').textContent =
-    (blank === 0 ? 'Every day has data' : blank + (blank === 1 ? ' day' : ' days') + ' with nothing logged') +
-    (assumed ? ' · ' + assumed + ' partly assumed' : '');
+    complete + ' complete ' + (complete === 1 ? 'day ' : 'days ') + period +
+    (partial ? ', ' + partial + ' partial' : '') +
+    (assumed ? ', ' + assumed + ' assumed' : '') +
+    (empty ? ', ' + empty + ' with nothing logged' : '');
 }
 
 document.querySelectorAll('.ios-seg button').forEach(function(b){
@@ -2583,7 +2759,7 @@ document.querySelectorAll('.ios-seg button').forEach(function(b){
 (function(){
   var host = document.getElementById('c-e'), tip = document.getElementById('tip-e');
   if (!host || !tip) return;
-  var COV = { l: 'logged', a: 'partly assumed', n: 'nothing logged' };
+  var COV = { c: 'complete', p: 'partial', a: 'assumed from your usual day', e: 'nothing logged' };
 
   function move(ev){
     if (!geom || !DATA_SLICE.length){ tip.style.opacity = 0; return; }
@@ -2619,7 +2795,7 @@ document.querySelectorAll('.ios-seg button').forEach(function(b){
   if (!tb) return;
   var e = DAYS.map(function(r){ return r[2]; });
   var re = rolling(e, 7, 4);
-  var COV = { l: 'Logged', a: 'Partly assumed', n: 'Nothing logged' };
+  var COV = { c: 'Complete', p: 'Partial', a: 'Assumed', e: 'Nothing logged' };
   DAYS.slice(-21).forEach(function(r, k){
     var i = DAYS.length - 21 + k;
     var tr = document.createElement('tr');
