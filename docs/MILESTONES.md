@@ -11,6 +11,17 @@ Status log for the build order in `PLAN.md`. Each milestone is planned, implemen
 | 5 | Barcode | done, awaiting first build | 2026-09-21 |
 | 6 | AI estimation | done, awaiting first build | 2026-09-21 |
 | 7 | Internationalization | sources bundled, UI pending | |
+| 8 | The matcher: confidence, thresholds, popularity | planned | |
+| 9 | Phrase memory | planned | |
+| 10 | Composer and resolution sheet | planned | |
+| 11 | Buckets and coverage | planned | |
+| 12 | Trends | planned | |
+| 13 | Baseline days | planned | |
+| 14 | Widget and Siri | planned | |
+| 15 | Sampling | planned | |
+
+Milestones 8 to 15 come from `PLAN.md` revision 4, which rethinks logging around one line of
+natural language and puts trends back in scope. The shippable app is now 1 to 4 plus 8 to 12.
 
 ## Milestone 1: Data pipeline
 

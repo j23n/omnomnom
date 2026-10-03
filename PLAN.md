@@ -1,10 +1,16 @@
 # Offline iOS Nutrition Tracker — Technical Plan
 
-2026-09-21 · @Someone · revision 3
+2026-10-03 · @Someone · revision 4
 
 ## Scope
 
-A minimal iOS app whose only job is to be a good entry mask for Apple Health's nutrition data. It does not analyse, score or advise. It records what you ate and writes it to HealthKit.
+A minimal iOS app with two jobs: be the cheapest possible way to record what you ate, and show what that adds up to over time. It does not score or advise. It records, it reports, and it writes everything to HealthKit.
+
+Revision 4 is a rethink of the first job and a reversal on the second. Revisions 1 to 3 built an entry mask around gram-accurate per-food entry: a search screen, a gram field and eight nutrients per item. That is a precision instrument, and the precision is paid for at every meal and never collected, because the question being asked of the data is a broad-strokes trend over months. The target resolution is now stated explicitly, and most of what follows is a consequence of it.
+
+> Day-level totals, accurate to roughly ±15 to 20 per cent, read as a seven-day rolling mean over months. Never meal-level accuracy.
+
+Against that target a gram field is over-specification, a per-item confirmation screen is a toll, and an unlogged day is normal rather than a failure. Approximate and complete beats precise and abandoned, for the user's own question and for the Longevity target below: an estimated kilocalorie is still a kilocalorie to that tab, and an empty history is worth nothing to it.
 
 The motivating target is the redesigned Health app's Longevity tab, which scores seven categories including nutrition. Nutrition is the one category no passive sensor can fill, so it is likely the emptiest input on most devices.
 
@@ -14,12 +20,15 @@ The motivating target is the redesigned Health app's Longevity tab, which scores
 | Distribution | App Store, worldwide, paid upfront |
 | Storage | Local only, no CloudKit, no account; schema kept CloudKit-compatible |
 | Dependencies | None. No third-party packages in the app target |
-| Nutrients | Energy, protein, carbohydrates, total fat, saturated fat, fiber, sugar, sodium |
+| Nutrients | Eight written to Health; energy, protein and fiber are the headline in the app |
 | Food data | Bundled generic database from Ciqual and the Bundeslebensmittelschlüssel; FDC readable but not built in |
 | Products | Opt-in; Open Food Facts looked up by barcode or searched by name, cached locally |
 | Visual search | The app's foods appear in the system's visual intelligence results; nothing leaves the device |
-| AI estimation | Opt-in; on-device Foundation Models |
-| Recipes | Raw ingredient weights, no yield factors |
+| Input | One line of text or speech is the primary path; search, barcode and photo all remain |
+| Amounts | Portion buckets against the last amount; grams canonical underneath and still reachable |
+| Trends | In scope as of revision 4: energy, protein and fiber over time, plus data coverage |
+| AI estimation | Opt-in; on-device Foundation Models, with a deterministic parser behind it |
+| Meals | Saved from what was parsed or logged, not built by weighing; `Recipe` in the schema |
 
 Both optional modules degrade to nothing. With no network and no Apple Intelligence, the app still logs food from the bundled database and writes it to Health. That is the load-bearing requirement.
 
@@ -165,14 +174,22 @@ Search ranking deserves more effort than raw FTS5 matching, since a paid app is 
 
 ## Local store
 
-SwiftData, local-only, four entities.
+SwiftData, local-only. `Tag` and `Photo` joined the four original entities; revision 4 adds four more, all for memory and coverage.
 
 | Entity | Holds |
 | --- | --- |
 | `Food` | A bundled reference by id, an Open Food Facts cache entry, or a user-created custom food |
-| `Recipe` | Name, servings count |
+| `Recipe` | Name, servings count. A batch dish, no longer the mechanism for repetition |
 | `RecipeIngredient` | Food reference plus grams |
-| `LogEntry` | What, how much, timestamp, meal slot, frozen nutrition snapshot, HealthKit sync state |
+| `LogEntry` | What, how much, timestamp, meal slot, frozen nutrition snapshot, HealthKit sync state, `origin` |
+| `Phrase` | A normalised typed line, and what it resolved to last time |
+| `PhraseItem` | One food reference plus an amount, with a `sortIndex` |
+| `BaselinePhrase` | A phrase the user eats by default, plus its meal slot |
+| `DayRecord` | One date: marked complete, and in the sample |
+
+`LogEntry.origin` is new and says how the entry came to exist: typed, dictated, photographed, picked from search, repeated, or accepted from the baseline. It is display and coverage information, never behaviour — nothing branches on it in the write path — and it is what lets an accepted baseline day stay distinguishable from a typed one a month later.
+
+`Phrase` is the memory the natural-language path runs on, and it obeys the same CloudKit rules as everything else: no unique attribute, so a normalised string is resolved case-insensitively in code at write time, exactly as `Tag` names already are. `PhraseItem` carries its own `sortIndex` rather than relying on an ordered relationship.
 
 The frozen snapshot on `LogEntry` is the important part. If a recipe is edited in March, February's logged dinners must not silently change, and HealthKit samples already written would otherwise drift out of step with the local store. Nutrition is computed at log time, stored on the entry, and the recipe is treated as a template rather than a live reference.
 
@@ -312,54 +329,247 @@ flowchart LR
 
 The snapshot at `LogEntry` is where the chain is deliberately cut: everything downstream of it is immutable history.
 
+## Natural-language logging
+
+One line of text, typed or dictated, is the primary way into the log: "a pancake with oats, peanut butter and banana". The search screen, the barcode scanner and the photo estimate all stay, and none of them is the default path any more.
+
+### What the user says, and what the app is allowed to invent
+
+A line carries two kinds of information and the app treats them completely differently.
+
+| From the line | How it is handled |
+| --- | --- |
+| Which foods | Resolved to a row in `foods.sqlite` or to one of the user's own foods. Never invented |
+| How much | Inferred: from this user's own history first, from a portion row or the parser's guess second |
+| Any nutrient value | Never taken from the line, and never from the model. Always read from the resolved row |
+
+So that pancake line produces four resolved rows, each carrying its database row's own per-100 values scaled by an inferred amount. Nothing shown on screen and nothing written to Health is a figure a language model produced.
+
+An item that resolves to nothing carries no values and cannot be logged. It has to be matched or removed, because an entry with invented numbers is worse than a missing entry: it corrupts the one thing the overview is for.
+
+### Why this is not a RAG problem
+
+Retrieval is needed. Retrieval-augmented *generation* is not, and the distinction decides the architecture.
+
+The order is inverted from RAG. A RAG pipeline retrieves first and generates second, with the retrieved text in the model's context so that the answer can be grounded in it. Here the model parses first and the database answers second, and no retrieved row ever goes back into the model.
+
+| Stage | Who does it | What comes out |
+| --- | --- | --- |
+| Parse | The on-device model, or the fallback parser | Items: a name, a lookup term, an amount |
+| Recall and retrieve | `Phrase` memory, then FTS5 over `foods.sqlite` | A food and an amount per item, with a confidence |
+| Resolve | The user, once, and only on rows the retriever is unsure of | Entries |
+
+Five reasons RAG is the wrong tool here:
+
+- **The model is never asked for a number**, so the corpus has no business in its context. Its only job is turning one sentence into tuples, which is a parsing task and needs no corpus at all.
+- **The corpus does not fit, and a subset that fits has already answered the question.** Around 10,600 rows; the on-device system model's window is small enough that this plan already caps a typed description at 500 characters. Any candidate set small enough to put in a prompt must have been chosen by a retriever first, and at that point the retriever has done the work.
+- **Lexical search is the stronger tool on this corpus.** Composition tables hold literal food nouns, "Apple, pulp and skin, raw" and "Haferflocken", and `alt_names` already crosses the languages. Embeddings would pay off on colloquialism, which `EstimatedItem.lookupTerm` already handles more cheaply and far more controllably: the model is asked for the database's wording alongside the user's own.
+- **Embeddings have no cheap home here.** No third-party packages in the app target. `NLEmbedding` is word-level and covers few locales. A bundled sentence encoder is tens of megabytes plus a vector index, against a 5 MB SQLite file, and a new App Review surface. The cost is out of all proportion to the queries it would rescue.
+- **It would break the load-bearing requirement.** FTS5 is deterministic, answers in milliseconds and is on every device. A retrieval path running through the model does not exist for anyone with Apple Intelligence off, which is exactly the configuration this app promises to work in.
+
+The consequence is that the interesting work is in the matcher and in the memory, not in the model.
+
+### Three levels of recall
+
+The first question to ask of a typed line is not "what foods are these" but "have I eaten this before". Most lines are repeats, and a repeat has a better answer available than any parse: what happened last time.
+
+| Level | Lookup | What it supplies | Case |
+| --- | --- | --- | --- |
+| Phrase | The whole normalised line | Every food and every amount, from the last time this line was logged | The Tuesday breakfast |
+| Item | One parsed fragment | That food, and the amount last used for it in this phrase | A familiar food in a new combination |
+| Database | FTS5 over `foods.sqlite` | The food only; the amount comes from a portion row or the parser | Something eaten for the first time |
+
+One table serves the first two levels. `Phrase` holds a normalised string and ordered `PhraseItem` rows, each a food reference plus an amount. A phrase of one word with one item is a synonym for a food, "flat white" or "my bread"; a phrase of a whole sentence with four items is a remembered meal. The same lookup answers both, and the same act writes both: logging a line records it, and correcting a row rewrites it.
+
+This is deliberately not a library of saved recipes. Nothing is created, nothing is named, nothing accumulates in the Library, and the user is never asked whether something was worth keeping. Eating the same thing twice is what makes the second time free.
+
+**History wins over the model on amounts.** When a phrase or an item is recalled, the remembered amount beats whatever the parser guessed, because this person's own last portion is strictly better evidence than a generic estimate. The parser's figure is the fallback for things with no precedent, and it is why the first log of something new is the only one that needs attention.
+
+**Normalisation is the whole trick, so it is one function and it is tested.** Case folded, diacritics removed, filler words dropped ("a", "with", "and", "some"), tokens sorted, so "banana and oats" and "oats with a banana" are the same phrase. Sorting tokens rather than keeping order is what makes recall survive the way people actually retype things. The same function keys the lookup and writes the record, so the two can never disagree.
+
+**Where a named meal is still warranted.** `Recipe` keeps its original job: a dish cooked in a batch and eaten in portions, where the servings divisor is the point. It is no longer the mechanism for repetition, and nothing creates one automatically. Naming is for things the user wants to see by name, on the widget or in a Siri phrase, not for things the app needs in order to remember.
+
+### Two parsers, one output
+
+`MealEstimate` is already the output shape and the typed-description path already produces it from `SystemLanguageModel`. The redesign adds a second producer of the same struct for devices that cannot run the first.
+
+| Tier | Needs | Handles |
+| --- | --- | --- |
+| Model | Apple Intelligence available | Full sentences, implied foods, "a big bowl of", a `lookupTerm` in database wording |
+| Fallback | Nothing | Delimited lists: commas, "and", newlines, with a leading count or size word per fragment |
+
+The fallback splits the line, strips a leading quantity from each fragment ("2", "two", "a", "1 slice of", "large"), maps a small closed set of size words onto the portion buckets below, and passes each remaining phrase through as both `name` and `lookupTerm`. It is deliberately dumb and deliberately present: someone with Apple Intelligence off types "oats, banana, coffee" and gets three rows, which is the overwhelming common case. The composer never announces that a feature is unavailable; it parses what it can, and phrase recall does not care which parser produced the line.
+
+Both tiers are pure functions over a string, so both are tested without a device and without a model.
+
+### Matching, and why it is the hard part
+
+`SearchRelevance` currently ranks a list for a human to pick from. The new job is to pick, and to know when it should not have. That is a different bar, and three things change.
+
+**A confidence, not just an order.** The matcher returns a score it is willing to defend. Above the high threshold a row is settled; between the thresholds it is logged but marked for a glance; below the low one it has no food and blocks the log until the user picks one. The thresholds are a tuning problem to settle against a fixture set of real typed lines, not a number to guess at now.
+
+**Recall outranks search.** A phrase or item hit is not scored against FTS5 at all; it wins outright. The user's own history is the highest-quality evidence in the system and the only evidence that is about this user.
+
+**The popularity prior becomes load-bearing.** Interactive search tolerates a mediocre prior because the user fixes it by reading the list. Auto-picking does not. The curated `popularity` column is written against FDC descriptions and matches nothing in a Ciqual and BLS build, so what has been a loose end is now the top risk in this redesign.
+
+A multi-word fragment is tried as a composite row before it is split: "toast with butter" prefers a single BLS row for buttered bread over two rows, because the BLS is strong on composite dishes and because one row is one fewer decision. Where no composite exists the parser's items stand as they are.
+
+### Speaking
+
+Three tiers, and only the first is needed for this to ship.
+
+| Tier | Mechanism | Cost |
+| --- | --- | --- |
+| Keyboard dictation | The system microphone key, in the composer's own text field | None. No permission, no framework, no code |
+| Hold to talk | `SpeechAnalyzer` on iOS 26, on-device, into the same field | Microphone and speech-recognition permissions, a transcript view |
+| Siri | An App Intent taking a spoken phrase | An intent and a donation; `AppIntents` is already linked for visual search |
+
+Start at the first. It is free, it is the control every iOS user already knows, and it tells us whether a hands-free path is worth two permissions before we ask for them.
+
+One honesty point. Keyboard dictation belongs to the keyboard, and whether it stays on the device depends on the user's own settings and hardware rather than on this app. The privacy copy must therefore say that the app sends nothing and must not imply anything about the keyboard. `SpeechAnalyzer` can be required to run on-device, so hold-to-talk is the tier where a stronger claim is actually true.
+
+## Amounts as buckets
+
+The gram field is the most expensive thing in the current flow and it buys precision the overview never spends. It stops being the default question.
+
+| Bucket | Multiplier |
+| --- | --- |
+| Less | 0.7 |
+| Usual | 1 |
+| More | 1.4 |
+| Double | 2 |
+
+The reference the multiplier applies to is, in order: the amount remembered for this food in this phrase, then `Food.lastGrams`, then the matched row from the `portions` table, then 100 g. So a food eaten before has a reference that is literally what this person last ate, and "Usual" is a correct answer rather than an average of strangers.
+
+Grams stay canonical. The bucket multiplies the reference and the product is stored in `rawAmount` exactly as a typed figure would be, so `SnapshotMath`, `HealthSampleBuilder` and the entire write path are untouched. The gram field stays one tap away, and a typed figure sets a new reference.
+
+The factors are geometric about 1, which keeps "Less" then "More" from landing back where it started, and they live in one place because they are a tuning decision rather than a fact.
+
+## A normal day, and deviations from it
+
+For someone whose breakfast does not vary, the cheapest possible log is no log at all. A baseline is a set of phrases the user eats by default, each attached to a meal slot, and a day that matches it needs nothing typed.
+
+`BaselinePhrase` points at a `Phrase` and a `MealSlot`. Today shows the baseline for a slot it has nothing for, as a proposal rather than as fact: no entry exists in the store and nothing has reached Health. One tap accepts a slot, or the day. Typing into a slot replaces its proposal, which is the deviation case and is all most days need.
+
+One rule keeps this honest, and it is not negotiable: **nothing is written without a tap.** A day the user never looked at must never appear in Health, because the value of the whole overview rests on the data being things this person actually asserted. A proposal is not an entry until accepted, and `LogEntry.origin` records `.baseline` for one that was, so an accepted day stays distinguishable from a typed one afterwards and in the coverage count.
+
+The baseline is built from what the user already does, never from a questionnaire: a phrase logged on most days in a slot is offered as that slot's baseline, and declining is permanent until asked again.
+
+## Coverage
+
+A day that was not fully logged is the normal case, not a failure, and the app has to know which kind of day it is looking at. Without that, every average silently divides by days holding nothing, and the overview is wrong in the one direction that matters.
+
+`DayRecord` is one row per date that has something to say: whether the user marked the day complete, and whether it is in the sample. Both default to false and a row is only created when there is something to record.
+
+| Day state | Condition |
+| --- | --- |
+| `complete` | The user marked it done |
+| `partial` | Entries exist, not marked done |
+| `empty` | No entries |
+
+Marking a day complete is one tap on Today. That is the entire mechanism, and it is what makes an average defensible: every figure on Trends says what it rests on, as "mean of 19 complete days", never as a bare number over a range.
+
+Averages are computed over complete days only. Partial days are drawn as what they are and left out of the mean. Empty days are a gap, drawn as a gap, and never as a zero — a zero-kilocalorie Tuesday is the one answer a nutrition chart must never give.
+
+### Sampling
+
+The overview does not need every day. Three complete days a week, or one complete week a month, is enough to read a trend over months, and it is how dietary intake is measured whenever a weighed record is not affordable.
+
+So the cadence is a setting: every day, three days a week, or one week a month. The app nominates the days, `DayRecord.inSample` records them, and Trends means over complete in-sample days. On a day outside the sample the app asks for nothing.
+
+This is the last thing to build and the first thing to cut. The coverage machinery above carries the weight; sampling is a thin layer that changes what the app asks for rather than what it can compute.
+
+## Trends
+
+This reverses revision 3's decision to leave history to the Health app. The goal is an overview of nutrition in broad strokes over time, and an app that cannot show one is not doing its job, whatever the Health app also draws. The earlier reasoning — that trends would duplicate data this app does not own — is answered by reading them from the place that does own them.
+
+### Where the numbers come from
+
+Two sources, split by what each is actually authoritative for.
+
+| Shown | Read from | Why |
+| --- | --- | --- |
+| Daily totals over a range | HealthKit `HKStatisticsCollectionQuery`, daily interval, one per nutrient | Counts every sample exactly once, including other apps' and this app's from another device, and survives a reinstall |
+| Coverage, completeness, what was assumed | The local store | HealthKit has no idea what a complete day is. `DayRecord` and `LogEntry.origin` do |
+
+HealthKit supplies the numerator, the local store the denominator and the honesty. A statistics-collection query is what that API is for and costs no local aggregation.
+
+The read-authorization quirk still applies: an empty result is empty, never denied. A range with no samples draws an empty chart and the standing Health notice, never an error.
+
+### What is drawn
+
+Energy, protein and fiber, each as daily points under a seven-day rolling mean, over a week, a month or a quarter. The rolling mean is the line the eye should follow and the daily points are context. Beneath them a coverage strip, one mark per day, reading complete, partial or empty.
+
+The other five nutrients are reachable but not on the first screen. All eight still go to Health in full; the overview is about the three figures a person can act on.
+
+### What trends must not become
+
+The constraint from `Deliberately absent` holds in full, and matters more here than anywhere else in the app, because a chart is where grading creeps in by default.
+
+- No colour that encodes a verdict. No red, no green, no amber. One accent, used for the series and never for an opinion about it.
+- No threshold drawn as pass or fail, no shaded "good" band, no over and under.
+- An optional user-set reference line is permitted, off by default, drawn as a neutral rule with no fill on either side of it.
+- No score, no week in review, no comparison against a population, no projection forward.
+
+The line is between describing and judging. A chart of what you ate describes. The same chart with a band behind it judges, and that is both the wrong product and the edge of the MDR boundary this plan stays clear of.
+
 ## UI and UX
 
-One principle decides every trade-off below: this is an entry mask, and the cost of logging is the whole product. An app that is pleasant but takes twenty seconds per item gets abandoned in a week, and an empty nutrition history is worth nothing to the Longevity tab.
+One principle decides every trade-off below: the cost of logging is the whole product. An app that is pleasant but takes twenty seconds per item gets abandoned in a week, and an empty nutrition history is worth nothing to anyone.
 
-The targets to design against: a repeat meal in under five seconds and three taps; a food never logged before in under twenty seconds.
+The targets to design against: a repeat meal in under five seconds and three taps; something never logged before in under twenty seconds. Revision 4 adds a third: a routine day in no taps at all, by accepting a baseline.
+
+The second principle, new in revision 4 and the one that constrains the first: **the user must always be able to tell what they asserted from what the app inferred.** Speed is bought by inferring amounts, recalling phrases and proposing days, and every one of those is a place where the app could quietly put a number into Health that nobody stood behind. Each is marked, each is one tap from correction, and none of them writes anything without that tap.
 
 ### Screens
 
 | Screen | Purpose |
 | --- | --- |
-| Today | Default. Date, daily totals, entries grouped by meal slot, add button |
-| Add | Modal search over bundled foods, recent items, recipes; routes to quantity |
-| Quantity | Gram field, portion chips, live nutrition preview, confirm |
-| Library | Foods and recipes, custom food creation, recipe builder |
-| Settings | Health status, opt-in toggles, sources and attribution |
+| Today | Default. Date, headline totals, entries by meal slot, baseline proposals, the composer |
+| Composer | One line of text or speech. The primary input, pinned to the bottom of Today |
+| Resolution | The parsed line as rows: matched food, portion bucket, what came from history. Confirm |
+| Trends | Energy, protein and fiber over time, with the coverage strip |
+| Add | Search over foods, phrases and recipes; still the way to pick a specific row |
+| Quantity | Portion buckets, the gram field behind them, live nutrition preview |
+| Library | Foods, phrases and recipes; custom food creation, recipe builder |
+| Settings | Health status, opt-in toggles, sampling cadence, sources and attribution |
 
-Three tabs, no more. Add and Quantity are sheets over Today, not tab destinations.
+Four tabs now: Today, Trends, Library, Settings. The composer is part of Today rather than a destination, and Add, Resolution and Quantity are sheets over it.
 
 ### The fast path
 
 ```mermaid
 flowchart LR
-  A[Today] --> B[Add sheet<br/>keyboard up]
-  B --> C[Recents<br/>before typing]
-  B --> D[Search results]
-  C --> E[Quantity sheet]
-  D --> E
-  E --> F[Confirm]
+  A[Today] --> B[Composer<br/>type or speak]
+  B --> C{Phrase<br/>known?}
+  C -->|yes| D[Resolution<br/>already settled]
+  C -->|no| E[Parse, then match<br/>per item]
+  E --> D
+  D --> F[Log]
   F --> A
+  A --> G[Baseline proposal]
+  G -->|one tap| A
 ```
 
-The add sheet opens with the keyboard already up and, crucially, with recent and frequent items listed **before any typing**. Most logging is repetition, so the common case should never involve a search at all.
+The composer sits at the bottom of Today, always there, no sheet to open. One line in, one Log out. A line logged before comes back from `Phrase` memory with every food and every amount already settled, so the resolution sheet has nothing to decide and the whole path is: tap the field, type three words, tap Log.
 
-Every entry on Today carries a repeat action on swipe or long-press, which re-logs the same food and quantity at the current time. A "copy yesterday" affordance on an empty day covers the routine eater.
+A routine day costs less than that. The baseline proposes each slot it has a default for, and accepting is one tap per slot or one for the day.
 
-The quantity sheet prefills the last amount used for that food. For a person who eats 40 g of oats every morning, logging becomes: tap add, tap oats, tap confirm.
+What survives from revision 3: the repeat action on every entry, copy yesterday, and the Add sheet with recents before any typing, for when the user would rather point than type. The quantity sheet's prefill is now the first rung of the amount reference ladder rather than a special case.
 
 ### Quantity entry
 
-Grams are canonical. Portion chips from the `portions` table sit above the field as shortcuts ("1 medium, 182 g"), and tapping one fills the gram value rather than switching units, so the user always sees what was actually recorded.
+Grams stay canonical and stop being the question. The four buckets are the control; the gram field is behind them, one tap away, showing what the bucket resolved to so the user always sees what was actually recorded. Portion chips from the `portions` table remain for a food with household measures.
 
-Number pad by default. Nutrition preview updates live as digits are typed, which catches decimal-place mistakes before they reach Health.
+Number pad when the field is open. Nutrition preview updates live, which catches a decimal-place mistake before it reaches Health.
 
 Timestamp defaults to now, with the meal slot inferred from time of day and editable. Logging into the past is one tap on the date header, not a buried date picker.
 
 ### Daily totals
 
-Energy, protein, carbohydrates and fat get primary weight. Fiber, sugar, saturated fat and sodium sit in a secondary row. All eight are always visible; none are hidden behind a tap.
+Energy, protein and fiber are the headline. The other five sit in a secondary row, still always visible and never behind a tap. Revision 4 moved carbohydrates and fat out of the headline and fiber into it: three figures is what a person can hold in their head, and fiber is the one of the eight that a broad-strokes view actually moves.
+
+A day's totals say how complete they are. A partial day shows its total and the fact that it is partial, in text, with no implication of a shortfall against anything.
 
 No colour-coded judgment, no over/under indicators, no traffic lights. That is interpretation, it is what the Health app now does, and it is the behaviour that drifts toward the MDR boundary described below. Totals are reported, not graded.
 
@@ -393,9 +603,11 @@ Dynamic Type throughout, including the totals row, which is the layout most like
 
 ### Deliberately absent
 
-No streaks, badges, or gamification. No social features. No trend charts or history graphs, which the Health app already does better and which would duplicate data the app does not own. No coaching, scoring or recommendations.
+No streaks, badges or gamification. No social features. No coaching, scoring or recommendations. No colour that encodes a verdict, anywhere, on any screen.
 
-The omissions are not only taste. They keep the app on the logging-tool side of the medical-device line and keep the surface small enough that the fast path stays fast.
+Trend charts and history graphs have moved out of this list and into scope; see the Trends section for what replaced the reasoning and for the constraints that keep a chart descriptive. Everything else here holds, and the reversal narrows rather than widens what is permitted: a chart is the easiest place in the app to grade by accident, so the rules against grading now have to be enforced in a place that did not exist before.
+
+The omissions are not only taste. They keep the app on the logging-tool side of the medical-device line, and they keep the surface small enough that the fast path stays fast.
 
 ## Opt-in modules
 
@@ -420,6 +632,8 @@ The on-device Foundation Models language model gained vision in iOS 27: an image
 The model is asked only for what a description or a photo can tell it: which foods, in generic database wording as well as the words the person would use, and roughly how much of each was eaten. It is never asked for a nutrient value, because no language model can know one; that is a lookup. Each item is searched in the bundled database, the best hit becomes the food behind that row, and every number on the screen and in the entry is that food's, scaled to the portion. The match is shown under the item's name and can be changed from the Add sheet in pick mode; an item with no match carries no values and cannot be logged at all, so the user picks a food or removes the row. A logged estimate is therefore an ordinary entry with a real food link and a database snapshot, marked only by its `isEstimate` flag and the "Estimated" badge.
 
 On iOS 26 the same model exists without vision, so the module degrades to a typed description rather than disappearing. See the implementation section for how the two tiers share one prompt and one confirmation screen.
+
+Revision 4 moves that typed tier out of this module. A typed or spoken line is the app's primary input and lives in the composer, which has its own fallback parser and does not depend on Apple Intelligence at all; what remains here is the photo. The two share `EstimationPrompt`, `MealEstimate` and the matcher, so a photo is one more way to produce items that the same resolution path then grounds in the database. The module stays opt-in because a camera is, and because the composer no longer needs it to exist.
 
 Gate on `SystemLanguageModel.default.availability` before `#available(iOS 27, *)`, in that order: a device on iOS 27 with Apple Intelligence disabled fails the first check, and the availability reason is what the UI should explain.
 
@@ -467,7 +681,18 @@ Ordered by dependency, not by visibility. The first two milestones carry the mos
 6. **AI estimation.** Availability gate, image prompt, generable struct, editable draft.
 7. **Internationalization.** Localised UI, and the user's language ranked first in search. The sources themselves are already bundled.
 
-Steps 1 to 4 are the shippable app. Steps 5 to 7 are additive and can slip without blocking a release.
+Revision 4 adds the following. They are ordered so that each one is useful on its own, and so that the riskiest thing — auto-matching a parsed item well enough to log it without being asked — is proved before anything is built on top of it.
+
+8. **The matcher.** Confidence scoring on `SearchRelevance`, the two thresholds, the composite-before-split rule, and a rewritten `popularity` list against real Ciqual and BLS names. No UI. The gate is a fixture set of real typed lines with their expected matches, because every later milestone assumes this one works.
+9. **Phrase memory.** `Phrase` and `PhraseItem`, the normalisation function, recall before search, amounts from history. Testable without any parser: a phrase is recorded and recalled whatever produced it.
+10. **The composer and the resolution sheet.** The fallback parser first, so the path exists on every device, then the model tier behind the availability gate it already has. Keyboard dictation comes free with the text field. This is the milestone the redesign is for.
+11. **Buckets and coverage.** Portion buckets with the reference ladder, `DayRecord`, marking a day complete, and partial-day totals on Today.
+12. **Trends.** Statistics-collection queries per nutrient, the three charts, the coverage strip, the range switcher.
+13. **Baseline days.** `BaselinePhrase`, proposals on Today, accept and deviate.
+14. **Widget and Siri.** Top phrases on the Lock Screen, an App Intent for a spoken line.
+15. **Sampling.** Cadence setting, day nomination, means over in-sample complete days.
+
+Steps 1 to 4 were the shippable app under revision 3. Under revision 4 the shippable app is 1 to 4 plus 8 to 12: the matcher, the memory, the composer, coverage and the charts. Steps 13 to 15 are additive, and 15 is the first thing to cut.
 
 ### Internationalization notes
 
@@ -504,6 +729,22 @@ Each is a behaviour this plan assumes but Apple does not document. Run them on a
 **The curated popularity list is FDC-shaped.** It ranks foods by their FDC descriptions, so with FDC out of the build it matches nothing and search falls back to relevance alone. Rewriting it against the Ciqual and BLS names is a sitting's work once their real names are in front of us.
 
 **Open Food Facts data quality is uneven.** Crowdsourced records vary by market and completeness. The manual-entry fallback is what keeps that from becoming a user-facing failure.
+
+The risks revision 4 adds, worst first.
+
+**Auto-matching is the whole bet and it is unproven.** Every saving in revision 4 comes from resolving a typed fragment to a database row without asking. If that lands wrong often enough to need checking every time, the resolution sheet becomes the search screen it replaced and the redesign has bought nothing. This is why the matcher is milestone 8 and why its gate is a fixture set of real typed lines rather than a code review. The honest failure mode is not a wrong match, which the user corrects once and the alias remembers; it is a *plausible* wrong match that nobody notices, which is why the confidence band exists and why a low-confidence row is marked rather than silently logged.
+
+**The popularity prior is empty.** Carried over from revision 3 and promoted, because auto-picking depends on it in a way interactive search did not. The curated list is written against FDC descriptions and matches nothing in a Ciqual and BLS build. Rewriting it against the real names is a sitting's work and is now on the critical path.
+
+**Composite coverage decides how well lines parse.** "Toast with butter" wants one row. How often a European composition table actually has that row is unmeasured. The BLS is strong on composite dishes, which is why it is bundled, but the fallback — two rows the user has to accept — is the common case until measured otherwise.
+
+**Phrase normalisation can over-recall.** Sorting tokens and dropping fillers is what makes recall survive retyping, and it also makes "chicken with rice" and "rice with chicken" the same phrase, which is correct, while risking that two genuinely different meals collapse into one. The mitigation is that a recalled phrase is visible and correctable and that correcting it rewrites the record, so a collision is self-healing. Whether it is *noticed* is the open part.
+
+**Inferred amounts put unasserted numbers near Health.** Buckets, recalled amounts and baseline proposals all mean the app has a figure the user did not type. The rule that nothing is written without a tap is what keeps this sound, and it is a rule that a future convenience feature will be tempted to break. It is stated as non-negotiable in the baseline section for that reason.
+
+**A chart is where grading creeps in.** Reversing the no-trends decision puts the app one colour choice away from the interpretation it has carefully avoided, and a reference line is one product decision away from a target, which is one away from a verdict. The constraints are written down in the Trends section; they need enforcing in review, not just in the plan.
+
+**Four tabs and a composer is a bigger surface.** Revision 3 kept three tabs partly to keep the fast path fast. Trends is a fourth, and the composer adds a persistent control to the busiest screen in the app. The counter-argument is that the composer *replaces* the Add sheet as the default path rather than joining it, so the common case gets shorter even as the surface grows. Worth re-checking against the yardstick once it is drawn.
 
 ## Sources
 
