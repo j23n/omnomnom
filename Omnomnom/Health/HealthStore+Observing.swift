@@ -76,6 +76,40 @@ extension HealthStore: HealthObserving {
         }
     }
 
+    func dailyTotals(
+        for nutrients: [Nutrient], from start: Date, to end: Date
+    ) async throws -> [Nutrient: [Date: Double]] {
+        guard isAvailable else { return [:] }
+        let calendar = Calendar.current
+        let first = calendar.startOfDay(for: start)
+        let last = calendar.startOfDay(for: end)
+        guard first <= last else { return [:] }
+
+        var totals: [Nutrient: [Date: Double]] = [:]
+        for nutrient in nutrients {
+            // One nutrient failing is not a reason to have no chart at all, and read
+            // authorization is never knowable, so a failure here reads as "nothing" for
+            // that nutrient rather than as an error for the screen.
+            do {
+                let collection = try await HealthQueries
+                    .dailyTotalsDescriptor(for: nutrient, from: first, to: last, calendar: calendar)
+                    .result(for: store)
+                let unit = HealthObjects.unit(for: nutrient.unit)
+                var days: [Date: Double] = [:]
+                collection.enumerateStatistics(from: first, to: last) { statistics, _ in
+                    guard let sum = statistics.sumQuantity() else { return }
+                    days[calendar.startOfDay(for: statistics.startDate)] = sum.doubleValue(for: unit)
+                }
+                if !days.isEmpty { totals[nutrient] = days }
+            } catch {
+                AppLog.health.notice(
+                    "daily totals for \(nutrient.rawValue, privacy: .public) unavailable: \(error.localizedDescription, privacy: .public)"
+                )
+            }
+        }
+        return totals
+    }
+
     /// Reads every page of one type's changes since the archived anchor `data`. An anchor
     /// HealthKit rejects (after a restore onto another device it belongs to a different
     /// store) is dropped once and the type re-read from the beginning.

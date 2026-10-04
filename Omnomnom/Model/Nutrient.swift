@@ -64,6 +64,25 @@ nonisolated enum Nutrient: String, CaseIterable, Codable, Sendable {
         }
     }
 
+    /// A fact about what the figure measures, shown wherever it is charted.
+    ///
+    /// Only sugar has one, and it matters: Ciqual and the BLS publish *total* sugars,
+    /// which includes the fruit and the lactose nobody is usually asking about, and no
+    /// permissively licensed composition table separates free or added sugar. So a day of
+    /// fruit and yoghurt reads high on the line most people take to be about
+    /// confectionery. The answer is not to hide the chart but to label it, on the screen
+    /// rather than in a help page.
+    ///
+    /// This says what is measured, never how much to trust it. A chart that annotates
+    /// which of someone's own figures to believe is a step from telling them what to do
+    /// about it.
+    var measurementCaveat: String? {
+        switch self {
+        case .sugar: "total sugars, including those naturally present"
+        default: nil
+        }
+    }
+
     /// Energy, protein, carbohydrates and fat get primary weight on Today.
     var isPrimary: Bool {
         switch self {

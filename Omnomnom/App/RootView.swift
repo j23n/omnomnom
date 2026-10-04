@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Onboarding gate, then the three tabs. Reconciliation itself starts in `AppServices`
+/// Onboarding gate, then the four tabs. Reconciliation itself starts in `AppServices`
 /// at launch; this view only asks for a re-run whenever the scene comes to the foreground.
 struct RootView: View {
     @AppStorage(AppServices.onboardingKey) private var onboardingComplete = false
@@ -23,12 +23,19 @@ struct RootView: View {
     }
 }
 
-/// Today, Library, Settings. Add and Quantity are sheets over Today, not tabs.
+/// Today, Trends, Library, Settings.
+///
+/// Four now. The composer, the Add sheet, the resolution sheet and Quantity are all over
+/// Today rather than destinations of their own, so the input path stays one screen deep
+/// however many ways into it there are.
 struct MainTabView: View {
     var body: some View {
         TabView {
             Tab("Today", systemImage: "calendar") {
                 TodayView()
+            }
+            Tab("Trends", systemImage: "chart.xyaxis.line") {
+                TrendsView()
             }
             Tab("Library", systemImage: "books.vertical") {
                 LibraryView()

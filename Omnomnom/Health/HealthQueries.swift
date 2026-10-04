@@ -50,6 +50,26 @@ nonisolated enum HealthQueries {
     }
 
     /// The sync identifier in an object's or deleted object's metadata, if it has one.
+    /// One nutrient's totals, bucketed by day across a range.
+    ///
+    /// Anchored to the start of the first day so the buckets line up with calendar days
+    /// rather than with the hour the query happened to run.
+    static func dailyTotalsDescriptor(
+        for nutrient: Nutrient, from start: Date, to end: Date, calendar: Calendar = .current
+    ) -> HKStatisticsCollectionQueryDescriptor {
+        let anchor = calendar.startOfDay(for: start)
+        let last = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: end)) ?? end
+        return HKStatisticsCollectionQueryDescriptor(
+            predicate: HKSamplePredicate.quantitySample(
+                type: HealthObjects.quantityType(for: nutrient),
+                predicate: HKQuery.predicateForSamples(withStart: anchor, end: last, options: [.strictStartDate])
+            ),
+            options: .cumulativeSum,
+            anchorDate: anchor,
+            intervalComponents: DateComponents(day: 1)
+        )
+    }
+
     static func syncIdentifier(in metadata: [String: Any]?) -> String? {
         metadata?[HKMetadataKeySyncIdentifier] as? String
     }

@@ -16,6 +16,32 @@ nonisolated protocol HealthObserving: Sendable {
 
     /// Every dietary sample starting in `interval`, whoever wrote it.
     func samples(in interval: DateInterval) async throws -> [HealthNutritionSample]
+
+    /// Daily totals per nutrient over a range, keyed by the start of each day.
+    ///
+    /// One statistics-collection query per nutrient, which is what that API is for and
+    /// what the Trends screen reads. It is deliberately not computed from the local
+    /// store: Health counts every sample exactly once, including other apps' and this
+    /// app's from another device, and it survives a reinstall of this one. The local
+    /// store supplies the denominator and the honesty; Health supplies the numerator.
+    ///
+    /// A day with no samples is absent from the result rather than present as zero.
+    func dailyTotals(
+        for nutrients: [Nutrient], from start: Date, to end: Date
+    ) async throws -> [Nutrient: [Date: Double]]
+}
+
+extension HealthObserving {
+    /// Nothing, which is the honest answer for a store that holds nothing.
+    ///
+    /// Defaulted so the no-op store and the previews are not each obliged to restate it.
+    /// The read-authorization quirk applies here as everywhere: an empty result is
+    /// empty, never denied, so a caller must draw an empty chart and not an error.
+    func dailyTotals(
+        for nutrients: [Nutrient], from start: Date, to end: Date
+    ) async throws -> [Nutrient: [Date: Double]] {
+        [:]
+    }
 }
 
 /// One batch of anchored-query results, reduced to the identifiers reconciliation reads.
