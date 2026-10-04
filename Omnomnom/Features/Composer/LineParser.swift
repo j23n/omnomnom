@@ -158,7 +158,7 @@ nonisolated enum LineParser {
         var words = fragment
             .split(whereSeparator: \.isWhitespace)
             .map(String.init)
-        guard !words.isEmpty else { return nil }
+        guard !words.isEmpty else { return .nothing }
 
         /// The comparable form of a word: folded, stripped of the punctuation a typed
         /// list leaves behind.
