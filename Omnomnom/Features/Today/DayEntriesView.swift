@@ -6,7 +6,8 @@ import SwiftUI
 /// The entries of one day, queried live, with totals on top and swipe actions per row.
 /// Local rows render first; what Health holds for the day is read afterwards and
 /// folded into the totals and the "Also in Health" section. The day before is queried
-/// too, only to know whether an empty today can offer to copy it.
+/// too, only to know whether an empty today can offer to copy it. What is only proposed
+/// sits under everything that is recorded; see `proposalsSection`.
 struct DayEntriesView: View {
     let model: TodayViewModel
     private let interval: DateInterval
@@ -59,11 +60,74 @@ struct DayEntriesView: View {
         guard model.isShowingToday else { return [] }
         return MealSlot.allCases.compactMap { slot in
             guard !entries.contains(where: { $0.mealSlot == slot }),
-                  let baseline = baselines.first(where: { $0.mealSlot == slot }),
-                  baseline.isOfferable,
-                  let phrase = baseline.phrase
+                  let phrase = usualLine(for: slot)
             else { return nil }
             return (slot, phrase)
+        }
+    }
+
+    /// The slot's usual line when there is one worth offering, whether or not the slot
+    /// already holds something.
+    ///
+    /// Read by both the proposal and the line about a proposal that is gone, so the two
+    /// can never disagree about whether the slot had a usual line in the first place.
+    private func usualLine(for slot: MealSlot) -> Phrase? {
+        guard let baseline = baselines.first(where: { $0.mealSlot == slot }), baseline.isOfferable
+        else { return nil }
+        return baseline.phrase
+    }
+
+    /// Whether this slot's proposal is gone because something else was logged into it.
+    ///
+    /// Four cases arrive at the same screen and exactly one of them deserves a word.
+    ///
+    /// A slot with no usual line, or one whose usual line was declined or can no longer be
+    /// resolved, proposed nothing today: `usualLine` is `nil` and there is nothing to
+    /// account for. A slot with nothing logged still has its proposal on screen. A slot
+    /// holding entries of origin `.baseline` is one whose proposal was *accepted* — the
+    /// card did not vanish, it became those rows, and saying anything about it would be
+    /// claiming a deviation that did not happen. What is left is the slot that was typed
+    /// into, where a card the user was looking at a second ago is simply not there.
+    ///
+    /// The last clause is what keeps this honest, and it is the one worth defending.
+    /// Logging the usual line itself — typed by hand, repeated from yesterday, copied from
+    /// the day before — also removes the proposal, and nothing was replaced: everything
+    /// that line names is on the screen. An entry records no phrase, so the comparison is
+    /// by the foods and recipes behind the rows rather than by wording, which is the right
+    /// comparison anyway: what matters is whether the usual meal is there, not whether it
+    /// was described the same way. It asks whether the usual line is *contained* in the
+    /// slot and not whether it equals it, because a usual lunch plus a biscuit has not
+    /// replaced anything either.
+    ///
+    /// It cannot tell a different amount of the same food from the usual amount of it, and
+    /// deliberately does not try: half the usual porridge is still the usual porridge, and
+    /// a line that appeared because someone weighed 40 g instead of 50 g would be noise.
+    ///
+    /// What it genuinely cannot tell is whether the card was ever on screen. Nothing
+    /// records that a slot was proposed on a given day, so a lunch logged from the widget
+    /// at noon and first looked at in the evening gets the line as well, for a card the
+    /// user never saw. Said of the proposal it is still true — there is no proposal for
+    /// lunch, and this entry is why — but it is one step closer to a remark about the meal
+    /// than the design wants, and closing the gap needs a date on `BaselinePhrase` written
+    /// when the row is shown rather than a cleverer reading of what is already stored.
+    private func isDisplaced(_ slot: MealSlot) -> Bool {
+        guard model.isShowingToday, let phrase = usualLine(for: slot) else { return false }
+        let logged = entries.filter { $0.mealSlot == slot }
+        guard !logged.isEmpty, !logged.contains(where: { $0.origin == .baseline }) else { return false }
+        return !isCovered(phrase, by: logged)
+    }
+
+    /// Whether everything the usual line points at is among what is logged. A phrase with
+    /// no items counts as uncovered, which cannot happen for an offerable baseline.
+    private func isCovered(_ phrase: Phrase, by logged: [LogEntry]) -> Bool {
+        let foods = Set(logged.compactMap { $0.food?.id })
+        let recipes = Set(logged.compactMap { $0.recipe?.id })
+        let items = phrase.orderedItems
+        guard !items.isEmpty else { return false }
+        return items.allSatisfy { item in
+            if let food = item.food { return foods.contains(food.id) }
+            if let recipe = item.recipe { return recipes.contains(recipe.id) }
+            return false
         }
     }
 
@@ -89,6 +153,29 @@ struct DayEntriesView: View {
         )
     }
 
+    /// The day's remaining proposals, placed twice in `body` rather than once.
+    ///
+    /// Once anything real is on the screen the proposal belongs under all of it, and the
+    /// further the day fills the further it falls: on a list whose rows all look like
+    /// records, the vertical order is the hierarchy a reader gets without being told one.
+    /// An empty day has nothing for it to be under, and only one of the two placements is
+    /// ever built, so the card is never on screen twice.
+    @ViewBuilder private var proposalsSection: some View {
+        if !proposals.isEmpty {
+            Section {
+                ForEach(proposals, id: \.slot) { proposal in
+                    BaselineProposalRow(
+                        slot: proposal.slot,
+                        text: proposal.phrase.text,
+                        isAccepting: acceptingSlot == proposal.slot,
+                        onAccept: { Task { await accept(proposal.phrase, for: proposal.slot) } },
+                        onDecline: { decline(proposal.slot) }
+                    )
+                }
+            }
+        }
+    }
+
     var body: some View {
         List {
             Section {
@@ -99,20 +186,11 @@ struct DayEntriesView: View {
                     onToggle: toggleDayComplete
                 )
             }
-            if !proposals.isEmpty {
-                Section {
-                    ForEach(proposals, id: \.slot) { proposal in
-                        BaselineProposalRow(
-                            slot: proposal.slot,
-                            text: proposal.phrase.text,
-                            isAccepting: acceptingSlot == proposal.slot,
-                            onAccept: { Task { await accept(proposal.phrase, for: proposal.slot) } },
-                            onDecline: { decline(proposal.slot) }
-                        )
-                    }
-                }
-            }
             if entries.isEmpty {
+                // Nothing real is on the screen yet, so the proposal has nothing to be
+                // below and goes above the empty day's prompt: on a routine day it is the
+                // cheaper of the two offers and should not be scrolled to.
+                proposalsSection
                 Section {
                     EmptyDayView(
                         canCopyYesterday: model.isShowingToday && !previousDayEntries.isEmpty,
@@ -132,11 +210,25 @@ struct DayEntriesView: View {
                             onRepeat: repeatEntry,
                             onEdit: { model.edit($0) }
                         )
+                        if isDisplaced(slot) {
+                            // Directly under the meal that displaced it, with no card of
+                            // its own, so it reads as a footnote to those rows rather
+                            // than as another thing on the day.
+                            Section {
+                                DisplacedBaselineNote(slot: slot)
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                            }
+                            .listSectionSpacing(.compact)
+                        }
                     }
                 }
             }
             if !healthSummary.meals.isEmpty {
                 ForeignMealsSection(meals: healthSummary.meals)
+            }
+            if !entries.isEmpty {
+                proposalsSection
             }
         }
         .listStyle(.insetGrouped)
@@ -211,6 +303,42 @@ private nonisolated struct HealthReadKey: Hashable, Sendable {
 }
 
 #if DEBUG
+/// Installs baselines on top of a seeded container. No `PreviewSeed` holds one, and this
+/// screen is the only thing that reads them, so they are built here rather than threaded
+/// through every seed.
+///
+/// Each pair names a slot and enough of a food's name to find it in the seed. A slot that
+/// already holds entries of other foods therefore reads as displaced, an empty slot reads
+/// as still proposed, and pointing a baseline at a food the slot already holds reads as
+/// nothing having happened — the three states the screen has to keep apart.
+@MainActor
+private func seedBaselines(
+    _ pairs: [(slot: MealSlot, food: String, line: String)], in container: ModelContainer
+) {
+    let context = container.mainContext
+    let foods = PreviewStore.foods(in: container)
+    for pair in pairs {
+        guard let food = foods.first(where: { $0.name.localizedCaseInsensitiveContains(pair.food) })
+        else { continue }
+        let phrase = Phrase(key: pair.line, text: pair.line)
+        context.insert(phrase)
+        let item = PhraseItem(sortIndex: 0, name: food.name, amount: 100)
+        context.insert(item)
+        item.food = food
+        item.phrase = phrase
+        phrase.useCount = BaselinePhrase.suggestionThreshold
+        phrase.lastSlot = pair.slot
+        let baseline = BaselinePhrase(mealSlot: pair.slot)
+        context.insert(baseline)
+        baseline.phrase = phrase
+    }
+    do {
+        try context.save()
+    } catch {
+        AppLog.store.error("preview baselines failed: \(error.localizedDescription, privacy: .public)")
+    }
+}
+
 #Preview("Typical day") {
     NavigationStack {
         DayEntriesView(day: .now, model: TodayViewModel())
@@ -253,6 +381,46 @@ private nonisolated struct HealthReadKey: Hashable, Sendable {
     .previewEnvironment(seed: .typicalDay, health: PreviewHealth())
     .environment(\.dynamicTypeSize, .accessibility5)
     .preferredColorScheme(.dark)
+}
+
+/// A usual lunch of lentils against a logged lunch of chicken and rice: the proposal is
+/// gone and the line under Lunch says so.
+#Preview("A usual replaced") {
+    let container = PreviewStore.container(seed: .typicalDay)
+    seedBaselines([(slot: .lunch, food: "Lentils", line: "dal and rice")], in: container)
+    return NavigationStack {
+        DayEntriesView(day: .now, model: TodayViewModel())
+    }
+    .previewEnvironment(container: container)
+}
+
+/// The deviation as the design draws it: one slot logged and its usual replaced, the
+/// slots that are still untouched proposed below it.
+#Preview("A usual replaced, the rest proposed") {
+    let container = PreviewStore.container(seed: .library)
+    seedBaselines(
+        [
+            (slot: .dinner, food: "Sourdough bread", line: "sourdough with cheese"),
+            (slot: .breakfast, food: "Homemade granola", line: "granola and yogurt"),
+            (slot: .snack, food: "Greek yogurt", line: "skyr"),
+        ],
+        in: container
+    )
+    return NavigationStack {
+        DayEntriesView(day: .now, model: TodayViewModel())
+    }
+    .previewEnvironment(container: container)
+}
+
+/// The case that must stay silent: the usual lunch was logged by hand rather than
+/// accepted, so the proposal is gone and nothing was replaced. No line anywhere.
+#Preview("A usual logged by hand") {
+    let container = PreviewStore.container(seed: .typicalDay)
+    seedBaselines([(slot: .lunch, food: "Chicken", line: "chicken and rice")], in: container)
+    return NavigationStack {
+        DayEntriesView(day: .now, model: TodayViewModel())
+    }
+    .previewEnvironment(container: container)
 }
 #endif
 
