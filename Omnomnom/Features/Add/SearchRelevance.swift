@@ -15,7 +15,16 @@ nonisolated enum SearchRelevance {
     static let prefix = 0.8
     static let wordPrefix = 0.65
     static let substring = 0.45
-    static let everyToken = 0.3
+    /// Every word of the query is somewhere in the name, in any order.
+    ///
+    /// Just under `substring`, and deliberately above the threshold a row needs to be worth
+    /// showing. It used to be 0.3, which put it below that threshold — so any two-word term
+    /// whose words were not adjacent in a row blocked the log, and a model asked for the
+    /// generic wording a composition table uses answers in exactly such terms: "minced
+    /// beef", "pasta, cooked", "greek yogurt". Seven of twelve of those blocked. A name
+    /// holding every word someone said is a match worth a look, which is all this tier
+    /// claims; `settled` is still far above.
+    static let everyToken = 0.44
 
     /// A row a source returned for a reason this app cannot see — Open Food Facts also
     /// matches categories and labels, which are not requested — still belongs in the

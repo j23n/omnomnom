@@ -208,11 +208,42 @@ struct LineResolver {
 
     // MARK: - Rung three and four: what the database says
 
+    /// The shortlist for one named food, with one fallback.
+    ///
+    /// The index ands a term's words together, so a term naming a food precisely can reach
+    /// nothing at all: "rolled oats" wants a row holding both words and the tables hold
+    /// "Oat flakes"; "chicken breast cooked" wants three and no row has them. When the whole
+    /// term finds nothing worth showing, each of its words is tried alone and the best
+    /// answer kept — "oats" finds the flakes, "chicken" finds the chicken.
+    ///
+    /// Only then, though. A term that matches something specific keeps it: "minced beef"
+    /// reaching minced steak is better than "beef" reaching plain boiled beef, even though
+    /// the plainer row scores higher for being shorter and more popular. Specificity wins
+    /// where it works; breadth only rescues a dead end.
     private func search(_ term: String) async -> [FoodMatch] {
         guard !term.isEmpty else { return [] }
+        let whole = await shortlist(for: term, scoredAgainst: term)
+        if let best = whole.first, best.score >= FoodMatcher.probableAt { return whole }
+
+        let tokens = term.split(whereSeparator: \.isWhitespace).map(String.init)
+        guard tokens.count > 1 else { return whole }
+        var best = whole
+        for token in tokens {
+            let candidates = await shortlist(for: token, scoredAgainst: token)
+            if let top = candidates.first, top.score > (best.first?.score ?? 0) {
+                best = candidates
+            }
+        }
+        return best
+    }
+
+    /// One search, ranked. `scoredAgainst` is what the scorer compares a row to, which is
+    /// not always what was searched for: a fallback searches one word and must then be
+    /// ranked by that word, or every row would score as a partial match of the whole term.
+    private func shortlist(for term: String, scoredAgainst scoring: String) async -> [FoodMatch] {
         do {
             return FoodMatcher.shortlist(
-                try await repository.search(term), term: term,
+                try await repository.search(term), term: scoring,
                 limit: ValidationPrompt.candidatesPerItem
             )
         } catch {
