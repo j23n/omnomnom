@@ -315,3 +315,176 @@ class RealDatabaseTests(unittest.TestCase):
         """
         self.assertPortion("Cocoa butter")
         self.assertPortion("Shea butter")
+
+
+class RealCiqualNameTests(unittest.TestCase):
+    """Rows from the real Ciqual table (ANSES), French name beside the English one.
+
+    The German table taught the rules that a qualifier after a comma, a bracket or a
+    digit is a note. The French table taught them that a qualifier often arrives with
+    no punctuation at all: it says "Pâté au poivre vert" and "Boisson préparée à
+    partir de boisson concentrée", where the food is everything before the connective
+    and what follows is the recipe. Every case here was wrong the first time the rules
+    met the table.
+    """
+
+    def assertPortion(self, name: str, *alt: str) -> None:
+        self.assertFalse(
+            ingredient.is_ingredient(name, tuple(alt)),
+            f"{name!r} wrongly flagged as {sorted(ingredient.reasons(name, tuple(alt)))}",
+        )
+
+    def assertNotPortion(self, name: str, *alt: str) -> None:
+        self.assertTrue(ingredient.is_ingredient(name, tuple(alt)), f"{name!r} not flagged")
+
+    def test_juice_from_concentrate_is_a_glass_of_juice(self) -> None:
+        # The costliest false positive the French table held: Ciqual names every
+        # reconstituted juice "from concentrate", so the whole shelf was demoted and
+        # "orange juice" could never settle, which is the tedium this is all against.
+        self.assertPortion("Orange juice, from concentrate", "Jus d'orange, à base de concentré")
+        self.assertPortion("Apple juice, from concentrate", "Jus de pomme, à base de concentré")
+        self.assertPortion(
+            "Fruit juice, from concentrate (average)",
+            "Jus de fruits, à base de concentré (aliment moyen)",
+        )
+
+    def test_a_concentrate_that_is_the_row_itself(self) -> None:
+        # The other side of the same rule: when the concentrate is the subject rather
+        # than where the row came from, it stays flagged.
+        self.assertNotPortion(
+            "Concentrate beverage (to be diluted), no added sugars and with sweetener(s)"
+        )
+        self.assertNotPortion(
+            "Condensed milk, no added sugars, whole", "Lait concentré non sucré, entier"
+        )
+        self.assertNotPortion("Tomato concentrate")
+
+    def test_a_beverage_prepared_from_a_concentrate(self) -> None:
+        # "à partir de" is the French "from", and the row is the drink, not the syrup.
+        self.assertPortion(
+            "Preparation for beverage diluted in water (eg. mint, strawberry etc.), "
+            "no added sugars",
+            "Boisson préparée à partir de boisson concentrée à diluer type menthe, fraise",
+        )
+
+    def test_french_says_with_by_inflecting_the_preposition(self) -> None:
+        # "au", "aux" and "à la" end the name of the food as surely as a comma does.
+        self.assertPortion("Pâté with green pepper", "Pâté au poivre vert")
+        self.assertPortion("Cream sauce with spices", "Sauce à la crème aux épices")
+        self.assertPortion("Spicy pork sausage with red pepper", "Chorizo")
+
+    def test_a_seasoning_that_is_still_the_subject(self) -> None:
+        self.assertNotPortion("Salt, with celery", "Sel au céleri")
+        self.assertNotPortion("Spice (average)", "Épices (aliment moyen)")
+
+    def test_the_french_adjective_for_spiced(self) -> None:
+        """A seasoned food is not a seasoning.
+
+        "épicés" and "épices" fold to the same letters, so the French noun had to go:
+        it flagged oven chips, and spared "Pain d'épices" only because "pain" is
+        exempt. The English name carries "spice" on every row that means the spice.
+        """
+        self.assertPortion(
+            "Potato wedge, spiced, frozen, raw",
+            "Potatoes ou wedges ou quartiers de pommes de terre épicés, surgelées, à cuire",
+        )
+        self.assertPortion("Gingerbread, prepacked", "Pain d'épices, préemballé")
+
+    def test_flour_and_raw_dough(self) -> None:
+        # Twenty flours in Ciqual and sixty-four in the BLS went unflagged until
+        # "flour" was named, reaching the German compounds as the fragment "mehl".
+        self.assertNotPortion("Wheat flour, type 55", "Farine de blé tendre ou froment, type 55")
+        self.assertNotPortion("Spelt flour", "Farine d'épeautre")
+        self.assertNotPortion("Gerste Mehl", "Barley flour")
+        self.assertNotPortion("Weizen Vollkornmehl", "Wheat wholemeal flour")
+        self.assertNotPortion("Pizza dough, prepacked, raw", "Pâte à pizza, préemballée, crue")
+        self.assertNotPortion("Pizzateig (mit Hefe) roh", "Pizza dough with yeast, raw")
+
+    def test_baked_dough_is_a_portion(self) -> None:
+        # The pair that shows the preparation exemption still decides the question.
+        self.assertPortion("Pizzateig (mit Hefe) gebacken", "Pizza dough with yeast, baked")
+
+    def test_margarine_is_named_rather_than_inferred(self) -> None:
+        """Two margarines at 720 kcal were reached only by the word "oil" in their
+        English name, and cutting the head at a connective would have lost them. A
+        commodity the table sells by the tub belongs in the rule by name.
+        """
+        self.assertNotPortion(
+            "Sonnenblumenmargarine Vollfett, angereichert mit Vitamin D",
+            "Margarine made from sunflower oil, fortified with vitamin D",
+        )
+        self.assertNotPortion("Ziehmargarine", "Margarine for making puff pastry")
+
+    def test_a_tortilla_is_a_portion(self) -> None:
+        # The one row "flour" got wrong: the English spells out what it is made of.
+        self.assertPortion("Weizentortilla", "Wheat flour tortilla")
+
+    def test_an_alt_name_can_close_a_gap_the_display_name_leaves_open(self) -> None:
+        """"Cocoa butter" is flagged in Ciqual and not in the BLS, and that is correct.
+
+        The rules read every name a source publishes, and Ciqual publishes "Huile ou
+        beurre de cacao" — it says oil where the English says butter. The gap recorded
+        in `test_known_gap_the_word_butter` is a gap only where no alt name mentions a
+        fat, which is the alt-name matching earning its place.
+        """
+        self.assertNotPortion("Cocoa butter", "Huile ou beurre de cacao")
+        self.assertPortion("Cocoa butter")
+
+    def test_known_gap_tomato_paste(self) -> None:
+        """Tomato paste is not flagged, and that is the price of the juice fix.
+
+        Ciqual writes "Tomato paste, concentrated, canned" with the French
+        "Tomate, concentré, appertisé", so the trigger sits after a comma in both and
+        reads as a note. "paste" cannot be a trigger without flagging peanut butter
+        and marzipan, and "purée" without flagging mashed potatoes, so two rows at
+        about 80 kcal are left to the other two defences. Asserted so the gap is a
+        decision rather than a surprise.
+        """
+        self.assertPortion("Tomato paste, concentrated, canned", "Tomate, concentré, appertisé")
+
+    def test_known_gap_a_flour_whose_note_mentions_bread(self) -> None:
+        """One flour of twenty escapes, because its note says what it is for.
+
+        The exemption list is checked before the rules and over the whole name, so
+        "(for bread)" spares it. Narrowing the exemption to the head would be worse:
+        it is there to stop a commodity word in a note flagging the bread itself.
+        """
+        self.assertPortion("Wheat flour, type 55 (for bread)")
+
+
+class ConnectiveHeadTests(unittest.TestCase):
+    """What `head` keeps and what it drops, connective by connective."""
+
+    def test_a_note_introduced_by_a_connective_is_dropped(self) -> None:
+        self.assertEqual(ingredient.head("Still soft drink with tea extract"), "Still soft drink")
+        self.assertEqual(ingredient.head("Pâté au poivre vert"), "Pâté")
+        self.assertEqual(ingredient.head("Sauce à la crème aux épices"), "Sauce")
+        self.assertEqual(
+            ingredient.head("Boisson préparée à partir de boisson concentrée"), "Boisson préparée"
+        )
+
+    def test_from_is_not_a_connective(self) -> None:
+        """"Margarine made from sunflower oil" says what the row is.
+
+        The row that started the connective rule — "Orange juice, from concentrate" —
+        is cut at its comma anyway, so "from" buys nothing and costs the only fat word
+        two margarines have.
+        """
+        self.assertEqual(
+            ingredient.head("Margarine made from sunflower oil"),
+            "Margarine made from sunflower oil",
+        )
+
+    def test_a_connective_at_the_start_introduces_nothing(self) -> None:
+        # Returning an empty head here would make the name match no head-only rule at
+        # all, which is a worse answer than reading it whole.
+        self.assertEqual(ingredient.head("With love"), "With love")
+
+    def test_punctuation_still_ends_the_head_first(self) -> None:
+        self.assertEqual(ingredient.head("Salt, with celery"), "Salt")
+        self.assertEqual(
+            ingredient.head("Fennel boiled (with fat and salt)").strip(), "Fennel boiled"
+        )
+        self.assertEqual(
+            ingredient.head("Gouda cheese 48 % fat in dry matter").strip(), "Gouda cheese"
+        )

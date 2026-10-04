@@ -25,6 +25,17 @@ narrow and each one is named, which is what makes a flag auditable rather than
 mysterious. The rule that earns its narrowness is `raw`: raw fruit and raw
 vegetables are exactly what people eat, and `Apple, pulp and skin, raw` must not
 be touched, so `raw` only counts beside an animal protein.
+
+Narrowness is not something to reason out in advance, though. Every rule here was
+changed by meeting a real table, and the two tables taught different lessons. The
+German one is punctuated: it qualifies a food after a comma, a bracket or a fat
+percentage, which is what `head` is for. The French one often does not punctuate
+at all — "Pâté au poivre vert", "Boisson préparée à partir de boisson concentrée"
+— so the head has to end at a connective as well, and a rule aimed at concentrates
+spent its first run demoting every reconstituted juice on the shelf. Both tables
+also publish each other's language, which cuts both ways: a French alt name saying
+"huile" catches a cocoa butter the English name hides, and a French adjective for
+"spiced" collided with the French noun for "spices" until the noun was dropped.
 """
 
 from __future__ import annotations
@@ -92,10 +103,16 @@ RULES: tuple[Rule, ...] = (
         name="instant",
         words=("instant", "soluble", "loslich", "instantane"),
     ),
+    # Head-only, because Ciqual names every reconstituted juice "from concentrate":
+    # "Orange juice, from concentrate" is a glass of juice at 46 kcal, not the syrup.
+    # A row that says it was *made from* a concentrate is not the concentrate, which
+    # is also why `head` stops at "from". "Tomato concentrate" keeps its head intact
+    # and stays flagged.
     Rule(
         name="concentrate",
         words=("concentrate", "concentrated", "concentre", "concentree", "konzentrat"),
         fragments=("konzentrat",),
+        head_only=True,
     ),
     Rule(
         name="extract",
@@ -129,9 +146,10 @@ RULES: tuple[Rule, ...] = (
         name="pure-fat",
         words=(
             "oil", "lard", "tallow", "shortening", "ghee", "dripping", "fat",
+            "margarine",
             "schmalz", "butterschmalz", "huile", "saindoux", "suif", "fett",
         ),
-        fragments=("speisefett", "pflanzenfett", "brataufett"),
+        fragments=("speisefett", "pflanzenfett", "brataufett", "margarine"),
         head_only=True,
     ),
     # Leavening, thickening and seasoning bases, where 100 g is not a serving and
@@ -140,10 +158,11 @@ RULES: tuple[Rule, ...] = (
         name="kitchen-base",
         words=(
             "yeast", "gelatine", "gelatin", "starch", "rennet", "baking",
+            "flour", "flours", "dough",
             "hefe", "backpulver", "starke", "lab",
-            "levure", "amidon", "presure",
+            "levure", "amidon", "presure", "farine", "farines",
         ),
-        fragments=("backpulver", "speisestarke", "starkemehl"),
+        fragments=("backpulver", "speisestarke", "starkemehl", "mehl", "teig"),
         head_only=True,
     ),
     Rule(
@@ -151,7 +170,13 @@ RULES: tuple[Rule, ...] = (
         words=(
             "salt", "pepper", "peppercorns", "spice", "spices", "seasoning",
             "salz", "pfeffer", "gewurz", "gewurze",
-            "sel", "poivre", "epice", "epices",
+            # "epice" and "epices" are deliberately absent. French writes the
+            # adjective as "épicé(s)" and the noun as "épices", and both fold to the
+            # same letters, so the noun cannot be told from a row that is merely
+            # seasoned: it flagged "Potato wedge, spiced" and leaned on the bread
+            # exemption to spare "Pain d'épices". Nothing is lost, because Ciqual
+            # publishes an English name for every row and the English says "spice".
+            "sel", "poivre",
         ),
         head_only=True,
     ),
@@ -174,6 +199,7 @@ _EXEMPT_WORDS: tuple[str, ...] = (
     "pasta", "noodle", "noodles", "nudeln", "spaghetti", "macaroni", "lasagne",
     "tortellini", "tortelloni", "ravioli", "gnocchi", "dumpling", "dumplings",
     "roll", "rolls", "brotchen", "porridge", "muesli", "cereal",
+    "tortilla", "tortillas", "wrap", "wraps",
     # Sweet and bell peppers are vegetables; the spice is "pepper" alone.
     "sweet", "bell",
 )
@@ -215,12 +241,57 @@ def head(name: str) -> str:
 
     A name that opens with a digit has no head and matches no rule, which is the
     right answer for "7-grain bread" and costs nothing.
+
+    The connectives came from the French table, which qualifies without punctuation:
+    "Still soft drink with tea extract" and "Boisson préparée à partir de boisson
+    concentrée" both name a drink and then say what went into it, and a comma never
+    arrives to end the head. Everything from the connective onwards is that note.
     """
     for separator in (",", "(", ";"):
         name = name.split(separator)[0]
     for index, character in enumerate(name):
         if character.isdigit():
-            return name[:index]
+            name = name[:index]
+            break
+    return _before_connective(name)
+
+
+# Words that stop naming the food and start listing what is in it. Matched on the
+# diacritics-stripped text, longest first so "a partir de" wins over a bare "a".
+# "from" is deliberately not here, though "Orange juice, from concentrate" is what
+# started this: that row is already cut at its comma, while "Margarine made from
+# sunflower oil" says what the row *is* and loses its only fat word if cut. The
+# French "à partir de" carries no such sense and stays.
+_CONNECTIVES: tuple[tuple[str, ...], ...] = (
+    ("a", "partir", "de"),
+    ("a", "base", "de"),
+    ("with",),
+    ("avec",),
+    ("mit",),
+    # French says "with" by inflecting the preposition: "Pâté au poivre vert",
+    # "Sauce à la crème aux épices". The food is always what comes before it.
+    ("au",),
+    ("aux",),
+    ("a", "la"),
+    ("a", "l"),
+)
+
+
+def _before_connective(name: str) -> str:
+    """`name` up to the first connective, in the original spelling.
+
+    Cut by word index rather than by character offset, because stripping diacritics
+    changes a string's length and would shift every offset after an accent. Word
+    boundaries do not move, so counting words maps safely back onto the original.
+    """
+    words = name.split()
+    probe = [fold(word) for word in words]
+    for index in range(len(probe)):
+        for connective in _CONNECTIVES:
+            if probe[index:index + len(connective)] == list(connective):
+                # A connective at the very start introduces nothing; keep the name
+                # whole rather than returning an empty head.
+                return " ".join(words[:index]) if index else name
     return name
 
 

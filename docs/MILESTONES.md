@@ -177,8 +177,10 @@ caught most of the vegetables in Germany.
 
 ### Open
 
-- **Ciqual is not built.** Four of the five XML files arrived; `compo*.xml`, which carries
-  the actual values, did not. Everything else about that reader is unexercised.
+- **Ciqual is built from a truncated export.** `compo*.xml` is 70 MB and arrived cut at a
+  block boundary: 19,682 of about 258,000 rows, covering 266 of the 3,484 foods. The reader
+  itself is now exercised against real data (see below); what is missing is breadth, and
+  the French side of the search index with it.
 - **Composite-before-split** is specified in `PLAN.md` but lands with the parser, since
   there are no fragments to split until the composer exists.
 - **"Butter" is a known gap in the flag.** Cocoa and shea butter are baking fats and are
@@ -187,8 +189,53 @@ caught most of the vegetables in Germany.
   than left as a surprise.
 - **No Swift compiler here.** The Swift half is reasoned, and every numeric expectation in
   its tests was checked by mirroring the same arithmetic in Python and running it over the
-  real database. The Python half is genuinely verified: 164 tests, `ruff check` and `mypy
+  real database. The Python half is genuinely verified: 181 tests, `ruff check` and `mypy
   --strict` clean.
+
+### Settled against the real French table
+
+Ciqual's composition file arrived truncated, which is enough to read: the export was cut
+at a block boundary, so closing the root element and dropping a stray leading newline made
+it valid XML, and the reader took it on the first run. 263 foods with values, all eight
+nutrients, French names indexed beside the English ones, nothing implausible. The two
+sources build together into one 7,395-row database with no unmatched curated entries.
+
+The reader needed no changes. The `is_ingredient` rules needed five, because the French
+table qualifies a food in ways the German one does not, and running the rules over all
+3,484 French names — which `alim.xml` carries whether or not their values arrived — found
+each one:
+
+| Row | Was | Cause | Now |
+| --- | --- | --- | --- |
+| Orange juice, from concentrate | ingredient | every reconstituted juice is named "from concentrate" | portion |
+| Pâté au poivre vert | ingredient | French says "with" by inflecting the preposition, so the head never ended | portion |
+| Potato wedge, spiced | ingredient | "épicés" and "épices" fold to the same letters | portion |
+| Wheat flour, Gerste Mehl | portion | "flour" was in no rule at all; 20 flours in Ciqual, 64 in the BLS | ingredient |
+| Pizza dough, raw | portion | nor was "dough"; the baked twin is still a portion | ingredient |
+| Margarine, 720 kcal | ingredient by accident | reached only through the word "oil" in a derivation note | ingredient by name |
+
+So a commodity word now stops counting at a connective — "with", "avec", "mit", "au",
+"aux", "à la", "à partir de" — as well as at a comma, a bracket or a digit. "from" was
+tried there and taken back out: the juice row is cut at its comma anyway, and cutting at
+"from" costs two margarines the only fat word they have. Across both tables the change
+flags 150 rows it should have all along and releases 27, every one of them checked by
+hand; 406 of 3,484 Ciqual rows and 638 of 7,140 BLS rows carry the flag.
+
+Two gaps are left on purpose and asserted as tests rather than left to be discovered.
+Tomato paste is not flagged, because "paste" cannot trigger without catching peanut butter
+and marzipan, and "purée" without catching mashed potatoes. One flour of twenty escapes
+because its note says "(for bread)" and the exemption list is checked first — which is the
+exemption doing its job, since it is there to stop a word in a note flagging the bread.
+
+Re-running the bare-noun queries over the merged database, 25 of 26 settle on a sensible
+row, and the one that does not is informative: "yoghurt" returns nothing, because both
+tables spell it "yogurt". Of 166 everyday English words, 8 return nothing — one spelling
+variant, three regional synonyms, two compounds written as one word, and two foods neither
+table holds. In German, 70 of 72 work, which is what matters most here. In French only 34
+of 54 do, and that is entirely the truncation: every missing word appears in 5 to 80 French
+names in `alim.xml`, none of whose rows have values yet. No code was changed for any of
+this; a curated synonym list is the obvious answer and it should be built against the full
+export rather than against a 266-food sample.
 
 ## Milestone 1: Data pipeline
 
