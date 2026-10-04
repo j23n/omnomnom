@@ -12,8 +12,12 @@ struct TotalsRow: View {
     /// Amounts other sources wrote to Health for the day; `nil` when there are none.
     var foreign: Nutrition? = nil
 
-    private static let large: [Nutrient] = [.protein, .carbohydrates, .fatTotal]
-    private static let small: [Nutrient] = [.fatSaturated, .fiber, .sugar, .sodium]
+    /// Which three sit beside energy. A width constraint, chosen by the user, never a
+    /// statement about which nutrients matter; see `HeadlineNutrients`.
+    @AppStorage(HeadlineNutrients.key) private var rawHeadline = HeadlineNutrients.encode(HeadlineNutrients.standard)
+
+    private var large: [Nutrient] { HeadlineNutrients.decode(rawHeadline) }
+    private var small: [Nutrient] { HeadlineNutrients.secondary(to: large) }
 
     private var combined: Nutrition {
         foreign.map { totals + $0 } ?? totals
@@ -25,15 +29,15 @@ struct TotalsRow: View {
             ViewThatFits(in: .horizontal) {
                 Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 12) {
                     GridRow {
-                        cells(Self.large, font: .title3.weight(.semibold))
+                        cells(large, font: .title3.weight(.semibold))
                     }
                     GridRow {
-                        cells(Self.small, font: .body)
+                        cells(small, font: .body)
                     }
                 }
                 VStack(alignment: .leading, spacing: 8) {
-                    cells(Self.large, font: .title3.weight(.semibold))
-                    cells(Self.small, font: .body)
+                    cells(large, font: .title3.weight(.semibold))
+                    cells(small, font: .body)
                 }
             }
             if let foreign {

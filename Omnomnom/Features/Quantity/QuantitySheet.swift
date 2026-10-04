@@ -32,7 +32,7 @@ struct QuantitySheet: View {
         let timestamp = Self.defaultTimestamp(on: day)
         _timestamp = State(initialValue: timestamp)
         _mealSlot = State(initialValue: MealSlot.inferred(from: timestamp))
-        _chips = State(initialValue: choice.isRecipe ? AmountChip.servings : [])
+        _chips = State(initialValue: Self.initialChips(for: choice))
         let prefill: Double? = choice.lastAmount ?? (choice.isRecipe ? 1.0 : nil)
         _amountText = State(initialValue: prefill.map(Formatters.prefillText) ?? "")
     }
@@ -99,11 +99,24 @@ struct QuantitySheet: View {
         }
     }
 
+    /// The chips a food starts with: steps where there is a remembered amount to
+    /// multiply, servings for a recipe, and nothing at all for a bundled food until its
+    /// portions have been read.
+    static func initialChips(for choice: FoodChoice) -> [AmountChip] {
+        if let reference = choice.lastAmount, !choice.isRecipe {
+            return AmountChip.buckets(reference: reference, measure: choice.measure)
+        }
+        return choice.isRecipe ? AmountChip.servings : []
+    }
+
     /// Loads the portion chips of a bundled food and, absent a last amount, prefills the first.
     private func prepare() async {
         if let bundledID = choice.bundledID {
             do {
                 let portions = try await foodRepository.portions(for: bundledID)
+                // A food with history keeps its steps: those are about what this person
+                // actually ate, which is better than any published portion.
+                guard choice.lastAmount == nil else { return }
                 chips = AmountChip.portions(portions)
                 if amountText.isEmpty, let first = portions.first {
                     amountText = Formatters.prefillText(first.grams)

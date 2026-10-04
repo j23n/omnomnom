@@ -16,6 +16,9 @@ struct DayEntriesView: View {
     @Environment(\.healthObserving) private var observing
     @Query private var entries: [LogEntry]
     @Query private var previousDayEntries: [LogEntry]
+    /// The record for this day, if anything has been said about it. A day nobody has
+    /// marked has no row, which is why this is a list rather than a value.
+    @Query private var dayRecords: [DayRecord]
     @State private var healthSummary = DayHealthSummary.empty
     @State private var isCopying = false
 
@@ -32,6 +35,17 @@ struct DayEntriesView: View {
         _previousDayEntries = Query(
             filter: #Predicate<LogEntry> { $0.timestamp >= previousStart && $0.timestamp < start },
             sort: \LogEntry.timestamp
+        )
+        _dayRecords = Query(
+            filter: #Predicate<DayRecord> { $0.day >= start && $0.day < end }
+        )
+    }
+
+    /// What kind of day this is, derived rather than stored; see `DayState`.
+    private var dayState: DayState {
+        DayState.derive(
+            entryOrigins: entries.map(\.origin),
+            markedComplete: dayRecords.first?.isComplete ?? false
         )
     }
 
@@ -53,6 +67,7 @@ struct DayEntriesView: View {
         List {
             Section {
                 TotalsRow(totals: totals, foreign: healthSummary.hasForeign ? healthSummary.foreign : nil)
+                DayCoverageRow(state: dayState, onToggle: toggleDayComplete)
             }
             if entries.isEmpty {
                 Section {
@@ -197,3 +212,21 @@ private nonisolated struct HealthReadKey: Hashable, Sendable {
     .preferredColorScheme(.dark)
 }
 #endif
+
+extension DayEntriesView {
+    /// Marks the day as everything the user ate, or takes that back.
+    ///
+    /// The record is created on the first mark and kept afterwards, so a day that was
+    /// marked and then unmarked is distinguishable from one nobody has looked at. That
+    /// matters for sampling, which asks about specific days.
+    func toggleDayComplete() {
+        let wanted = dayState != .complete
+        do {
+            try DayRecord.setComplete(wanted, for: interval.start, in: context)
+            try context.save()
+        } catch {
+            AppLog.store.error("could not mark the day: \(error.localizedDescription, privacy: .public)")
+            model.show(banner: "That day could not be marked.")
+        }
+    }
+}

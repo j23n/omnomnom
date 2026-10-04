@@ -17,6 +17,7 @@ nonisolated enum StoreSchema {
         Tag.self,
         Phrase.self,
         PhraseItem.self,
+        DayRecord.self,
     ]
 
     static var schema: Schema { Schema(models) }

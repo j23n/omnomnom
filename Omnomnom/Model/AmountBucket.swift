@@ -46,7 +46,8 @@ nonisolated enum AmountBucket: String, CaseIterable, Hashable, Sendable {
     func amount(of reference: Double) -> Double {
         let scaled = reference * multiplier
         guard scaled > 0 else { return 0 }
-        // To 5 below 100, to 10 above: 0.7 x 180 g reads better as 125 g than 126 g.
+        // To 5 below 100, to 10 above: 0.7 x 180 g reads as 130 g rather than 126 g,
+        // and 0.7 x 40 g as 30 g rather than 28 g.
         let step: Double = scaled < 100 ? 5 : 10
         return (scaled / step).rounded() * step
     }
