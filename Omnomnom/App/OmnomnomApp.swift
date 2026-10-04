@@ -35,6 +35,10 @@ struct OmnomnomApp: App {
         services.startReconciliationIfNeeded()
         AppDependencyManager.shared.add(dependency: foodRepository)
         AppDependencyManager.shared.add(dependency: router)
+        // The store, so an intent can log without the app being open. Registered only
+        // when there is one: an intent that cannot reach the store says so rather than
+        // failing on a container nobody created.
+        if let container { AppDependencyManager.shared.add(dependency: container) }
         self.container = container
         self.foodRepository = foodRepository
         self.healthStore = healthStore

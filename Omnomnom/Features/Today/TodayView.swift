@@ -82,6 +82,14 @@ struct TodayView: View {
                 .fullScreenCover(item: $picking) { row in
                     FoodSearchView(mode: .pick(multiple: false, onPick: { choose($0, for: row) }))
                 }
+                .onChange(of: router.pendingLine) { _, line in
+                    // Siri took a line it could not finish. The composer picks it up so
+                    // the user lands on the question rather than on an empty field.
+                    guard let line else { return }
+                    composer.line = line
+                    router.clearPendingLine()
+                    composer.submit(using: resolver)
+                }
                 .onChange(of: composer.banner) { _, banner in
                     guard let banner else { return }
                     model.show(banner: banner)

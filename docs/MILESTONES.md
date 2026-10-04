@@ -12,16 +12,90 @@ Status log for the build order in `PLAN.md`. Each milestone is planned, implemen
 | 6 | AI estimation | done, awaiting first build | 2026-09-21 |
 | 7 | Internationalization | sources bundled, UI pending | |
 | 8 | The matcher: confidence, thresholds, popularity | done, awaiting first build | |
-| 9 | Phrase memory | planned | |
-| 10 | Composer and resolution sheet | planned | |
-| 11 | Buckets and coverage | planned | |
-| 12 | Trends | planned | |
-| 13 | Baseline days | planned | |
-| 14 | Widget and Siri | planned | |
-| 15 | Sampling | planned | |
+| 9 | Phrase memory | done, awaiting first build | |
+| 10 | Composer and resolution sheet | done, awaiting first build | |
+| 11 | Buckets and coverage | done, awaiting first build | |
+| 12 | Trends | done, awaiting first build | |
+| 13 | Baseline days | done, awaiting first build | |
+| 14 | Widget and Siri | Siri done; widget needs a target and a decision | |
+| 15 | Sampling | done, awaiting first build | |
 
 Milestones 8 to 15 come from `PLAN.md` revision 4, which rethinks logging around one line of
 natural language and puts trends back in scope. The shippable app is now 1 to 4 plus 8 to 12.
+
+## Milestones 9 to 15: the one-line path
+
+Written as one entry because they were built as one stretch and share a gate: no Swift
+compiler exists in the environment they were written in, so every Swift claim below is
+reasoned and arithmetically checked rather than built. The Python pipeline half of
+milestone 8 is the only part genuinely verified by running it.
+
+### What landed
+
+**9, phrase memory.** `Phrase` and `PhraseItem`, and `PhraseKey` as the one tested
+function the whole path rests on. Case, diacritics, punctuation and filler words in three
+languages go; counts become digits; the remaining tokens are sorted. Sorting is what
+makes recall survive how people actually retype a line — "oats with a banana" and "Banana
+and oats!" reach one record, as do "a pancake with oats, peanut butter and banana" and
+"Pancake, banana, peanut butter, oats". The price is that word order carries no meaning,
+so two different meals could collapse into one key; a visible, correctable recall is what
+makes that survivable. Writing replaces rather than merges, and a food reference nullifies
+on delete so the line survives to be written over.
+
+Also here: the model list stopped being copied into four places, which is a footgun with a
+delay on it.
+
+**10, the composer.** Four rungs in order — the whole line from memory, one familiar food,
+the bundled tables, then Open Food Facts behind its opt-in. The first two never ask the
+model, which is what keeps a repeat fast. `LineParser` works on every device and three of
+its behaviours came out of running it over real lines rather than from reading it: a
+number glued to its unit, a container word leaving a stranded "of", and a size word on its
+own belonging to the food before it. Validation is all-or-nothing per line, so "not
+checked" stays a property of the screen that one sentence carries.
+
+**11, buckets and coverage.** Four steps against what this person last had, offered only
+where there is a remembered amount to multiply; a first-time food shows its portions by
+name instead. `DayState` derives what kind of day it is, with `assumed` beating `complete`
+on purpose. The headline set became the user's choice.
+
+**12, trends.** All eight nutrients, one measure and one axis each. Health supplies the
+totals through one statistics-collection query per nutrient; the local store supplies what
+a complete day is. The rolling mean breaks over a gap by construction — the series is
+split into runs and each is drawn as its own line — rather than by hoping a missing value
+interrupts one line. Coverage sits second rather than last.
+
+**13, baseline days.** A slot's usual line offered as a proposal, accepted in one tap,
+recorded with an origin that keeps the day `assumed`. Built only from a line logged four
+or more times in that slot, never from a questionnaire.
+
+**15, sampling.** The cadence changes what the app asks for and never what it computes
+over: a complete day counts toward every mean whether or not the schedule asked about it.
+Membership is derived from the date, which is also why the day record carries no sample
+flag — it would have been a field nothing reads.
+
+### Milestone 14: Siri yes, widget no
+
+The App Intent is in. `LogLineIntent` runs the same four rungs without opening the app,
+logs only what settles, and leaves anything else on `AppRouter` for the composer with the
+dialog saying so. Two outcomes and no third, which is what makes it safe from a lock
+screen: it cannot put a figure into Health that nobody stood behind.
+
+The widget is **not** built, and deliberately not faked. It needs two things this
+environment cannot give honestly:
+
+- **A new Xcode target.** The project uses file-system-synchronised groups, so new source
+  files need no project edit at all — but a target does, and hand-writing one into
+  `project.pbxproj` with no way to open or build the result is how a project file gets
+  quietly corrupted.
+- **A decision about where the store lives.** A widget reads the same SwiftData store,
+  which means an App Group, which *moves the store's container*. For anyone who already
+  has entries that is a data migration, and it is not a thing to slip in alongside a
+  convenience feature. It wants to be its own change, with the migration written and
+  tested first.
+
+What is worth remembering when it is picked up: a widget that fits three numbers will be
+read as a score, which is the most verdict-shaped surface the app would have. Top phrases
+to log in one tap is the safer content.
 
 ## Milestone 8: The matcher
 

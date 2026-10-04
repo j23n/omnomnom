@@ -21,4 +21,19 @@ final class AppRouter {
     func clearPendingChoice() {
         pendingChoice = nil
     }
+
+    /// A line Siri took that could not be logged outright, waiting for the composer.
+    ///
+    /// Separate from `pendingChoice` because they arrive from different places and are
+    /// taken by different screens, and because a line and a food are not alternatives:
+    /// a spoken sentence can leave a line here while a tapped result leaves a food.
+    private(set) var pendingLine: String?
+
+    func compose(_ line: String) {
+        pendingLine = line
+    }
+
+    func clearPendingLine() {
+        pendingLine = nil
+    }
 }
