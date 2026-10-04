@@ -21,8 +21,8 @@ nonisolated enum EstimationError: Error, Hashable, Sendable, LocalizedError {
         case .unavailable(let reason): reason
         case .photoUnavailable: "Photos need iOS 27. Describe the meal in words instead."
         case .cancelled: "Cancelled."
-        case .guardrail: "The on-device model declined this request. Try a plainer description of the food."
-        case .tooLong: "The description is too long for the on-device model. Shorten it and try again."
+        case .guardrail: "The model declined this request. Try a plainer description of the food."
+        case .tooLong: "The description is too long for the model. Shorten it and try again."
         case .failed(let message): "Estimation failed: \(message)"
         }
     }

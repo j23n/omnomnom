@@ -17,7 +17,7 @@ actor FakeTransport: HTTPTransport {
         self.reply = reply
     }
 
-    func get(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         requests.append(request)
         switch reply {
         case .failure(let error):

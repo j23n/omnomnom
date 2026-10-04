@@ -1,9 +1,11 @@
 import Foundation
 import os
 
-/// One HTTP GET, so the client can be tested without a network.
+/// One HTTP request, so a client can be tested without a network. It was a GET alone until
+/// the estimator arrived with a POST, which is why the method is named for sending rather
+/// than for a verb.
 nonisolated protocol HTTPTransport: Sendable {
-    func get(_ request: URLRequest) async throws -> (Data, HTTPURLResponse)
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse)
 }
 
 /// The real transport: an ephemeral session that caches and persists nothing, fails at
@@ -23,7 +25,7 @@ nonisolated struct URLSessionTransport: HTTPTransport {
         session = URLSession(configuration: configuration)
     }
 
-    func get(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         return (data, http)
@@ -175,7 +177,7 @@ actor OpenFoodFactsClient {
 
     private func fetch(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         do {
-            return try await transport.get(request)
+            return try await transport.send(request)
         } catch {
             AppLog.barcode.error("lookup failed: \(error.localizedDescription, privacy: .private)")
             throw OpenFoodFactsError.network(error)
