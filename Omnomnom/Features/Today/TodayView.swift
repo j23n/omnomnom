@@ -126,14 +126,19 @@ struct TodayView: View {
 
     /// The four rungs, wired to this screen's environment.
     ///
-    /// The validator is present only when the estimation opt-in is on, which is the same
-    /// switch the photo tier uses. Without it the line still resolves from history and
-    /// the bundled tables; fewer rows settle and the sheet says so.
+    /// The estimator is whichever model the user chose, and `nil` when none will answer —
+    /// then only a line logged before comes back, and the composer says as much.
+    ///
+    /// The validator is separate and present only when the estimation opt-in is on. It is
+    /// the second pass, the one that moves "oats" off an oat biscuit, and it is always the
+    /// device's own model: a shortlist of candidate rows is a cheap question, and sending
+    /// one somewhere would be a second disclosure for a smaller gain.
     private var resolver: LineResolver {
         LineResolver(
             context: context,
             repository: repository,
-            validator: estimationEnabled ? FoundationMatchValidator() : nil
+            validator: estimationEnabled ? FoundationMatchValidator() : nil,
+            estimator: Estimators.current()
         )
     }
 

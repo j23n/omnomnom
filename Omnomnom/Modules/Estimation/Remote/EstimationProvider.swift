@@ -128,3 +128,42 @@ nonisolated enum EstimationKeychain {
     /// Whether a key is stored, without handing it to a view that only wants to say so.
     static var hasKey: Bool { read() != nil }
 }
+
+/// Builds the estimator the user's settings ask for.
+///
+/// One place, because three screens need the answer and a second reading of these defaults
+/// would be a second chance to disagree about which model is answering. `nil` means none
+/// will: Apple Intelligence chosen and unavailable, or an endpoint chosen and not yet
+/// configured. The caller says so rather than failing — search and the barcode scanner are
+/// how the app is used when no model will answer.
+nonisolated enum Estimators {
+    @MainActor
+    static func current(defaults: UserDefaults = .standard) -> (any MealEstimating)? {
+        switch chosen(defaults: defaults) {
+        case .onDevice:
+            guard EstimationAvailability.current().isAvailable else { return nil }
+            return FoundationMealEstimator()
+        case .remote:
+            let settings = remoteSettings(defaults: defaults)
+            guard settings.isUsable else { return nil }
+            return RemoteMealEstimator(settings: settings, key: EstimationKeychain.read())
+        }
+    }
+
+    /// Defaults to the device. A first run has sent nothing anywhere and should not need a
+    /// decision before it works.
+    static func chosen(defaults: UserDefaults = .standard) -> EstimationProvider {
+        guard let raw = defaults.string(forKey: EstimationProvider.key),
+              let provider = EstimationProvider(rawValue: raw)
+        else { return .onDevice }
+        return provider
+    }
+
+    static func remoteSettings(defaults: UserDefaults = .standard) -> RemoteEstimatorSettings {
+        RemoteEstimatorSettings(
+            baseURL: defaults.string(forKey: RemoteEstimatorSettings.baseURLKey) ?? "",
+            model: defaults.string(forKey: RemoteEstimatorSettings.modelKey) ?? "",
+            sendsPhotos: defaults.bool(forKey: RemoteEstimatorSettings.sendsPhotosKey)
+        )
+    }
+}

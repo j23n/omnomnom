@@ -34,7 +34,11 @@ struct LogLineIntent: AppIntent {
         // No validator here on purpose. The model tier belongs behind its opt-in and
         // behind a screen that can show what it decided; an intent that silently asked a
         // model and logged the answer would be the one place nobody could see it work.
-        let resolver = LineResolver(context: context, repository: repository)
+        // The same model the composer uses. Without one a spoken line resolves to nothing
+        // and the dialog says so, rather than Siri reporting success over an empty log.
+        let resolver = LineResolver(
+            context: context, repository: repository, estimator: Estimators.current()
+        )
         let resolution = await resolver.resolve(line)
 
         guard !resolution.isEmpty else {

@@ -25,12 +25,16 @@ struct ResolutionSheet: View {
     /// line was logged into whichever meal the hour implied, with no way to say otherwise.
     let onLog: (MealSlot, Date) -> Void
 
-    /// The meal and the moment, defaulted the way the Quantity sheet defaults them.
+    /// The meal and the moment, both editable, both defaulted from the meal the model
+    /// judged this to be.
     ///
-    /// One rule for this, not two: the selected day at the current wall-clock time, so a
-    /// line logged into the past keeps a sensible hour and the meal that hour implies. The
-    /// slot does not follow the time once it has been shown, because a user who sets one
-    /// of them has said something about it and the screen should not then argue.
+    /// Describing oats at nine in the evening means breakfast, so the slot comes from the
+    /// foods and the hour then follows the slot — eight in the morning, not the moment it
+    /// was typed. Where nothing judged it, the clock decides as it always did. Either way
+    /// `MealSlot.timestamp(on:)` refuses to record a time that has not happened yet.
+    ///
+    /// Neither follows the other after this. A user who sets one of them has said something
+    /// about it, and the screen should not then argue.
     @State private var mealSlot: MealSlot
     @State private var timestamp: Date
 
@@ -47,9 +51,9 @@ struct ResolutionSheet: View {
         self.onRemove = onRemove
         self.onPick = onPick
         self.onLog = onLog
-        let timestamp = QuantitySheet.defaultTimestamp(on: day)
-        _timestamp = State(initialValue: timestamp)
-        _mealSlot = State(initialValue: MealSlot.inferred(from: timestamp))
+        let slot = resolution.meal ?? MealSlot.inferred(from: QuantitySheet.defaultTimestamp(on: day))
+        _mealSlot = State(initialValue: slot)
+        _timestamp = State(initialValue: slot.timestamp(on: day))
     }
 
     var body: some View {

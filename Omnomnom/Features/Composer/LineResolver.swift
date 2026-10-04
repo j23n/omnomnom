@@ -2,22 +2,59 @@ import Foundation
 import SwiftData
 import os
 
-/// Turning a typed line into rows that can be logged.
+/// One food to resolve: what to call it, what to look it up as, and what the model
+/// thought was eaten.
+///
+/// This used to be a `ParsedItem`, cut out of the line by a hand-written parser that split
+/// on commas and read a quantity off the front of each part. The parser is gone. It could
+/// not tell "yogurt with bananas" from "spaghetti bolognese" without a rule that was wrong
+/// for one of them, and a model that names a dish's parts needs no rule at all.
+nonisolated struct ResolvableItem: Identifiable, Hashable, Sendable {
+    let id: UUID
+    /// What the person who ate it would call it, which is what the row shows.
+    let name: String
+    /// The same food in the wording a composition table uses, which is what is searched.
+    let lookupTerm: String
+    /// What the model estimated was eaten, in the food's own unit.
+    let estimated: Double
+
+    init(id: UUID = UUID(), name: String, lookupTerm: String, estimated: Double) {
+        self.id = id
+        self.name = name
+        self.lookupTerm = lookupTerm
+        self.estimated = estimated
+    }
+
+    /// The items of an estimate, after it has been clamped and trimmed.
+    static func items(of estimate: MealEstimate) -> [ResolvableItem] {
+        EstimateConversion.convert(estimate).items.map {
+            ResolvableItem(name: $0.name, lookupTerm: $0.lookupTerm, estimated: $0.grams)
+        }
+    }
+}
+
+/// Turning what someone wrote, or photographed, into rows that can be logged.
 ///
 /// Four rungs, tried in order, and the order is the whole design:
 ///
 /// 1. **Phrase recall.** The whole line has been logged before, so every food and every
-///    amount comes back from the last time. Nothing is parsed, nothing is searched, and
-///    no model is asked — which is what keeps a repeat under five seconds.
-/// 2. **Item recall.** A familiar food inside a line that is otherwise new.
-/// 3. **The bundled tables**, through FTS5 and `FoodMatcher`.
+///    amount comes back from the last time. Nothing is asked of a model at all — which is
+///    what keeps a repeat under five seconds and is why it stays in front.
+/// 2. **The model**, which names the foods in what was written and estimates a weight for
+///    each. It never supplies a nutrient value: it says *which* foods, and the database
+///    says what is in them.
+/// 3. **The bundled tables**, through FTS5 and `FoodMatcher`, once per named food.
 /// 4. **Open Food Facts**, when the product opt-in is on and the tables held nothing.
 ///
-/// Rungs 3 and 4 are then checked by the model in one request, where there is a model.
-/// Rungs 1 and 2 are not: the user already asserted those, so there is nothing to check.
+/// Rung 1 is not checked: the user already asserted it. Rungs 3 and 4 are checked by a
+/// second model pass where there is a model, which is what moves "oats" off an oat biscuit.
+///
+/// Without a model there is no rung 2, so a line resolves to nothing and the composer says
+/// so. That is the price of one primary input: search and the barcode scanner are how the
+/// app is used when no model will answer.
 ///
 /// Main-actor because recall and `FoodChoice` construction read a `ModelContext`; the
-/// search and the validation are awaited into their own actors.
+/// estimate, the search and the validation are awaited into their own actors.
 struct LineResolver {
     let context: ModelContext
     let repository: any FoodSearching
@@ -28,34 +65,52 @@ struct LineResolver {
     /// Looked up when the bundled tables answer nothing, and only when the user has
     /// turned product search on.
     let products: ((String) async -> [FoodChoice])?
+    /// Names the foods in what was written. `nil` when neither Apple Intelligence nor an
+    /// endpoint of the user's own will answer, in which case nothing new can be resolved
+    /// and only a line logged before comes back.
+    let estimator: (any MealEstimating)?
 
     init(
         context: ModelContext,
         repository: any FoodSearching,
         validator: (any MatchValidating)? = nil,
-        products: ((String) async -> [FoodChoice])? = nil
+        products: ((String) async -> [FoodChoice])? = nil,
+        estimator: (any MealEstimating)? = nil
     ) {
         self.context = context
         self.repository = repository
+        self.estimator = estimator
         self.validator = validator
         self.products = products
     }
 
-    /// The line, resolved. Never throws: a failure anywhere leaves rows unmatched for
-    /// the user to settle, which is a worse outcome than a good match and a far better
-    /// one than an error where a meal should be.
+    /// A typed line, resolved.
     func resolve(_ line: String) async -> LineResolution {
-        if let recalled = recallWholeLine(line) {
+        await resolve(.text(line), line: line)
+    }
+
+    /// What someone wrote or photographed, resolved. Never throws: a failure anywhere
+    /// leaves rows unmatched for the user to settle, which is a worse outcome than a good
+    /// match and a far better one than an error where a meal should be.
+    ///
+    /// `line` is what the sheet shows and what a phrase is remembered under. For a photo it
+    /// is whatever words came with it, which may be nothing — a picture with no description
+    /// resolves, but there is no line to remember it by.
+    func resolve(_ input: EstimationInput, line: String) async -> LineResolution {
+        if case .text = input, let recalled = recallWholeLine(line) {
             return recalled
         }
-        let parsed = LineParser.parse(line)
-        guard !parsed.isEmpty else {
+        guard let estimate = await estimate(input) else {
+            return LineResolution(line: line, rows: [], wasChecked: false)
+        }
+        let items = ResolvableItem.items(of: estimate)
+        guard !items.isEmpty else {
             return LineResolution(line: line, rows: [], wasChecked: false)
         }
 
         var rows: [ResolvedRow] = []
         var shortlists: [UUID: [FoodMatch]] = [:]
-        for item in parsed {
+        for item in items {
             if let row = recallItem(item) {
                 rows.append(row)
                 continue
@@ -66,8 +121,28 @@ struct LineResolver {
         }
 
         // One request for the whole line, and only for the rows a retriever chose.
-        let checked = await check(line: line, parsed: parsed, shortlists: shortlists, rows: &rows)
-        return LineResolution(line: line, rows: rows, wasChecked: checked)
+        let checked = await check(line: line, items: items, shortlists: shortlists, rows: &rows)
+        return LineResolution(
+            line: line, rows: rows, wasChecked: checked, meal: estimate.meal.slot
+        )
+    }
+
+    /// What the model made of the input, or `nil` when none would answer.
+    ///
+    /// A failure is logged and swallowed. The composer shows an empty resolution the same
+    /// way it shows a line with no food in it, because from the user's side those are the
+    /// same situation: nothing to sign off, and the other ways in are still there.
+    private func estimate(_ input: EstimationInput) async -> MealEstimate? {
+        guard let estimator else {
+            AppLog.estimation.info("no estimator configured; nothing to resolve")
+            return nil
+        }
+        do {
+            return try await estimator.estimate(input)
+        } catch {
+            AppLog.estimation.info("estimate failed: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
     }
 
     // MARK: - Rung one and two: what the user already asserted
@@ -107,8 +182,8 @@ struct LineResolver {
         return LineResolution(line: line ?? phrase.text, rows: rows, wasChecked: false)
     }
 
-    /// One fragment from memory, or `nil` when that fragment has no record.
-    private func recallItem(_ item: ParsedItem) -> ResolvedRow? {
+    /// One named food from memory, or `nil` when it has no record.
+    private func recallItem(_ item: ResolvableItem) -> ResolvedRow? {
         guard let key = PhraseKey.normalise(item.lookupTerm),
               let phrase = try? Phrase.recall(key: key, in: context),
               let stored = phrase.orderedItems.first,
@@ -119,10 +194,12 @@ struct LineResolver {
             id: item.id,
             name: item.name,
             choice: choice,
-            amount: amount(for: item, choice: choice, reference: stored.amount),
-            bucket: item.size ?? .usual,
-            // The reference a step multiplies is what was stored, so "less" after the
-            // line already said "big" is less than usual rather than less than big.
+            // The estimate is what was said about today; the stored amount is what this
+            // person usually has. The first is logged, the second is what a step measures
+            // from — so saying "a big bowl" is honoured, and "less" afterwards still means
+            // less than usual rather than less than big.
+            amount: item.estimated,
+            bucket: nil,
             baseAmount: stored.amount,
             origin: .item,
             confidence: .settled
@@ -145,15 +222,15 @@ struct LineResolver {
     }
 
     /// A row from the best match, falling back to a product when the tables held nothing.
-    private func databaseRow(for item: ParsedItem, shortlist: [FoodMatch]) async -> ResolvedRow {
+    private func databaseRow(for item: ResolvableItem, shortlist: [FoodMatch]) async -> ResolvedRow {
         if let best = shortlist.first {
             let choice = FoodChoice(bundled: best.food)
             return ResolvedRow(
                 id: item.id,
                 name: item.name,
                 choice: choice,
-                amount: amount(for: item, choice: choice, reference: nil),
-                bucket: bucket(for: item, choice: choice, reference: nil),
+                amount: item.estimated,
+                bucket: nil,
                 baseAmount: choice.lastAmount,
                 origin: .database,
                 confidence: best.confidence
@@ -164,8 +241,8 @@ struct LineResolver {
                 id: item.id,
                 name: item.name,
                 choice: product,
-                amount: amount(for: item, choice: product, reference: nil),
-                bucket: bucket(for: item, choice: product, reference: nil),
+                amount: item.estimated,
+                bucket: nil,
                 baseAmount: product.lastAmount,
                 origin: .product,
                 confidence: .probable
@@ -185,14 +262,14 @@ struct LineResolver {
     /// All-or-nothing: a validator that throws, is cancelled or answers short leaves the
     /// whole line unchecked rather than some rows checked and others not.
     private func check(
-        line: String, parsed: [ParsedItem], shortlists: [UUID: [FoodMatch]],
+        line: String, items resolvable: [ResolvableItem], shortlists: [UUID: [FoodMatch]],
         rows: inout [ResolvedRow]
     ) async -> Bool {
         guard let validator, !shortlists.isEmpty else { return false }
         var items: [ValidationItem] = []
         var itemRows: [Int: Int] = [:]
         var itemMatches: [Int: [FoodMatch]] = [:]
-        for item in parsed {
+        for item in resolvable {
             guard let shortlist = shortlists[item.id], !shortlist.isEmpty,
                   let rowIndex = rows.firstIndex(where: { $0.id == item.id })
             else { continue }
@@ -259,13 +336,12 @@ struct LineResolver {
             AppLog.estimation.info("validation moved a row to food \(chosen.food.id)")
             let replacement = FoodChoice(bundled: chosen.food)
             row.choice = replacement
-            // The amount was scaled against the row that lost, so it is taken again
-            // against the one that won.
-            if row.bucket == nil {
-                row.amount = defaultAmount(for: replacement)
-            } else if let bucket = row.bucket {
-                row.amount = bucket.amount(of: replacement.lastAmount ?? defaultAmount(for: replacement))
-            }
+            // The amount stands. It is what the model estimated was eaten, and being wrong
+            // about which row holds the numbers for it does not change how much there was:
+            // 40 g of what turned out to be oats rather than oat biscuits is still 40 g.
+            // Only the reference moves, because the reference is this person's history with
+            // the food that won.
+            row.baseAmount = replacement.lastAmount
         }
         row.confidence = switch verdict.certainty {
         case .certain: .settled
@@ -276,39 +352,6 @@ struct LineResolver {
     }
 
     // MARK: - Amounts
-
-    /// The amount a row starts at.
-    ///
-    /// Precedence, and the reasoning for it: an amount the line actually wrote wins over
-    /// everything, because the user said it. Then what they last had of this food in this
-    /// phrase, which is better evidence than any generic figure. Then a count against a
-    /// portion row. Then the food's own last amount, then a plain reference.
-    private func amount(for item: ParsedItem, choice: FoodChoice, reference: Double?) -> Double {
-        if let written = item.amount { return written }
-        let base = reference ?? choice.lastAmount ?? defaultAmount(for: choice)
-        if let count = item.count, reference == nil, choice.lastAmount == nil {
-            return base * count
-        }
-        if let size = item.size { return size.amount(of: base) }
-        return base
-    }
-
-    /// The step a row shows, or `nil` when there is no history to multiply.
-    ///
-    /// "Usual" has to mean this person's usual. On a food eaten for the first time there
-    /// is nothing to multiply, and offering the same control would make one word mean a
-    /// measured fact on one row and a population guess on the next.
-    private func bucket(for item: ParsedItem, choice: FoodChoice, reference: Double?) -> AmountBucket? {
-        guard reference != nil || choice.lastAmount != nil else { return nil }
-        return item.size ?? .usual
-    }
-
-    /// A reference for a food never logged: one serving of a recipe, else 100 of its own
-    /// unit, which is what the bundled tables are published in.
-    private func defaultAmount(for choice: FoodChoice) -> Double {
-        if case .recipe = choice.source { return 1 }
-        return 100
-    }
 
     /// A guard that needs no model: one item coming to more than this is worth a look
     /// whatever anything thinks, which is what catches a powder logged as a drink on a

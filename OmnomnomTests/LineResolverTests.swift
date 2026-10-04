@@ -17,6 +17,36 @@ nonisolated struct FakeValidator: MatchValidating {
     }
 }
 
+/// An estimator that names foods from a script, or fails.
+///
+/// Where a test is about what happens *after* a food is named, the fake splits its line on
+/// commas and " and " and gives each part 100 g. That is not what a real model does — it is
+/// the least interesting thing a model could do, which is the point: these tests are about
+/// the rungs below it. A test about the model's own answer supplies `items` itself.
+///
+/// `failure` doubles as a way to prove a model was never asked: a test that expects recall
+/// to answer gives the estimator a failure it should never reach.
+nonisolated struct FakeEstimator: MealEstimating {
+    var items: [EstimatedItem]?
+    var meal: EstimatedMeal = .snack
+    var failure: EstimationError?
+
+    func estimate(_ input: EstimationInput) async throws -> MealEstimate {
+        if let failure { throw failure }
+        if let items { return MealEstimate(items: items, meal: meal, note: "") }
+        guard case .text(let line) = input else {
+            return MealEstimate(items: [], meal: meal, note: "")
+        }
+        let named = line
+            .replacingOccurrences(of: " and ", with: ",")
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .map { EstimatedItem(name: $0, lookupTerm: $0, grams: 100) }
+        return MealEstimate(items: named, meal: meal, note: "")
+    }
+}
+
 /// The four rungs, in order, and what happens when the model is absent or wrong.
 struct LineResolverTests {
     private func makeContext() throws -> ModelContext {
@@ -53,8 +83,13 @@ struct LineResolverTests {
             ],
             in: context
         )
-        // An empty repository, so anything that reaches a search finds nothing.
-        let resolver = LineResolver(context: context, repository: FakeRepository())
+        // An empty repository, so anything that reaches a search finds nothing, and an
+        // estimator that throws, so anything that reaches the model resolves to nothing.
+        // Recall answering is the only way this test passes.
+        let resolver = LineResolver(
+            context: context, repository: FakeRepository(),
+            estimator: FakeEstimator(failure: .failed("the model was asked"))
+        )
         let resolution = await resolver.resolve("Banana and oats!")
 
         #expect(resolution.rows.count == 2)
@@ -74,8 +109,12 @@ struct LineResolverTests {
         try Phrase.remember(
             line: "oats", items: [PhraseDraftItem(name: "oats", amount: 40, food: oats)], in: context
         )
+        // Both would throw if reached, so recall is the only thing that can answer.
         let validator = FakeValidator(failure: .cancelled)
-        let resolver = LineResolver(context: context, repository: FakeRepository(), validator: validator)
+        let resolver = LineResolver(
+            context: context, repository: FakeRepository(), validator: validator,
+            estimator: FakeEstimator(failure: .failed("the model was asked"))
+        )
         let resolution = await resolver.resolve("oats")
         // A validator that throws on every call, and the line still resolves settled.
         #expect(resolution.rows.first?.confidence == .settled)
@@ -91,7 +130,7 @@ struct LineResolverTests {
             line: "oats", items: [PhraseDraftItem(name: "oats", amount: 45, food: oats)], in: context
         )
         let repository = FakeRepository(hits: ["banana": [bundled(2, "Banana, raw")]])
-        let resolver = LineResolver(context: context, repository: repository)
+        let resolver = LineResolver(context: context, repository: repository, estimator: FakeEstimator())
         let resolution = await resolver.resolve("oats and banana")
 
         #expect(resolution.rows.count == 2)
@@ -105,7 +144,7 @@ struct LineResolverTests {
     @Test func anUnknownLineIsMatchedInTheTables() async throws {
         let context = try makeContext()
         let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
-        let resolver = LineResolver(context: context, repository: repository)
+        let resolver = LineResolver(context: context, repository: repository, estimator: FakeEstimator())
         let resolution = await resolver.resolve("oats")
         #expect(resolution.rows.first?.origin == .database)
         #expect(resolution.rows.first?.choice?.name == "Oats, rolled")
@@ -114,7 +153,7 @@ struct LineResolverTests {
 
     @Test func aFoodNothingMatchesBlocksTheLog() async throws {
         let context = try makeContext()
-        let resolver = LineResolver(context: context, repository: FakeRepository())
+        let resolver = LineResolver(context: context, repository: FakeRepository(), estimator: FakeEstimator())
         let resolution = await resolver.resolve("something nobody has ever eaten")
         #expect(resolution.rows.count == 1)
         #expect(resolution.rows.first?.choice == nil)
@@ -127,25 +166,64 @@ struct LineResolverTests {
         // The coffee-powder case, with no model involved at all.
         let context = try makeContext()
         let repository = FakeRepository(hits: ["coffee": [bundled(9, "Coffee, instant, powder", ingredient: true)]])
-        let resolver = LineResolver(context: context, repository: repository)
+        let resolver = LineResolver(context: context, repository: repository, estimator: FakeEstimator())
         let resolution = await resolver.resolve("coffee")
         #expect(resolution.rows.first?.confidence == .unsure)
         #expect(!resolution.canLog)
     }
 
-    @Test func anExplicitAmountInTheLineWins() async throws {
+    @Test func theModelsWeightIsTheAmount() async throws {
+        // This read an amount off the front of the words — "200g rice" — which is what the
+        // parser was for. The model reports a weight for everything it names, so the words
+        // are its problem and the figure arrives already made.
         let context = try makeContext()
         let repository = FakeRepository(hits: ["rice": [bundled(3, "Rice, cooked")]])
-        let resolver = LineResolver(context: context, repository: repository)
+        let estimator = FakeEstimator(
+            items: [EstimatedItem(name: "rice", lookupTerm: "rice", grams: 200)]
+        )
+        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
         let resolution = await resolver.resolve("200g rice")
         #expect(resolution.rows.first?.amount == 200)
+    }
+
+    @Test func theMealComesFromTheFoodsAndNotTheClock() async throws {
+        // The reason the model is asked which meal it is: no clock can know that oats at
+        // nine in the evening are breakfast.
+        let context = try makeContext()
+        let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
+        let estimator = FakeEstimator(
+            items: [EstimatedItem(name: "oats", lookupTerm: "oats", grams: 40)],
+            meal: .breakfast
+        )
+        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
+        let resolution = await resolver.resolve("oats")
+        #expect(resolution.meal == .breakfast)
+    }
+
+    @Test func withNoModelNothingNewResolves() async throws {
+        // The cost of one primary input. Search and the barcode scanner are how the app is
+        // used when neither Apple Intelligence nor an endpoint will answer.
+        let context = try makeContext()
+        let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
+        let resolver = LineResolver(context: context, repository: repository, estimator: nil)
+        let resolution = await resolver.resolve("oats")
+        #expect(resolution.isEmpty)
+    }
+
+    @Test func aModelThatFailsLeavesNothingRatherThanThrowing() async throws {
+        let context = try makeContext()
+        let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
+        let estimator = FakeEstimator(failure: .failed("no network"))
+        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
+        let resolution = await resolver.resolve("oats")
+        #expect(resolution.isEmpty)
     }
 
     @Test func aFirstTimeFoodIsOfferedNoBucket() async throws {
         // "Usual" would mean nothing: there is no history to multiply.
         let context = try makeContext()
         let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
-        let resolver = LineResolver(context: context, repository: repository)
+        let resolver = LineResolver(context: context, repository: repository, estimator: FakeEstimator())
         let resolution = await resolver.resolve("oats")
         #expect(resolution.rows.first?.bucket == nil)
     }
@@ -156,7 +234,7 @@ struct LineResolverTests {
         try Phrase.remember(
             line: "oats", items: [PhraseDraftItem(name: "oats", amount: 40, food: oats)], in: context
         )
-        let resolver = LineResolver(context: context, repository: FakeRepository())
+        let resolver = LineResolver(context: context, repository: FakeRepository(), estimator: FakeEstimator())
         let resolution = await resolver.resolve("oats")
         #expect(resolution.rows.first?.bucket == .usual)
     }
@@ -173,7 +251,7 @@ struct LineResolverTests {
         let validator = FakeValidator(verdicts: [
             MatchVerdict(item: 1, candidate: 1, certainty: .certain),
         ])
-        let resolver = LineResolver(context: context, repository: repository, validator: validator)
+        let resolver = LineResolver(context: context, repository: repository, validator: validator, estimator: FakeEstimator())
         let resolution = await resolver.resolve("oat")
         #expect(resolution.wasChecked)
         #expect(resolution.rows.first?.choice?.name == "Oats, rolled")
@@ -186,7 +264,7 @@ struct LineResolverTests {
         let validator = FakeValidator(verdicts: [
             MatchVerdict(item: 1, candidate: 0, certainty: .unsure),
         ])
-        let resolver = LineResolver(context: context, repository: repository, validator: validator)
+        let resolver = LineResolver(context: context, repository: repository, validator: validator, estimator: FakeEstimator())
         let resolution = await resolver.resolve("oats")
         #expect(resolution.rows.first?.choice == nil)
         #expect(!resolution.canLog)
@@ -200,7 +278,7 @@ struct LineResolverTests {
         let validator = FakeValidator(verdicts: [
             MatchVerdict(item: 1, candidate: 4_242, certainty: .certain),
         ])
-        let resolver = LineResolver(context: context, repository: repository, validator: validator)
+        let resolver = LineResolver(context: context, repository: repository, validator: validator, estimator: FakeEstimator())
         let resolution = await resolver.resolve("oats")
         #expect(resolution.rows.first?.choice == nil)
     }
@@ -211,7 +289,7 @@ struct LineResolverTests {
         let validator = FakeValidator(verdicts: [
             MatchVerdict(item: 1, candidate: 1, certainty: .probable),
         ])
-        let resolver = LineResolver(context: context, repository: repository, validator: validator)
+        let resolver = LineResolver(context: context, repository: repository, validator: validator, estimator: FakeEstimator())
         let resolution = await resolver.resolve("oats")
         #expect(resolution.glanceCount == 1)
         #expect(resolution.canLog)
@@ -221,7 +299,7 @@ struct LineResolverTests {
         let context = try makeContext()
         let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
         let validator = FakeValidator(failure: .unavailable("Apple Intelligence is off"))
-        let resolver = LineResolver(context: context, repository: repository, validator: validator)
+        let resolver = LineResolver(context: context, repository: repository, validator: validator, estimator: FakeEstimator())
         let resolution = await resolver.resolve("oats")
         #expect(!resolution.wasChecked)
         // The matcher's own reading stands, so the line is still usable.
@@ -243,7 +321,7 @@ struct LineResolverTests {
             ],
             answerShort: true
         )
-        let resolver = LineResolver(context: context, repository: repository, validator: validator)
+        let resolver = LineResolver(context: context, repository: repository, validator: validator, estimator: FakeEstimator())
         let resolution = await resolver.resolve("oats and banana")
         #expect(!resolution.wasChecked)
         #expect(resolution.rows.count == 2)
@@ -252,7 +330,7 @@ struct LineResolverTests {
     @Test func noValidatorIsAnOrdinaryConfigurationNotAFailure() async throws {
         let context = try makeContext()
         let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
-        let resolver = LineResolver(context: context, repository: repository, validator: nil)
+        let resolver = LineResolver(context: context, repository: repository, validator: nil, estimator: FakeEstimator())
         let resolution = await resolver.resolve("oats")
         #expect(!resolution.wasChecked)
         #expect(resolution.canLog)
@@ -260,9 +338,12 @@ struct LineResolverTests {
 
     // MARK: - Nothing to resolve
 
-    @Test func aLineWithNoFoodResolvesToNothing() async throws {
+    @Test func aLineWithNoFoodInItResolvesToNothing() async throws {
+        // The model found nothing to name. It used to be the parser that found nothing,
+        // which is the same outcome reached by a different party.
         let context = try makeContext()
-        let resolver = LineResolver(context: context, repository: FakeRepository())
+        let estimator = FakeEstimator(items: [])
+        let resolver = LineResolver(context: context, repository: FakeRepository(), estimator: estimator)
         let resolution = await resolver.resolve("and some of my")
         #expect(resolution.isEmpty)
         #expect(!resolution.canLog)
@@ -271,7 +352,7 @@ struct LineResolverTests {
     @Test func aFailingSearchLeavesRowsUnmatchedRatherThanThrowing() async throws {
         let context = try makeContext()
         let repository = FakeRepository(failure: .databaseMissing)
-        let resolver = LineResolver(context: context, repository: repository)
+        let resolver = LineResolver(context: context, repository: repository, estimator: FakeEstimator())
         let resolution = await resolver.resolve("oats, banana")
         #expect(resolution.rows.count == 2)
         #expect(resolution.rows.allSatisfy { $0.choice == nil })

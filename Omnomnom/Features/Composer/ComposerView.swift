@@ -1,6 +1,8 @@
 import Foundation
+import PhotosUI
 import SwiftData
 import SwiftUI
+import UIKit
 
 /// The field at the bottom of Today: one line in, a meal out.
 ///
@@ -23,14 +25,16 @@ struct ComposerView: View {
     let onSubmit: () -> Void
 
     @FocusState private var isFocused: Bool
+    @State private var isCameraPresented = false
+    @State private var pickerItem: PhotosPickerItem?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if isFocused, model.line.isEmpty {
                 ComposerSuggestions(onPick: fill)
             }
-            if !model.preview.isEmpty, isFocused {
-                PreviewChips(items: model.preview)
+            if model.image != nil {
+                AttachedPhoto(data: model.image) { model.image = nil }
             }
             HStack(spacing: 8) {
                 TextField("What did you eat?", text: $model.line, axis: .vertical)
@@ -54,6 +58,7 @@ struct ComposerView: View {
                             Button("Done") { isFocused = false }
                         }
                     }
+                camera
                 submit
             }
             .padding(.horizontal, 14)
@@ -61,7 +66,7 @@ struct ComposerView: View {
             .glassEffect(in: Capsule())
         }
         .readableColumn(ReadableColumn.control)
-        .animation(.default, value: model.preview)
+        .animation(.default, value: model.image)
     }
 
     private var submit: some View {
@@ -78,6 +83,50 @@ struct ComposerView: View {
         .accessibilityLabel(model.isResolving ? "Working" : "Log this line")
     }
 
+    /// The camera, and the library when there is no camera.
+    ///
+    /// Inside the field rather than beside it, because it is another way of answering the
+    /// same question: a picture of a plate and a sentence about it are one input, and the
+    /// model takes either. A separate camera feature is what this replaced.
+    @ViewBuilder private var camera: some View {
+        if hasCamera {
+            Button { isCameraPresented = true } label: {
+                Image(systemName: "camera")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .accessibilityLabel("Add a photo of the meal")
+            .fullScreenCover(isPresented: $isCameraPresented) {
+                CameraCaptureView(
+                    onCapture: { image in
+                        isCameraPresented = false
+                        model.image = image.jpegData(compressionQuality: 0.9)
+                    },
+                    onCancel: { isCameraPresented = false }
+                )
+                .ignoresSafeArea()
+            }
+        } else {
+            PhotosPicker(selection: $pickerItem, matching: .images) {
+                Image(systemName: "photo.on.rectangle")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .accessibilityLabel("Add a photo of the meal")
+            .onChange(of: pickerItem) { _, item in
+                guard let item else { return }
+                Task {
+                    model.image = try? await item.loadTransferable(type: Data.self)
+                    pickerItem = nil
+                }
+            }
+        }
+    }
+
+    private var hasCamera: Bool {
+        UIImagePickerController.isSourceTypeAvailable(.camera)
+    }
+
     /// Takes a suggested line as though it had been typed, and resolves it at once.
     ///
     /// The text is left in the field rather than cleared, so a line that resolves to
@@ -88,6 +137,37 @@ struct ComposerView: View {
         model.line = line
         isFocused = false
         onSubmit()
+    }
+}
+
+/// The photograph waiting to be sent, and the way to change your mind about it.
+///
+/// Above the field rather than inside it: a thumbnail squeezed into a capsule beside two
+/// buttons is unreadable at any type size, and a picture the model is about to be asked
+/// about is worth seeing before it is sent. It is the only thing on this screen that can be
+/// removed without typing, so the control says what it does rather than being a bare cross.
+private struct AttachedPhoto: View {
+    let data: Data?
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            PhotoThumbnail(data: data, size: 44)
+            Text("Photo attached")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+            Button("Remove", systemImage: "xmark") { onRemove() }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Remove the photo")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassEffect(in: RoundedRectangle(cornerRadius: 16))
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -204,94 +284,6 @@ private struct ComposerSuggestions: View {
     }
 }
 
-/// What the field understood, before anything has been looked up.
-///
-/// Only the parser has run at this point, so a chip says "this is a food I found in your
-/// line" and never "this is a food I have numbers for". It is feedback on the typing,
-/// which is why it is plain text rather than tinted: nothing here can be acted on yet.
-///
-/// Each chip carries the amount its line gave it, and only that. An explicit amount beats
-/// a count and a count beats a size word, which is the order of how much they pin down; a
-/// fragment that gave none shows none. Filling that gap with the amount the food would
-/// resolve to is the one guess this view must not make — nothing has been looked up yet,
-/// and a figure that appears before the sentence is finished reads as a decision already
-/// taken.
-///
-/// A count of one is left off. "a banana" and "banana" parse to the same single banana, so
-/// "x1" would state nothing the chip does not already say.
-///
-/// Left out, per the design: energy per chip, which would turn the composer into a
-/// calculator and invite correction at a precision the app does not claim. Left out for
-/// want of a vocabulary: provenance. The design asks for a clock glyph where the food and
-/// its amount were recalled from the last time and a book glyph where they were matched
-/// against the database just now, and those glyphs exist nowhere in the app yet — the
-/// resolution sheet, which is meant to teach the same pair, does not use them either.
-/// Half a vocabulary introduced here would have to be unlearned when the other half
-/// arrives.
-private struct PreviewChips: View {
-    let items: [ParsedItem]
-
-    var body: some View {
-        FlowLayout(spacing: 6) {
-            ForEach(items) { item in
-                HStack(spacing: 5) {
-                    Text(item.name)
-                    if let amount = Self.amountText(for: item) {
-                        Text(amount)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                    }
-                }
-                .font(.footnote)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(.quaternary, in: .capsule)
-            }
-        }
-        .padding(.horizontal, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Self.spokenLabel(items))
-    }
-
-    /// The amount the chip will use, or `nil` where the line named none.
-    private nonisolated static func amountText(for item: ParsedItem) -> String? {
-        if let amount = item.amount {
-            return Formatters.amount(amount, measure: item.measure)
-        }
-        if let count = item.count, count != 1 {
-            return "×\(Formatters.fieldText(count))"
-        }
-        // The step the size word stands for, lowercased: the buckets are capitalised on
-        // the control that picks one, and this is a fragment of the user's own sentence
-        // rather than a control.
-        return item.size?.label.lowercased()
-    }
-
-    /// Every chip in one sentence, for the one accessibility element the row collapses
-    /// into. Built here rather than inside the label's interpolation so the mapping stays
-    /// readable.
-    private nonisolated static func spokenLabel(_ items: [ParsedItem]) -> String {
-        let found = items.count == 1 ? "1 food" : "\(items.count) foods"
-        return "Found \(found): \(items.map(spokenItem).joined(separator: ", "))"
-    }
-
-    /// The chip as VoiceOver should read it, amount before name, the way the line said
-    /// it: "2 eggs" and not "eggs, 2". The symbols are spelled out, since "g" read aloud
-    /// is a letter.
-    private nonisolated static func spokenItem(_ item: ParsedItem) -> String {
-        if let amount = item.amount {
-            return "\(Formatters.fieldText(amount)) \(item.measure.spokenName) \(item.name)"
-        }
-        if let count = item.count, count != 1 {
-            return "\(Formatters.fieldText(count)) \(item.name)"
-        }
-        if let size = item.size {
-            return "\(item.name), \(size.label.lowercased())"
-        }
-        return item.name
-    }
-}
-
 #if DEBUG
 #Preview("Empty", traits: .sizeThatFitsLayout) {
     ComposerView(model: ComposerModel()) {}
@@ -321,19 +313,12 @@ private struct PreviewChips: View {
         .environment(\.dynamicTypeSize, .accessibility5)
 }
 
-// The chips and the usual lines are previewed on their own because both need the field
-// to be focused and a preview cannot focus it. The parser runs for real here, so what the
-// canvas shows is what a line of typing actually produces.
+// The usual lines are previewed on their own because they need the field to be focused
+// and a preview cannot focus it.
 
-#Preview("Chips with amounts", traits: .sizeThatFitsLayout) {
-    PreviewChips(items: LineParser.parse("200g rice, 2 eggs, a banana, large coffee, peanut b"))
+#Preview("A photo attached", traits: .sizeThatFitsLayout) {
+    AttachedPhoto(data: PreviewStore.samplePhoto) {}
         .padding()
-}
-
-#Preview("Chips at accessibility 5", traits: .sizeThatFitsLayout) {
-    PreviewChips(items: LineParser.parse("200g rice, 2 eggs, a banana, large coffee, peanut b"))
-        .padding()
-        .environment(\.dynamicTypeSize, .accessibility5)
 }
 
 #Preview("Usual lines, morning", traits: .sizeThatFitsLayout) {
