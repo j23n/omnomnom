@@ -72,6 +72,24 @@ Mark the few things that must leave the main actor: FTS5 search over the bundled
 
 SwiftData background work goes through `@ModelActor`. Views use `@Query` directly.
 
+Three rules learned from the first build, all of them the same collision between the
+target's main-actor default and something that cannot be main-actor:
+
+- **A property wrapper is a mutable stored property, and those cannot be nonisolated.** So
+  a type holding `@Parameter` or `@Dependency` — every App Intent and every entity query
+  — must *not* be marked `nonisolated`, and takes the default instead. The entity it
+  returns, whose properties are all `let`, must be.
+- **A `@Model` type's members are nonisolated whatever the default says.** So any value
+  type that a `@Model`'s own methods read has to be nonisolated too, or it is unreachable
+  from there. `PhraseDraftItem` is the case in point.
+- **An escaping autoclosure captures `self`**, and a struct's `self` stays `inout` for the
+  whole of its initialiser. Anything registered from `App.init` is built into a local
+  first and assigned afterwards.
+
+The pattern behind all three: ask what the type stores, not what it feels like. Immutable
+stored properties can be nonisolated, mutable ones cannot, and `@Model` sits outside the
+default entirely.
+
 HealthKit is the main friction point with strict concurrency. Its completion-handler APIs and the update handlers on `HKObserverQuery` and `HKAnchoredObjectQuery` fire off the main actor and are not Sendable-friendly. Wrap the entire HealthKit surface in one actor exposing an async API in your own value types, and never let an `HK` type reach a view.
 
 ### SwiftUI choices

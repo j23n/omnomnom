@@ -145,9 +145,13 @@ final class Phrase {
 /// One item on its way into a phrase: what it was called, how much of it, and the food
 /// or recipe behind it.
 ///
-/// Main-actor isolated by the target's default, which is what it wants to be: it holds
-/// `Food` and `Recipe` references and is only ever built beside a `ModelContext`.
-struct PhraseDraftItem {
+/// `nonisolated`, and it has to be. A `@Model` type's members are nonisolated whatever
+/// the target's default isolation says, so `Phrase.remember` reads this from a
+/// nonisolated context; left on the default it would be main-actor and unreachable from
+/// there. Legal because every stored property is a `let` — a mutable one could not be
+/// nonisolated — and deliberately not `Sendable`, since it carries model references that
+/// are not.
+nonisolated struct PhraseDraftItem {
     let name: String
     /// In the food's own unit, or servings for a recipe.
     let amount: Double
