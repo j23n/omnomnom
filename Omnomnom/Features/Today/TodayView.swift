@@ -15,9 +15,6 @@ struct TodayView: View {
     @AppStorage(EstimationModule.enabledKey) private var estimationEnabled = false
     @State private var model: TodayViewModel
     @State private var composer = ComposerModel()
-    /// A row of the resolution sheet whose food the user wants to change.
-    @State private var picking: ResolvedRow?
-    /// A food the system asked the app to open, handed to the search screen once.
 
     /// Starts from `model`; previews pass one with a banner or the unauthorized notice already up.
     init(model: TodayViewModel = TodayViewModel()) {
@@ -63,29 +60,35 @@ struct TodayView: View {
                         }
                     }
                 }
-                .safeAreaBar(edge: .bottom) {
+                // An inset and not a bar. A bar does not move for the keyboard, so the
+                // field it holds ended up underneath one, which is the whole point of the
+                // field being in reach of a thumb undone. An inset is laid out above the
+                // keyboard as any other content would be.
+                .safeAreaInset(edge: .bottom, spacing: 0) {
                     TodayBottomBar(model: model, composer: composer) {
                         composer.submit(using: resolver)
                     }
                 }
-                .sheet(item: $composer.resolution) { resolution in
-                    ResolutionSheet(
+                // Dragging the day away puts the keyboard down, which is the gesture
+                // people try first.
+                .scrollDismissesKeyboard(.interactively)
+                // Pushed, not presented. Signing off a meal means changing a food and
+                // choosing a weight, and both of those want a screen of their own on top
+                // of this one — which a sheet cannot give them, because the thing it would
+                // have to present belongs to whatever put the sheet up.
+                .navigationDestination(item: $composer.resolution) { resolution in
+                    ResolutionScreen(
                         resolution: resolution,
                         day: model.selectedDay,
                         onChange: { composer.update($0) },
                         onRemove: { composer.remove($0) },
-                        onPick: { picking = $0 },
                         onLog: { slot, at in
-                            // The sheet's own rows, not the resolution captured when it
+                            // The screen's own rows, not the resolution captured when it
                             // opened: an amount changed in it has to be the one logged.
                             let edited = composer.resolution ?? resolution
                             Task { await log(edited, mealSlot: slot, at: at) }
                         }
                     )
-                    .presentationDetents([.medium, .large])
-                }
-                .fullScreenCover(item: $picking) { row in
-                    FoodSearchView(mode: .pick(multiple: false, onPick: { choose($0, for: row) }))
                 }
                 .onOpenURL { url in
                     guard let id = WidgetSnapshot.phraseID(from: url) else { return }
@@ -180,20 +183,6 @@ struct TodayView: View {
             at: timestamp
         )
         model.show(banner: Self.loggedMessage(outcome, of: resolution.rows.count))
-    }
-
-    /// Hands a picked food to the row that asked for it, keeping the amount the row
-    /// already had: the user changed what the food is, not how much of it there was.
-    private func choose(_ choice: FoodChoice, for row: ResolvedRow) {
-        var updated = row
-        updated.choice = choice
-        updated.confidence = .settled
-        updated.implausible = false
-        if updated.amount == 0 {
-            updated.amount = choice.lastAmount ?? 100
-        }
-        composer.update(updated)
-        picking = nil
     }
 
     /// One sentence for the whole line, naming only what the user can act on.

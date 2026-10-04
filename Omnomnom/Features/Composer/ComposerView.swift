@@ -46,20 +46,8 @@ struct ComposerView: View {
                     .onSubmit(onSubmit)
                     .accessibilityLabel("What did you eat")
                     .accessibilityHint("Type or dictate a meal, such as oats, banana, coffee")
-                    .toolbar {
-                        // The way out of the field, and the only one. A vertical field
-                        // spends Return on a newline — which this field wants, since a
-                        // newline separates foods exactly as a comma does — so the
-                        // keyboard grows no Done key of its own and `onSubmit` never
-                        // fires from it. Without this button there was no way to put the
-                        // keyboard away at all once the field had been tapped.
-                        ToolbarItemGroup(placement: .keyboard) {
-                            Spacer()
-                            Button("Done") { isFocused = false }
-                        }
-                    }
                 camera
-                submit
+                trailing
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -67,6 +55,27 @@ struct ComposerView: View {
         }
         .readableColumn(ReadableColumn.control)
         .animation(.default, value: model.image)
+    }
+
+    /// One control, one place: send the line, or put the keyboard away.
+    ///
+    /// A keyboard toolbar used to hold the way out. Inside a bottom inset it rendered in the
+    /// wrong place and sometimes over the field itself, and a vertical field spends Return
+    /// on a newline — which this field wants, since a newline separates foods as a comma
+    /// does — so there was no Done key either. Nothing about the field's own corner moves,
+    /// which is what makes it findable: with something to send it sends, and with an empty
+    /// field and a keyboard up it closes the keyboard.
+    @ViewBuilder private var trailing: some View {
+        if isFocused, !model.canSubmit, !model.isResolving {
+            Button { isFocused = false } label: {
+                Image(systemName: "keyboard.chevron.compact.down")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .accessibilityLabel("Close the keyboard")
+        } else {
+            submit
+        }
     }
 
     private var submit: some View {
