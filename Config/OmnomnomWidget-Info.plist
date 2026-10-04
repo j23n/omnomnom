@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The widget extension's Info.plist, kept outside OmnomnomWidget/ on purpose.
+	     That folder is a file-system synchronized group, so everything in it becomes a
+	     build file of the target automatically; a plist there is a resource to copy as
+	     well as the bundle's own plist, and this one is only ever the latter. A folder
+	     in no synchronized group cannot contribute a build file, which settles it.
+
+	     Nothing here is generated: GENERATE_INFOPLIST_FILE is off for this target, so
+	     this file is the whole truth about what the bundle says it is. NSExtension is
+	     why it exists at all — it is a dictionary, and the INFOPLIST_KEY_* build
+	     settings can only write top-level keys, so an appex configured that way never
+	     says which extension point it fills and installd refuses the app. -->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Omnomnom</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.widgetkit-extension</string>
+	</dict>
+</dict>
+</plist>
