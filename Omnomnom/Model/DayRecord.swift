@@ -4,7 +4,11 @@ import SwiftData
 /// One date, and what the user said about it.
 ///
 /// Created only when there is something to record, so a store full of untouched days
-/// stays empty. Marking a day complete is one tap on Today and it is the entire
+/// stays empty.
+///
+/// It holds no sample membership. The cadence derives that from the date, and a complete
+/// day counts toward every mean whether or not the schedule asked for it, so there would
+/// be nothing for a stored flag to decide. Marking a day complete is one tap on Today and it is the entire
 /// mechanism behind a defensible average: every figure on Trends says what it rests on,
 /// as "mean of 19 complete days", never as a bare number over a range.
 ///
@@ -17,14 +21,11 @@ final class DayRecord {
     var day: Date = Date.now
     /// The user said this is everything they ate that day.
     var isComplete: Bool = false
-    /// The day is one the sampling cadence asked for.
-    var inSample: Bool = false
 
     init(day: Date) {
         self.id = UUID()
         self.day = day
         self.isComplete = false
-        self.inSample = false
     }
 
     /// The record for a day, or `nil` when nothing has been said about it.

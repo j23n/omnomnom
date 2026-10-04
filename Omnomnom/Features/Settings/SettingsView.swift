@@ -6,12 +6,17 @@ struct SettingsView: View {
     @AppStorage(BarcodeModule.enabledKey) private var barcodeScanningEnabled = false
     @AppStorage(BarcodeModule.productSearchKey) private var productSearchEnabled = false
     @AppStorage(EstimationModule.enabledKey) private var mealEstimationEnabled = false
+    @AppStorage(SamplingCadence.key) private var cadenceRaw = SamplingCadence.standard.rawValue
     @Environment(\.health) private var health
     @Environment(\.scenePhase) private var scenePhase
     @State private var authorization = HealthAuthorization.unavailable
     @State private var estimation: EstimationAvailability?
     /// A fixed model state for previews; `nil` reads the model.
     private let fixedEstimation: EstimationAvailability?
+
+    private var cadence: SamplingCadence {
+        SamplingCadence(rawValue: cadenceRaw) ?? .standard
+    }
 
     init(estimationAvailability: EstimationAvailability? = nil) {
         fixedEstimation = estimationAvailability
@@ -46,7 +51,24 @@ struct SettingsView: View {
                 } footer: {
                     Text(Self.modulesFooter)
                 }
+                Section {
+                    NavigationLink("Headline figures") {
+                        HeadlinePickerView()
+                    }
+                    Picker("Ask me about", selection: $cadenceRaw) {
+                        ForEach(SamplingCadence.allCases) { cadence in
+                            Text(cadence.label).tag(cadence.rawValue)
+                        }
+                    }
+                } header: {
+                    Text("Today")
+                } footer: {
+                    Text(cadence.explanation + " A day you mark complete always counts toward the trends, whether or not it was asked about.")
+                }
                 Section("Data") {
+                    NavigationLink("Remembered lines") {
+                        RememberedLinesView()
+                    }
                     NavigationLink("Sources") {
                         SourcesView()
                     }

@@ -58,7 +58,7 @@ extension EntryLogger {
         if !drafts.isEmpty {
             do {
                 remembered = try Phrase.remember(
-                    line: resolution.line, items: drafts, in: context
+                    line: resolution.line, items: drafts, in: context, slot: mealSlot
                 ) != nil
                 try context.save()
             } catch {

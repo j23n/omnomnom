@@ -14,11 +14,21 @@ struct DayEntriesView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.health) private var health
     @Environment(\.healthObserving) private var observing
+    @Environment(\.foodRepository) private var repository
     @Query private var entries: [LogEntry]
     @Query private var previousDayEntries: [LogEntry]
     /// The record for this day, if anything has been said about it. A day nobody has
     /// marked has no row, which is why this is a list rather than a value.
     @Query private var dayRecords: [DayRecord]
+    @Query private var baselines: [BaselinePhrase]
+    /// The slot whose proposal is being accepted, so only that row shows a spinner.
+    @State private var acceptingSlot: MealSlot?
+    @AppStorage(SamplingCadence.key) private var cadenceRaw = SamplingCadence.standard.rawValue
+
+    /// How often the app asks about a day; see `SamplingCadence`.
+    private var cadence: SamplingCadence {
+        SamplingCadence(rawValue: cadenceRaw) ?? .standard
+    }
     @State private var healthSummary = DayHealthSummary.empty
     @State private var isCopying = false
 
@@ -39,6 +49,22 @@ struct DayEntriesView: View {
         _dayRecords = Query(
             filter: #Predicate<DayRecord> { $0.day >= start && $0.day < end }
         )
+    }
+
+    /// Slots with a usual line and nothing logged in them yet, today only.
+    ///
+    /// Only today: proposing a meal for last Tuesday would be inventing history rather
+    /// than saving anyone a keystroke.
+    private var proposals: [(slot: MealSlot, phrase: Phrase)] {
+        guard model.isShowingToday else { return [] }
+        return MealSlot.allCases.compactMap { slot in
+            guard !entries.contains(where: { $0.mealSlot == slot }),
+                  let baseline = baselines.first(where: { $0.mealSlot == slot }),
+                  baseline.isOfferable,
+                  let phrase = baseline.phrase
+            else { return nil }
+            return (slot, phrase)
+        }
     }
 
     /// What kind of day this is, derived rather than stored; see `DayState`.
@@ -67,7 +93,24 @@ struct DayEntriesView: View {
         List {
             Section {
                 TotalsRow(totals: totals, foreign: healthSummary.hasForeign ? healthSummary.foreign : nil)
-                DayCoverageRow(state: dayState, onToggle: toggleDayComplete)
+                DayCoverageRow(
+                    state: dayState,
+                    isAsked: cadence.asks(about: interval.start),
+                    onToggle: toggleDayComplete
+                )
+            }
+            if !proposals.isEmpty {
+                Section {
+                    ForEach(proposals, id: \.slot) { proposal in
+                        BaselineProposalRow(
+                            slot: proposal.slot,
+                            text: proposal.phrase.text,
+                            isAccepting: acceptingSlot == proposal.slot,
+                            onAccept: { Task { await accept(proposal.phrase, for: proposal.slot) } },
+                            onDecline: { decline(proposal.slot) }
+                        )
+                    }
+                }
             }
             if entries.isEmpty {
                 Section {
@@ -227,6 +270,42 @@ extension DayEntriesView {
         } catch {
             AppLog.store.error("could not mark the day: \(error.localizedDescription, privacy: .public)")
             model.show(banner: "That day could not be marked.")
+        }
+    }
+}
+
+extension DayEntriesView {
+    /// Logs a slot's usual line, marked as assumed.
+    ///
+    /// This is the only place an entry is written without anyone describing it, and it
+    /// still takes a tap. `EntryOrigin.baseline` is what keeps the day distinguishable
+    /// afterwards: it reads as assumed rather than complete, and any mean including it
+    /// says so.
+    func accept(_ phrase: Phrase, for slot: MealSlot) async {
+        acceptingSlot = slot
+        defer { acceptingSlot = nil }
+        let resolver = LineResolver(context: context, repository: repository)
+        guard let resolution = resolver.resolution(for: phrase) else {
+            model.show(banner: "That meal can't be logged any more: one of its foods is gone.")
+            return
+        }
+        let timestamp = QuantitySheet.defaultTimestamp(on: interval.start)
+        let logger = EntryLogger(context: context, health: health)
+        let outcome = await logger.logLine(
+            resolution, mealSlot: slot, at: timestamp, origin: .baseline
+        )
+        phrase.noteRecalled()
+        model.show(banner: TodayView.loggedMessage(outcome, of: resolution.rows.count))
+    }
+
+    /// Turns a slot's proposal down. Permanent until the user asks for it again, because
+    /// an offer that keeps coming back is nagging rather than helping.
+    func decline(_ slot: MealSlot) {
+        do {
+            try BaselinePhrase.baseline(for: slot, in: context)?.declinedAt = .now
+            try context.save()
+        } catch {
+            AppLog.store.error("could not decline a proposal: \(error.localizedDescription, privacy: .public)")
         }
     }
 }

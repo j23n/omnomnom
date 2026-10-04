@@ -13,6 +13,10 @@ import SwiftUI
 /// percentage, no ratio, no progress bar, and nothing that reads as a target.
 struct DayCoverageRow: View {
     let state: DayState
+    /// False on a day the sampling cadence did not ask about, where the app stays quiet.
+    /// The figures are still shown and a day marked complete still counts; what goes is
+    /// the prompt.
+    var isAsked = true
     let onToggle: () -> Void
 
     var body: some View {
@@ -21,7 +25,7 @@ struct DayCoverageRow: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 12)
-            if state != .empty {
+            if state != .empty, isAsked || state == .complete {
                 Button(action: onToggle) {
                     Text(state == .complete ? "Marked" : "That's everything")
                         .font(.footnote)

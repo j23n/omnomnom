@@ -74,8 +74,22 @@ struct LineResolver {
 
     /// The whole line from memory, or `nil` when it has never been logged.
     private func recallWholeLine(_ line: String) -> LineResolution? {
-        guard let phrase = try? Phrase.recall(line, in: context) else { return nil }
-        let rows = phrase.orderedItems.compactMap { item -> ResolvedRow? in
+        guard let phrase = try? Phrase.recall(line, in: context),
+              let resolution = resolution(for: phrase, line: line)
+        else { return nil }
+        phrase.noteRecalled()
+        AppLog.store.info("recalled a phrase of \(resolution.rows.count) items")
+        return resolution
+    }
+
+    /// What a remembered phrase comes to, without going through a typed line.
+    ///
+    /// Used by recall above and by accepting a day's baseline, which is the same act with
+    /// no typing in front of it. `nil` when any item no longer resolves: half a meal
+    /// returned silently is worse than being asked again.
+    func resolution(for phrase: Phrase, line: String? = nil) -> LineResolution? {
+        let items = phrase.orderedItems
+        let rows = items.compactMap { item -> ResolvedRow? in
             guard let choice = choice(for: item) else { return nil }
             return ResolvedRow(
                 name: item.name,
@@ -86,12 +100,8 @@ struct LineResolver {
                 confidence: .settled
             )
         }
-        // `isRecallable` already said every item resolves, so a short list here means the
-        // store changed under us; treat it as no memory rather than as half a meal.
-        guard rows.count == phrase.orderedItems.count, !rows.isEmpty else { return nil }
-        phrase.noteRecalled()
-        AppLog.store.info("recalled a phrase of \(rows.count) items")
-        return LineResolution(line: line, rows: rows, wasChecked: false)
+        guard rows.count == items.count, !rows.isEmpty else { return nil }
+        return LineResolution(line: line ?? phrase.text, rows: rows, wasChecked: false)
     }
 
     /// One fragment from memory, or `nil` when that fragment has no record.

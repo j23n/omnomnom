@@ -27,6 +27,10 @@ final class Phrase {
     var text: String = ""
     var useCount: Int = 0
     var lastUsed: Date = Date.now
+    /// Raw `MealSlot` this line was last logged in, so a baseline can be offered for the
+    /// slot someone actually eats it at rather than asked about in a questionnaire.
+    /// `nil` for a phrase written before the app recorded it.
+    var lastSlotRaw: String?
 
     @Relationship(deleteRule: .cascade, inverse: \PhraseItem.phrase)
     var items: [PhraseItem]?
@@ -37,6 +41,12 @@ final class Phrase {
         self.text = text
         self.useCount = 0
         self.lastUsed = Date.now
+    }
+
+    /// The meal slot this line was last logged in.
+    var lastSlot: MealSlot? {
+        get { lastSlotRaw.flatMap(MealSlot.init(rawValue:)) }
+        set { lastSlotRaw = newValue?.rawValue }
     }
 
     /// The items in the order they were logged.
@@ -87,7 +97,8 @@ final class Phrase {
     /// no items, because there would be nothing to remember.
     @discardableResult
     static func remember(
-        line: String, items: [PhraseDraftItem], in context: ModelContext, now: Date = .now
+        line: String, items: [PhraseDraftItem], in context: ModelContext, now: Date = .now,
+        slot: MealSlot? = nil
     ) throws -> Phrase? {
         guard let key = PhraseKey.normalise(line), !items.isEmpty else { return nil }
         let phrase = try stored(key: key, in: context) ?? {
@@ -109,6 +120,7 @@ final class Phrase {
         phrase.text = line
         phrase.useCount += 1
         phrase.lastUsed = now
+        if let slot { phrase.lastSlot = slot }
         return phrase
     }
 
