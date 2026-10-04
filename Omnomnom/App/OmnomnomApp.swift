@@ -20,15 +20,26 @@ struct OmnomnomApp: App {
     ///
     /// The app intents behind visual intelligence are given the same repository and
     /// router the views use, so a food the system opens is the same food the app knows.
+    ///
+    /// Everything is built into locals and assigned at the end. `add(dependency:)` takes
+    /// an escaping autoclosure, so passing a property would capture `self`, which stays
+    /// `inout` for the whole of a struct's initialiser. The router is a class, so the
+    /// local and the property are the same object and an intent still reaches the router
+    /// the views are watching.
     init() {
-        container = Self.makeContainer()
-        foodRepository = FoodRepository.bundled()
-        healthStore = HealthStore()
-        router = AppRouter()
-        services = AppServices(container: container, observing: healthStore)
+        let container = Self.makeContainer()
+        let foodRepository = FoodRepository.bundled()
+        let healthStore = HealthStore()
+        let router = AppRouter()
+        let services = AppServices(container: container, observing: healthStore)
         services.startReconciliationIfNeeded()
         AppDependencyManager.shared.add(dependency: foodRepository)
         AppDependencyManager.shared.add(dependency: router)
+        self.container = container
+        self.foodRepository = foodRepository
+        self.healthStore = healthStore
+        self.router = router
+        self.services = services
     }
 
     var body: some Scene {
