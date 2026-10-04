@@ -47,7 +47,12 @@ nonisolated enum VisualFoodMatch {
 /// when that becomes worth doing.
 ///
 /// Nothing leaves the device here. The bundled database is local and so is the search.
-nonisolated struct FoodVisualSearchQuery: IntentValueQuery {
+///
+/// Not `nonisolated`: `@Dependency` is a property wrapper and so a mutable stored
+/// property, which cannot be. The search itself still runs off the main actor, because
+/// every call into the repository is awaited and the SQLite wrapper owns that work;
+/// what stays here is the ranking over at most sixty rows.
+struct FoodVisualSearchQuery: IntentValueQuery {
     @Dependency private var repository: FoodRepository
 
     func values(for input: SemanticContentDescriptor) async throws -> [FoodEntity] {

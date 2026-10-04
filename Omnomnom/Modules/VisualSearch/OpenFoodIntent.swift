@@ -11,7 +11,12 @@ import Foundation
 /// rather than trusted from it. A food whose id no longer exists — the bundled database
 /// is replaced wholesale by an app update — opens the app and nothing more, which is
 /// what the system would have done anyway.
-nonisolated struct OpenFoodIntent: OpenIntent {
+///
+/// Not `nonisolated`, for the same reason as the two queries: `@Parameter` and
+/// `@Dependency` are property wrappers and so mutable stored properties. `perform()`
+/// keeps its explicit annotation, which the type now also supplies, because it is the
+/// isolation the body actually needs to reach `AppRouter`.
+struct OpenFoodIntent: OpenIntent {
     static let title: LocalizedStringResource = "Open Food"
 
     @Parameter(title: "Food", requestValueDialog: "Which food?")

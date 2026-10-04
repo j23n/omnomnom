@@ -56,7 +56,12 @@ nonisolated struct FoodEntity: AppEntity, Sendable {
 /// The bundled database ships inside the app and is replaced wholesale by an update,
 /// so an id the system remembers across one of those may no longer exist. That reads
 /// as no result rather than as a failure.
-nonisolated struct FoodEntityQuery: EntityQuery {
+///
+/// Not `nonisolated`, unlike the entity it returns: `@Dependency` is a property
+/// wrapper and therefore a mutable stored property, which cannot be nonisolated. So the
+/// query takes the target's main-actor default and reaches the database through an
+/// `await`, which is where the work happens anyway.
+struct FoodEntityQuery: EntityQuery {
     @Dependency private var repository: FoodRepository
 
     func entities(for identifiers: [Int]) async throws -> [FoodEntity] {
