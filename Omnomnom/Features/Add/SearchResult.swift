@@ -221,7 +221,12 @@ nonisolated enum SearchResults {
 
 extension SearchResult {
     /// The barcode behind the row, saved or not, for matching one against the other.
-    var barcode: String? {
+    ///
+    /// `nonisolated` because `SearchResults` groups rows off the main actor and forms a
+    /// key path to this. Everything it reads is a stored value on a `Sendable` type, so
+    /// the isolation the extension would otherwise inherit from the target's default is
+    /// not something this property needs.
+    nonisolated var barcode: String? {
         switch action {
         case .choice(let choice): choice.attribution?.barcode
         case .fetch(let record): record.code
