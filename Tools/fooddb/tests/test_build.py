@@ -216,7 +216,7 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(labels("2004"), [("1 large", 50.0, 1)])
 
         meta = dict(conn.execute("SELECT key, value FROM meta").fetchall())
-        self.assertEqual(meta["schema_version"], "2")
+        self.assertEqual(meta["schema_version"], "3")
         self.assertEqual(meta["food_count"], "7")
         self.assertEqual(meta["portion_count"], "10")
         self.assertEqual(meta["fdc_foundation_version"], "unknown")

@@ -13,7 +13,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import bls, ciqual, fdc, mapping
+from . import bls, ciqual, fdc, ingredient, mapping
 from .bundles import BLS, CIQUAL, FOUNDATION, SR_LEGACY, Bundle
 from .errors import InputError
 from .portions import PortionRow, build_portions
@@ -44,6 +44,9 @@ class FoodRow:
     popularity: int = 0
     name_locale: str = NAME_LOCALE
     is_estimated: int = 0
+    # 1 when the row is an ingredient or a dry form rather than a portion; set in
+    # one pass over every source by `apply_ingredient_flags`.
+    is_ingredient: int = 0
     # The same food's names in the other languages the source publishes, indexed
     # for search but never displayed: a French speaker finds "Pomme, pulpe, crue"
     # and reads "Apple, pulp, raw".
@@ -56,6 +59,7 @@ class BuildSummary:
     dropped_no_energy: dict[str, int] = field(default_factory=dict)
     dropped_blank_name: dict[str, int] = field(default_factory=dict)
     dropped_duplicates: int = 0
+    ingredients: int = 0
     portions: int = 0
     unmatched_popular: list[str] = field(default_factory=list)
 
@@ -69,6 +73,7 @@ class BuildSummary:
                 f"{self.dropped_blank_name.get(source, 0)} dropped (blank name)"
             )
         lines.append(f"  duplicate names dropped: {self.dropped_duplicates}")
+        lines.append(f"  ingredient forms flagged: {self.ingredients}")
         lines.append(f"  portions: {self.portions}")
         lines.append(f"  unmatched popular entries: {len(self.unmatched_popular)}")
         return "\n".join(lines)
@@ -305,6 +310,30 @@ def apply_popularity(
     return result
 
 
+def apply_ingredient_flags(
+    rows: Sequence[FoodRow], summary: BuildSummary
+) -> list[FoodRow]:
+    """Flag every row that is an ingredient or a dry form rather than a portion.
+
+    One pass over all sources rather than a line in each reader, so the rules are
+    applied identically to a Ciqual row and a BLS one and there is a single place
+    to audit when a flag looks wrong. Matching reads the display name together
+    with the source's other names, which is what lets the English rules reach a
+    German row.
+    """
+    result: list[FoodRow] = []
+    flagged = 0
+    for row in rows:
+        why = ingredient.reasons(row.name, row.alt_names)
+        if why:
+            flagged += 1
+            log.debug("ingredient form %r: %s", row.name, ", ".join(sorted(why)))
+        result.append(dataclasses.replace(row, is_ingredient=1 if why else 0))
+    summary.ingredients = flagged
+    log.info("flagged %d of %d rows as ingredient forms", flagged, len(rows))
+    return result
+
+
 LOADERS = {
     FOUNDATION: load_fdc_bundle,
     SR_LEGACY: load_fdc_bundle,
@@ -326,6 +355,7 @@ def assemble(
         rows.extend(loader(bundle, summary))
     rows = dedup(rows, summary)
     rows = apply_popularity(rows, read_popular(popular_path), summary)
+    rows = apply_ingredient_flags(rows, summary)
     for row in rows:
         summary.kept[row.source] = summary.kept.get(row.source, 0) + 1
         summary.portions += len(row.portions)

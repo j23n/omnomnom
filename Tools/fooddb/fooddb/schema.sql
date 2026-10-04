@@ -1,4 +1,4 @@
--- Output schema for foods.sqlite. Schema version 2.
+-- Output schema for foods.sqlite. Schema version 3.
 CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE foods(
   id INTEGER PRIMARY KEY,
@@ -15,6 +15,12 @@ CREATE TABLE foods(
   protein_100g REAL, carb_100g REAL, fat_100g REAL, satfat_100g REAL,
   fiber_100g REAL, sugar_100g REAL, sodium_mg_100g REAL,
   is_estimated INTEGER NOT NULL DEFAULT 0,
+  -- 1 for a row that is an ingredient or a dry, raw or concentrated form rather
+  -- than a portion anyone eats: coffee powder, dried milk, raw chicken, oil. The
+  -- app demotes these for a "what did I eat" query and never accepts one without
+  -- the user looking, because they match the same words as the food that was meant
+  -- and their per-100 g figures describe something else entirely.
+  is_ingredient INTEGER NOT NULL DEFAULT 0,
   popularity INTEGER NOT NULL DEFAULT 0
 );
 CREATE VIRTUAL TABLE foods_fts USING fts5(name, alt_names, content='foods', content_rowid='id', tokenize='unicode61 remove_diacritics 2');

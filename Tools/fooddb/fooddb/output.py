@@ -20,12 +20,12 @@ from .mapping import NUTRIENT_COLUMNS
 
 log = logging.getLogger(__name__)
 
-SCHEMA_VERSION = "2"
+SCHEMA_VERSION = "3"
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 _FOOD_COLUMNS = (
     "name", "name_locale", "alt_names", "source", "source_ref", "category",
-    *NUTRIENT_COLUMNS, "is_estimated", "popularity",
+    *NUTRIENT_COLUMNS, "is_estimated", "is_ingredient", "popularity",
 )
 _INSERT_FOOD = (
     f"INSERT INTO foods({', '.join(_FOOD_COLUMNS)}) VALUES ({', '.join('?' * len(_FOOD_COLUMNS))})"
@@ -62,6 +62,7 @@ def _food_params(row: FoodRow) -> tuple[object, ...]:
         row.category,
         *(row.nutrients[column] for column in NUTRIENT_COLUMNS),
         row.is_estimated,
+        row.is_ingredient,
         row.popularity,
     )
 

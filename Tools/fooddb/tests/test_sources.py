@@ -47,7 +47,7 @@ class MultiSourceBuildTests(unittest.TestCase):
         self.assertEqual(locales, {("ciqual", "en"), ("bls", "en"), ("bls", "de")})
 
         meta = dict(conn.execute("SELECT key, value FROM meta").fetchall())
-        self.assertEqual(meta["schema_version"], "2")
+        self.assertEqual(meta["schema_version"], "3")
         self.assertEqual(meta["food_count"], "7")
         self.assertEqual(meta["ciqual_version"], "unknown")
         self.assertEqual(meta["bls_version"], "4.0")
