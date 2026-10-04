@@ -73,7 +73,12 @@ struct LogLineIntent: AppIntent {
 }
 
 /// The app's intents, so Siri and Shortcuts can find them.
-struct OmnomnomShortcuts: AppShortcutsProvider {
+///
+/// `nonisolated`, unlike the intents themselves: the protocol's requirement is
+/// nonisolated and a main-actor static property cannot satisfy it. Safe here because
+/// there is no stored property to isolate — which is exactly why the intents, whose
+/// `@Parameter` and `@Dependency` wrappers *are* mutable stored properties, must not be.
+nonisolated struct OmnomnomShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: LogLineIntent(),

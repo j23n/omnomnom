@@ -25,34 +25,43 @@ struct RememberedLinesView: View {
                     description: Text("Lines you log are remembered here, so the second time is free.")
                 )
             }
-            ForEach(phrases) { phrase in
-                Section {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(phrase.text)
-                        Text(Self.summary(phrase))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    ForEach(phrase.orderedItems) { item in
-                        LabeledContent(item.food?.name ?? item.recipe?.name ?? item.name) {
-                            Text(Formatters.fieldText(item.amount))
-                                .monospacedDigit()
+            // One row per line rather than a section each: a delete action belongs to a
+            // ForEach of rows, and a ForEach of sections cannot carry one.
+            Section {
+                ForEach(phrases) { phrase in
+                    DisclosureGroup {
+                        ForEach(phrase.orderedItems) { item in
+                            LabeledContent(item.food?.name ?? item.recipe?.name ?? item.name) {
+                                Text(Formatters.fieldText(item.amount))
+                                    .monospacedDigit()
+                            }
                         }
-                    }
-                    if let slot = phrase.lastSlot {
-                        if isBaseline(phrase, slot) {
-                            Button("Stop proposing this for \(slot.displayName.lowercased())") {
-                                clearBaseline(slot)
+                        if let slot = phrase.lastSlot {
+                            if isBaseline(phrase, slot) {
+                                Button("Stop proposing this for \(slot.displayName.lowercased())") {
+                                    clearBaseline(slot)
+                                }
+                            } else {
+                                Button("Propose this for \(slot.displayName.lowercased())") {
+                                    setBaseline(phrase, slot)
+                                }
                             }
-                        } else {
-                            Button("Propose this for \(slot.displayName.lowercased())") {
-                                setBaseline(phrase, slot)
-                            }
+                        }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(phrase.text)
+                            Text(Self.summary(phrase))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
+                .onDelete(perform: forget)
+            } footer: {
+                if !phrases.isEmpty {
+                    Text("Lines are recorded by logging them and rewritten by correcting them. Forgetting one is harmless: it comes back the next time you log it.")
+                }
             }
-            .onDelete(perform: forget)
         }
         .navigationTitle("Remembered lines")
         .toolbar {

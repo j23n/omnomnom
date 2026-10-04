@@ -186,7 +186,7 @@ SwiftData, local-only. `Tag` and `Photo` joined the four original entities; revi
 | `Phrase` | A normalised typed line, and what it resolved to last time |
 | `PhraseItem` | One food reference plus an amount, with a `sortIndex` |
 | `BaselinePhrase` | A phrase the user eats by default, plus its meal slot |
-| `DayRecord` | One date: marked complete, and in the sample |
+| `DayRecord` | One date: whether the user marked it complete. Nothing else |
 
 `LogEntry.origin` is new and says how the entry came to exist: typed, dictated, photographed, picked from search, repeated, or accepted from the baseline. It is display and coverage information, never behaviour — nothing branches on it in the write path — and it is what lets an accepted baseline day stay distinguishable from a typed one a month later.
 
@@ -537,9 +537,15 @@ Averages are computed over complete days only. Partial days are drawn as what th
 
 The overview does not need every day. Three complete days a week, or one complete week a month, is enough to read a trend over months, and it is how dietary intake is measured whenever a weighed record is not affordable.
 
-So the cadence is a setting: every day, three days a week, or one week a month. The app nominates the days, `DayRecord.inSample` records them, and Trends means over complete in-sample days. On a day outside the sample the app asks for nothing.
+So the cadence is a setting: every day, three days a week, or one week a month. On a day outside the cadence the app asks for nothing — no proposal, no prompt to mark the day.
 
-This is the last thing to build and the first thing to cut. The coverage machinery above carries the weight; sampling is a thin layer that changes what the app asks for rather than what it can compute.
+**It changes what the app asks for and never what it computes over.** Building it made clear that the opposite would be absurd: a complete day outside the cadence is still a complete day, and discarding real data because a schedule did not ask for it would throw away the best evidence there is. So every complete day counts toward every mean, and what the cadence decides is only whether Today says anything.
+
+That also removed a field. Membership is derived from the date — three days a week is Monday, Wednesday and Saturday, one week a month is the first seven days — so it is the same answer every time, needs no storage, and cannot drift. `DayRecord` therefore carries no sample flag; nothing would have read it.
+
+Monday, Wednesday and Saturday rather than three weekdays, because what someone eats at a weekend is often the part that differs most, and a sample that never sees one describes their working week instead of their diet.
+
+This is still the last thing to build and the first thing to cut. The coverage machinery above carries the weight.
 
 ## Trends
 
