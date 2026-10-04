@@ -96,6 +96,9 @@ struct LineResolver {
                 choice: choice,
                 amount: item.amount,
                 bucket: .usual,
+                // A line that came back from memory is history by definition, so the
+                // amount it brought back is what a step measures from.
+                baseAmount: item.amount,
                 origin: .phrase,
                 confidence: .settled
             )

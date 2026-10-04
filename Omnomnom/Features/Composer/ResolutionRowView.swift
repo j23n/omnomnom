@@ -124,8 +124,8 @@ struct ResolutionRowView: View {
 
     /// What a step would come to, so the menu names the figure as well as the word.
     private func steppedText(_ bucket: AmountBucket) -> String {
-        guard let choice = row.choice else { return "" }
-        return Formatters.amount(bucket.amount(of: row.baseAmount), measure: choice.measure)
+        guard let choice = row.choice, let base = row.baseAmount else { return "" }
+        return Formatters.amount(bucket.amount(of: base), measure: choice.measure)
     }
 
     /// Reads the field, or leaves the row alone when it does not hold a number.
