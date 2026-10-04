@@ -62,6 +62,12 @@ final class Food {
     @Relationship(deleteRule: .nullify, inverse: \RecipeIngredient.food)
     var ingredientUses: [RecipeIngredient]?
 
+    /// Remembered phrases that resolve to this food. Nullified rather than cascaded:
+    /// deleting a food must not delete the line it appeared in, and a phrase holding an
+    /// item that resolves to nothing simply stops being recallable.
+    @Relationship(deleteRule: .nullify, inverse: \PhraseItem.food)
+    var phraseUses: [PhraseItem]?
+
     /// The user's own photo of a custom food or product, shown with the food and every
     /// entry logged from it. Never a product image from Open Food Facts.
     @Relationship(deleteRule: .cascade, inverse: \Photo.food)

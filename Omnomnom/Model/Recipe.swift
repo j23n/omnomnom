@@ -24,6 +24,10 @@ final class Recipe {
     var ingredients: [RecipeIngredient]?
 
     /// Entries logged from this recipe, for display only; their snapshots stand alone.
+    /// Remembered phrases that resolve to this recipe; see `Food.phraseUses`.
+    @Relationship(deleteRule: .nullify, inverse: \PhraseItem.recipe)
+    var phraseUses: [PhraseItem]?
+
     @Relationship(deleteRule: .nullify, inverse: \LogEntry.recipe)
     var entries: [LogEntry]?
 

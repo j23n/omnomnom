@@ -35,7 +35,7 @@ nonisolated enum PreviewSeed: Hashable, Sendable {
 @MainActor
 enum PreviewStore {
     /// The same schema the app opens.
-    static let schema = Schema([Food.self, LogEntry.self, Recipe.self, RecipeIngredient.self, Photo.self, Tag.self])
+    static let schema = StoreSchema.schema
 
     static func container(seed: PreviewSeed = .typicalDay) -> ModelContainer {
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
