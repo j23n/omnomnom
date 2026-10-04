@@ -23,7 +23,6 @@ The motivating target is the redesigned Health app's Longevity tab, which scores
 | Nutrients | All eight written to Health and all eight charted; four on the Today headline, and the user picks which |
 | Food data | Bundled generic database from Ciqual and the Bundeslebensmittelschlüssel; FDC readable but not built in |
 | Products | Opt-in; Open Food Facts looked up by barcode or searched by name, cached locally |
-| Visual search | The app's foods appear in the system's visual intelligence results; nothing leaves the device |
 | Input | One line of text or speech is the primary path; search, barcode and photo all remain |
 | Amounts | Portion buckets against the last amount; grams canonical underneath and still reachable |
 | Trends | In scope as of revision 4: energy, protein and fiber over time, plus data coverage |
@@ -520,7 +519,7 @@ Three tiers, and only the first is needed for this to ship.
 | --- | --- | --- |
 | Keyboard dictation | The system microphone key, in the composer's own text field | None. No permission, no framework, no code |
 | Hold to talk | `SpeechAnalyzer` on iOS 26, on-device, into the same field | Microphone and speech-recognition permissions, a transcript view |
-| Siri | An App Intent taking a spoken phrase | An intent and a donation; `AppIntents` is already linked for visual search |
+| Siri | An App Intent taking a spoken phrase | An intent and a donation; `AppIntents` is already linked |
 
 Start at the first. It is free, it is the control every iOS user already knows, and it tells us whether a hands-free path is worth two permissions before we ask for them.
 
@@ -918,16 +917,8 @@ Every saving here comes from resolving a typed fragment to a database row withou
 - [iOS 27.2 beta Health app details](https://www.macrumors.com/2026/09/16/ios-27-2-beta-health-app/)
 - [What's new in the Foundation Models framework, WWDC 2026](https://developer.apple.com/videos/play/wwdc2026/241)
 
-## Visual search
+## Camera
 
-From iOS 26 the system can hand an app what its camera is looking at and show that app's own matching content in the visual intelligence results. iOS 27 put a Siri mode in the Camera app and pointed it at food, which makes this the one place where a camera pointed at a plate can reach this app.
-
-Apple's own food analysis is not available to apps and would not help if it were: it ranks a dish from very low to very high nutritional value with notes on processing, fibre and sodium, and deliberately gives no calorie or macronutrient figures. There is no food or nutrition App Intents schema domain either, so Siri cannot route a result into an app. What is available is the other direction, and it is the useful one: the system provides the scene, the app provides the foods.
-
-- `FoodVisualSearchQuery` is an `IntentValueQuery` taking a `SemanticContentDescriptor`. It reads the descriptor's `labels` — general terms in en_US, "fruit" rather than "Braeburn" — searches the bundled database with each, and answers with `FoodEntity` values. At most six labels and ten foods: this surface wants an answer in a moment.
-- Ranking is `SearchRelevance`, the same scorer the typed search uses, so the camera and the keyboard agree about what a word means. A food found by two labels keeps its better score; ties break by id, so one scene always answers the same way.
-- The descriptor also offers a `pixelBuffer`, and the estimation module could run on it. It does not: that answers a different question (a meal of several foods with portions, not a list of foods), takes seconds, and needs a model only some devices have. The frame is there when that becomes worth doing.
-- `OpenFoodIntent` runs in the app process when someone taps a result. It has no view to push, so it reads the food's values and leaves the choice on `AppRouter`; Today sees it and hands it to the food search screen, which already owns the Quantity sheet. One tap from the camera to an amount field.
-- Nothing leaves the device. The labels come from the system, the search is local, and the answer never goes further than the system's own results view.
-
-Not built: the `semanticContentSearch` schema intent, which is the "More results" link into the app's own search. Its schema member could not be verified from Apple's documentation, and Xcode's completion generates it; it is worth adding once the rest is confirmed on a device.
+Visual search is not built. The camera belongs to the primary input instead: the
+composer's text field takes a picture and attaches it to the model prompt, so one
+path leads from a plate to a logged line.

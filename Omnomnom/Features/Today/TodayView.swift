@@ -18,7 +18,6 @@ struct TodayView: View {
     /// A row of the resolution sheet whose food the user wants to change.
     @State private var picking: ResolvedRow?
     /// A food the system asked the app to open, handed to the search screen once.
-    @State private var opening: FoodChoice?
 
     /// Starts from `model`; previews pass one with a banner or the unauthorized notice already up.
     init(model: TodayViewModel = TodayViewModel()) {
@@ -111,18 +110,8 @@ struct TodayView: View {
                             day: model.selectedDay,
                             onLogged: { model.handle($0) },
                             onMessage: { model.show(banner: $0) }
-                        ),
-                        opening: opening
+                        )
                     )
-                }
-                .onChange(of: router.pendingChoice) { _, choice in
-                    // Visual intelligence opened the app on a food. The search screen
-                    // already owns the Quantity sheet, so it is handed the food rather
-                    // than Today growing a sheet of its own for it.
-                    guard let choice else { return }
-                    opening = choice
-                    router.clearPendingChoice()
-                    model.isAddPresented = true
                 }
                 .sheet(isPresented: $model.isDatePickerPresented) {
                     DayPicker(model: model)

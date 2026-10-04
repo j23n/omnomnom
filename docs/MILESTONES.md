@@ -532,25 +532,16 @@ Work after the source change, on the same loop of implement, review, fix. Four t
 
 Watch list for the first build: the full-screen cover over a sheet in the estimate draft and the recipe editor; `@FocusState.Binding` into `FoodSearchField` and whether the field keeps focus after a multiple pick clears it; `.safeAreaBar` with conditional content; the single sheet slot with `onDismiss` handing a typed-in product on to the Quantity sheet; SwiftData's many-to-many between `Tag` and both `Recipe` and `Food` validating at container creation; whether the search index actually returns `nutriments` for a hit, which decides whether a product row shows its energy before it is fetched; and how the merged list reads when the products land a second after everything else, since that is the one moment rows move under a thumb.
 
-## Visual search
+## Camera
 
-The system's camera, the app's numbers. From iOS 26 visual intelligence can hand an app the scene it is looking at and show that app's own matching content in its results; iOS 27 put a Siri mode in the Camera app and pointed it at food, which is what made this worth doing.
-
-- `FoodVisualSearchQuery` is an `IntentValueQuery` over `SemanticContentDescriptor`. It reads `labels`, searches the bundled database with each, and answers with `FoodEntity` values ranked by `SearchRelevance` — the same scorer the typed search uses, so the camera and the keyboard agree. Six labels, ten foods, ties broken by id so one scene always answers the same way.
-- `OpenFoodIntent` runs in the app when a result is tapped, reads the food's values and leaves the choice on `AppRouter`. Today hands it to the food search screen, which already owns the Quantity sheet, so nothing grew a sheet for this.
-- The descriptor's `pixelBuffer` is deliberately unused. Running the estimate on it answers a different question, slowly, on some devices only.
-
-Apple's own food analysis is not reachable and would not help: it is qualitative by design, with no calorie or macronutrient figures, and there is no food or nutrition App Intents schema domain to route a result through. Confirmed against the framework reference, the schema-domain list and the integration article rather than from memory, since iOS 27 shipped after this model's cutoff.
-
-Not built: the `semanticContentSearch` schema intent — the "More results" link into the app's own search. Its schema member could not be verified from Apple's documentation and Xcode generates it by completion.
-
-Watch list for the first build: whether `@MainActor func perform()` satisfies `OpenIntent` without complaint; whether `TypeDisplayRepresentation(name:numericFormat:)` and `DisplayRepresentation.Image(systemName:isTemplate:)` resolve as written; whether `AppIntents` and `VisualIntelligence` auto-link in a project whose Frameworks phase is empty, as HealthKit and VisionKit already do; and what the labels actually say when a camera is pointed at a plate, which decides whether six is the right number of them to search.
+Visual search was removed rather than shipped: the camera moved into the primary
+input, where the composer's text field attaches a picture to the model prompt.
 
 ## iPad
 
 One target, both device families: `TARGETED_DEVICE_FAMILY = "1,2"`. The iPhone keeps its portrait lock through `INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone`; the iPad gets all four through the `_iPad` key, which multitasking requires. The generated scene manifest and launch screen were already in place, so nothing else in the project had to move.
 
-Every framework the app needs is on iPadOS and was checked rather than assumed: HealthKit since iPadOS 17, when the Health app arrived there; `DataScannerViewController` since iPadOS 16; Foundation Models and Visual Intelligence on iPadOS 26. So this is a layout change, not a port.
+Every framework the app needs is on iPadOS and was checked rather than assumed: HealthKit since iPadOS 17, when the Health app arrived there; `DataScannerViewController` since iPadOS 16; Foundation Models on iPadOS 26. So this is a layout change, not a port.
 
 - `ReadableColumn` caps a read-down list at 700 pt and a tapped control at 420 pt, centring both. Every measure is wider than any iPhone, so the modifier is a no-op on one by construction — which is the point: there is no second layout to keep in step.
 - Applied to the food search field, the search results, the recents and the Add food capsule. The inset-grouped lists on Today, in the Library and in Settings are left full width, because that is what Apple's own apps do with them and they are already shaped for the iPad.

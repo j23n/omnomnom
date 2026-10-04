@@ -18,8 +18,8 @@ struct OmnomnomApp: App {
     /// starts here, before any scene exists, so a background Health launch registers its
     /// observer queries too; the work itself runs in a task and never blocks first paint.
     ///
-    /// The app intents behind visual intelligence are given the same repository and
-    /// router the views use, so a food the system opens is the same food the app knows.
+    /// The app intents are given the same repository and router the views use, so a line
+    /// Siri takes reaches the same composer the app shows.
     ///
     /// Everything is built into locals and assigned at the end. `add(dependency:)` takes
     /// an escaping autoclosure, so passing a property would capture `self`, which stays
