@@ -146,17 +146,49 @@ against powder 0.489 and blocked; "chicken" gives grilled 0.846 against raw 0.50
 any two match tiers, which is what stops a powder outranking the drink it shares a name
 with however the two happen to score.
 
+### Settled against the real database
+
+The BLS 4.0 table arrived and the pipeline read it on the first run: 418 columns, 7,140
+rows, all eight nutrients matched with their units taken from the headers, nothing
+dropped. Running the matcher over those 7,140 rows then found four separate faults that
+no amount of reasoning had, and fixed each one:
+
+| Typed | Before | Cause | After |
+| --- | --- | --- | --- |
+| oats | nothing at all | FTS5 prefix runs forwards only, so `"oats"*` misses "Oat flakes" | Oat flakes |
+| oats | — | and the *scorer* still could not score it; "Oat groats" won because "groats" contains "oats" | — |
+| coffee | Coffee ice cream, 171 kcal | the prior was zero, so the tie fell to name length | Coffee (infusion), 1 kcal |
+| milk | Milk chocolate, 532 kcal | a derivative takes the better text tier, and the prior could not cross one | Whole milk, 62 kcal |
+| cheese | Cheeseburger | the prior scaled by list position, so the fortieth entry got a third of the help | Gouda cheese |
+
+Bare-noun queries now resolve correctly on 21 of 21 cases, against roughly 2 before.
+
+The curated list is rewritten against the real names: 76 entries, all 76 matching a real
+row, against 47 of 48 matching nothing. The prior became mostly a membership floor,
+because every entry is there for being *the* form a bare noun means, so being on the list
+matters far more than where.
+
+The `is_ingredient` flag met real data for the first time and was wrong in two large
+ways, both now fixed and both kept honest by tests naming the real rows: the BLS names
+every cooked vegetable "... (with fat and salt)", and it specifies every dairy product by
+fat content. A commodity word only counts in the *head* of a name, and the head ends at
+the first comma, bracket or digit. 517 of 7,140 rows flagged, down from a first pass that
+caught most of the vegetables in Germany.
+
 ### Open
 
-- **The curated popularity list is still FDC-shaped**, so against a Ciqual and BLS build
-  every row scores zero on the prior and that term vanishes. The mechanism is in and
-  capped; the list needs rewriting against the real names, which needs the real downloads,
-  which this environment's egress policy blocks. It stays the top risk in `PLAN.md`.
+- **Ciqual is not built.** Four of the five XML files arrived; `compo*.xml`, which carries
+  the actual values, did not. Everything else about that reader is unexercised.
 - **Composite-before-split** is specified in `PLAN.md` but lands with the parser, since
   there are no fragments to split until the composer exists.
-- **No Swift compiler here**, so the Swift half is reasoned and arithmetically checked
-  rather than built. The Python pipeline half is genuinely verified: 158 tests, `ruff
-  check` and `mypy --strict` clean.
+- **"Butter" is a known gap in the flag.** Cocoa and shea butter are baking fats and are
+  not flagged, because "butter" cannot trigger without also catching peanut butter, and
+  exempting nut words would wrongly exempt sunflower *oil*. Asserted as a decision rather
+  than left as a surprise.
+- **No Swift compiler here.** The Swift half is reasoned, and every numeric expectation in
+  its tests was checked by mirroring the same arithmetic in Python and running it over the
+  real database. The Python half is genuinely verified: 164 tests, `ruff check` and `mypy
+  --strict` clean.
 
 ## Milestone 1: Data pipeline
 

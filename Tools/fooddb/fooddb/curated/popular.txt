@@ -1,51 +1,104 @@
-# Common foods, one FDC description per line, most common first.
-# Matching is case-insensitive, whitespace-collapsed and ignores a trailing period.
-# Entries that match no food in the build are logged as warnings, not errors.
-Apples, raw, with skin
-Bananas, raw
-Egg, whole, raw, fresh
-Milk, whole, 3.25% milkfat, with added vitamin D
-Chicken, broilers or fryers, breast, meat only, cooked, roasted
-Rice, white, long-grain, regular, enriched, cooked
-Bread, whole-wheat, commercially prepared
-Bread, white, commercially prepared
-Oats, whole grain, rolled, old fashioned
-Milk, reduced fat, fluid, 2% milkfat, with added vitamin A and vitamin D
-Cheese, cheddar
-Yogurt, Greek, plain, nonfat
-Yogurt, plain, whole milk
-Butter, salted
-Oil, olive, salad or cooking
-Peanut butter, smooth style, with salt
-Potatoes, russet, flesh and skin, baked
-Broccoli, raw
-Carrots, raw
-Tomatoes, red, ripe, raw, year round average
-Onions, raw
-Spinach, raw
-Lettuce, cos or romaine, raw
-Avocados, raw, all commercial varieties
-Oranges, raw, all commercial varieties
-Strawberries, raw
-Blueberries, raw
-Grapes, red or green (European type, such as Thompson seedless), raw
-Beef, ground, 85% lean meat / 15% fat, patty, cooked, broiled
-Pork, cured, bacon, pre-sliced, cooked, pan-fried
-Fish, salmon, Atlantic, farmed, cooked, dry heat
-Fish, tuna, light, canned in water, drained solids
-Pasta, cooked, enriched, without added salt
-Beans, black, mature seeds, cooked, boiled, without salt
-Nuts, almonds
-Beverages, coffee, brewed, prepared with tap water
-Beverages, tea, black, brewed, prepared with tap water
-Sugars, granulated
+# Everyday foods, one database name per line, most common first.
+#
+# Written against the real Bundeslebensmittelschlüssel 4.0 names. It was previously
+# written against FDC descriptions, which matched nothing once the bundle moved to
+# European sources — 47 of 48 entries found no food at all, so the ranking prior was
+# silently zero everywhere and auto-matching had nothing but text length to break a tie.
+#
+# Matching is case-insensitive, whitespace-collapsed, and ignores anything in brackets,
+# so "Coffee (infusion)" is reached by writing either form. Entries that match no food
+# are logged as warnings, not errors, so a list can outlive a source change.
+#
+# What belongs here: the form of a food a person means when they type its bare name.
+# "Coffee" means the drink, not the ice cream; "milk" means milk, not milk chocolate.
+# That is the whole job of this file, and it is why the prior has to be strong enough to
+# beat a better *text* match: "Milk chocolate" really does start with "milk".
+
+# Drinks
+Coffee (infusion)
+Black tea (infusion)
+Natural mineral water
+Whole milk, 3.5 % fat, ultra-heated
+Orange juice
+Apple juice
+Cola beverage caffeinated
+Carbonated lemonade
+Pale beer
+Fruit wine
+
+# Breakfast
+Oat flakes
+Cornflakes sweetened
+Wholemeal bread
+Rye bread
+White bread/wheat bread
+Wheat roll
+Butter salted
+Jam extra quality
 Honey
-Chocolate, dark, 70-85% cacao solids
-Hummus, commercial
-Cheese, mozzarella, whole milk
-Tortillas, ready-to-bake or -fry, flour, refrigerated
-Sweet potato, cooked, baked in skin, flesh, without salt
-Chicken, broilers or fryers, thigh, meat only, cooked, roasted
-Cream, fluid, heavy whipping
-Alcoholic beverage, wine, table, red
-Alcoholic beverage, beer, regular, all
+Eggs boiled
+Yogurt mild, min. 3.5 % fat
+Quark 20 % fat in dry matter
+
+# Fruit
+Banana raw
+Apple raw
+Orange raw
+Pear raw
+Grape raw
+Strawberry raw
+Blueberry raw
+Avocado raw
+
+# Vegetables
+Tomato raw
+Cucumber raw
+Carrot raw
+Onion raw
+Iceberg lettuce raw
+Spinach raw
+Broccoli raw
+Sweet pepper red, raw
+Courgette raw
+Button mushroom raw
+Cauliflower raw
+Leek raw
+Red cabbage raw
+Curly kale boiled
+Asparagus boiled
+Sweetcorn boiled
+Pea green, raw
+Bean green, raw
+
+# Staples and protein
+Potatoe peeled, boiled
+Rice boiled
+Egg pasta boiled
+Chicken grilled
+Chicken breast fillet fried
+Beef boiled
+Pork chop fried
+Salmon smoked
+Tuna poached
+Lentil mature
+Chickpea stew
+Tofu
+Gouda cheese 48 % fat in dry matter
+Parma ham
+Salami
+
+# Cooked dishes
+Lentil soup with vegetables
+Tomato soup thickened
+Carrot soup
+Pizza margherita (with tomato sauce, mozzarella)
+Hamburger
+
+# Nuts and treats
+Walnut
+Sweet almond
+Peanut butter
+Chocolate
+Oatmeal biscuits
+Fruit ice cream
+Potato crisps/potato chips (various types)

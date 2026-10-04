@@ -89,9 +89,10 @@ struct FoodMatcherTests {
         #expect(FoodMatcher.score(withoutAlt, term: "pomme") == 0)
     }
 
-    @Test func aGermanNameOnTheAltListScoresExactly() {
+    @Test func aGermanNameOnTheAltListScoresAsAnExactMatch() {
         let oats = food("Oats, rolled", alt: ["Haferflocken"])
-        #expect(FoodMatcher.score(oats, term: "haferflocken") == 1)
+        // Exact plus full coverage, and no longer clamped: see `SearchRelevance.score`.
+        #expect(FoodMatcher.score(oats, term: "haferflocken") == SearchRelevance.exact + SearchRelevance.coverageWeight)
     }
 
     // MARK: - Ordinary foods settle
@@ -144,16 +145,127 @@ struct FoodMatcherTests {
         #expect(FoodMatcher.shortlist(candidates, term: "rice", limit: 3).count == 3)
     }
 
-    @Test func scoresStayInRange() {
+    @Test func scoresHaveAFloorAndNoCeiling() {
+        // No upper clamp. A clamp made every strong match identical, so "Apple raw" and
+        // "Apple juice" both reached 1 and the tie fell to whichever had the lower id.
+        // Thresholds read the same either way and ordering needs the headroom.
         let extreme = food("Rice", popularity: 10_000)
-        #expect(FoodMatcher.score(extreme, term: "rice") <= 1)
+        #expect(FoodMatcher.score(extreme, term: "rice") > 1)
+        // A penalty can never take a score below nothing.
         let penalised = food("Oil", ingredient: true)
         #expect(FoodMatcher.score(penalised, term: "oil") >= 0)
+    }
+
+    @Test func thePriorIsMostlyAboutMembershipNotPosition() {
+        // Every row on the curated list is there because it is *the* form someone means
+        // by a bare noun, so being on it matters far more than where. Scaling by position
+        // left the fortieth entry unable to beat a derivative, and "cheese" went on
+        // returning a cheeseburger.
+        #expect(FoodMatcher.prior(for: 0) == 0)
+        #expect(FoodMatcher.prior(for: 1) >= FoodMatcher.popularityFloor)
+        #expect(FoodMatcher.prior(for: 40) > SearchRelevance.prefix - SearchRelevance.wordPrefix)
+        #expect(FoodMatcher.prior(for: 10_000) == FoodMatcher.popularityCeiling)
+    }
+
+    @Test func theScorerKnowsTheSamePluralsTheIndexDoes() {
+        // A scorer that disagrees with the retriever about what a word is produces the
+        // worst outcome there is: a row that is found and then scored at zero. "Oats"
+        // against the German table's "Oat flakes" is exactly that case.
+        let flakes = food("Oat flakes")
+        #expect(FoodMatcher.score(flakes, term: "oats") > FoodMatcher.settledAt)
+        #expect(FoodMatcher.score(flakes, term: "oat") > FoodMatcher.settledAt)
     }
 
     @Test func thresholdsAreOrdered() {
         #expect(FoodMatcher.settledAt > FoodMatcher.probableAt)
         #expect(FoodMatcher.probableAt > 0)
         #expect(FoodMatcher.settledAt < 1)
+    }
+}
+
+/// What the matcher does against the names the real Bundeslebensmittelschlüssel uses.
+///
+/// Every case here failed when the matcher first met the real database: typing "oats"
+/// found nothing at all, "coffee" returned ice cream, "milk" returned chocolate, "rice"
+/// returned bran. Four separate causes, each fixed and each kept honest by one of these.
+/// The rows are reproduced with the popularity the curated list gives them.
+struct RealDatabaseMatchTests {
+    private func row(
+        _ name: String, kcal: Double, popularity: Int = 0, ingredient: Bool = false, id: Int = 1
+    ) -> BundledFood {
+        BundledFood(
+            id: id, name: name, category: nil, per100g: Nutrition(energy: kcal),
+            popularity: popularity, altNames: [], isIngredient: ingredient
+        )
+    }
+
+    private func winner(_ term: String, _ candidates: [BundledFood]) -> String? {
+        FoodMatcher.best(candidates, term: term)?.food.name
+    }
+
+    @Test func oatsFindsTheFlakesAndNotWhateverContainsTheLetters() {
+        // "Oat groats" used to win because "groats" contains "oats".
+        let candidates = [
+            row("Oat flakes", kcal: 348, popularity: 88, id: 1),
+            row("Oat groats", kcal: 351, id: 2),
+            row("Oat bran flakes", kcal: 371, id: 3),
+        ]
+        #expect(winner("oats", candidates) == "Oat flakes")
+        #expect(winner("oat flakes", candidates) == "Oat flakes")
+    }
+
+    @Test func coffeeIsADrinkAndNotIceCream() {
+        let candidates = [
+            row("Coffee ice cream", kcal: 171, id: 1),
+            row("Coffee (infusion)", kcal: 1, popularity: 100, id: 2),
+            row("Coffee, instant, powder", kcal: 350, ingredient: true, id: 3),
+        ]
+        #expect(winner("coffee", candidates) == "Coffee (infusion)")
+    }
+
+    @Test func milkIsMilkAndNotMilkChocolate() {
+        // The hardest of them: "Milk chocolate" genuinely takes the better text tier,
+        // because it really does start with "milk". Only the prior separates them, which
+        // is why it has to be worth more than the gap between two tiers.
+        let candidates = [
+            row("Milk chocolate", kcal: 532, id: 1),
+            row("Whole milk, 3.5 % fat, ultra-heated", kcal: 62, popularity: 97, id: 2),
+        ]
+        #expect(winner("milk", candidates) == "Whole milk, 3.5 % fat, ultra-heated")
+    }
+
+    @Test func aCuratedEntryMustNeverBeTheWrongAnswerToABareNoun() {
+        // "Milk chocolate" was on the curated list and so carried a prior of its own,
+        // which put it back in front. It was removed for that reason.
+        let candidates = [
+            row("Milk chocolate", kcal: 532, popularity: 30, id: 1),
+            row("Whole milk, 3.5 % fat, ultra-heated", kcal: 62, popularity: 97, id: 2),
+        ]
+        #expect(winner("milk", candidates) == "Milk chocolate")
+    }
+
+    @Test func aBareNounFindsTheFormPeopleEat() {
+        let cases: [(String, [BundledFood], String)] = [
+            ("chicken", [row("Chicken stock", kcal: 5, id: 1),
+                         row("Chicken grilled", kcal: 257, popularity: 60, id: 2)], "Chicken grilled"),
+            ("rice", [row("Rice bran", kcal: 380, id: 1),
+                      row("Rice boiled", kcal: 112, popularity: 70, id: 2)], "Rice boiled"),
+            ("egg", [row("Egg nog", kcal: 170, id: 1),
+                     row("Eggs boiled", kcal: 135, popularity: 80, id: 2)], "Eggs boiled"),
+            ("cheese", [row("Cheeseburger", kcal: 202, id: 1),
+                        row("Gouda cheese 48 % fat in dry matter", kcal: 379, popularity: 40, id: 2)],
+             "Gouda cheese 48 % fat in dry matter"),
+            ("pasta", [row("Pasta egg-free, raw", kcal: 346, id: 1),
+                       row("Egg pasta boiled", kcal: 130, popularity: 50, id: 2)], "Egg pasta boiled"),
+        ]
+        for (term, candidates, expected) in cases {
+            #expect(winner(term, candidates) == expected, "\(term) should find \(expected)")
+        }
+    }
+
+    @Test func aPluralFindsTheSingularRow() {
+        let candidates = [row("Tomato raw", kcal: 22, popularity: 85), row("Tomato puree", kcal: 29, id: 2)]
+        #expect(winner("tomatoes", candidates) == "Tomato raw")
+        #expect(winner("tomato", candidates) == "Tomato raw")
     }
 }

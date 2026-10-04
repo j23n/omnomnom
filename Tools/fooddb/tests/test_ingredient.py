@@ -229,3 +229,89 @@ class DatabaseTests(unittest.TestCase):
                 )
             finally:
                 conn.close()
+
+
+class RealDatabaseTests(unittest.TestCase):
+    """Rows from the real Bundeslebensmittelschlüssel 4.0.
+
+    Every case here was wrong the first time the rules met the real table, and each one
+    bought a change: the head rule, cutting the head at a digit, the prepared-dish
+    exemption, and "fat" as a head word. They are kept because the rules are only as
+    good as the names they were tested against, and these are the names.
+    """
+
+    def assertPortion(self, name: str) -> None:
+        self.assertFalse(
+            ingredient.is_ingredient(name),
+            f"{name!r} wrongly flagged as {sorted(ingredient.reasons(name))}",
+        )
+
+    def assertNotPortion(self, name: str) -> None:
+        self.assertTrue(ingredient.is_ingredient(name), f"{name!r} not flagged")
+
+    def test_the_bls_names_every_cooked_vegetable_with_fat_and_salt(self) -> None:
+        # The largest false-positive class there was: "salt" alone flagged most of the
+        # vegetables in the German table.
+        for name in (
+            "Fennel boiled (with fat and salt)",
+            "Pumpkin stewed (with fat and salt)",
+            "Topinambur stewed (with fat and salt)",
+            "Broccoli boiled (with fat and salt)",
+        ):
+            self.assertPortion(name)
+
+    def test_dairy_is_specified_by_fat_content(self) -> None:
+        # The second-largest: "fat" flagged every cheese and cream, because the BLS
+        # states a fat percentage in the name.
+        for name in (
+            "Gouda cheese 48 % fat in dry matter",
+            "Whipping cream min. 36 % fat",
+            "Quark 20 % fat in dry matter",
+            "Whole milk, 3.5 % fat, ultra-heated",
+            "Yogurt mild, min. 3.5 % fat",
+        ):
+            self.assertPortion(name)
+
+    def test_a_dish_that_merely_contains_an_ingredient(self) -> None:
+        for name in (
+            "Porridge sweetened, with milk 3.5 % fat and cocoa powder",
+            "Glass noodles made from mung bean starch, boiled",
+            "Egg pasta Tortelloni (ricotta and spinach filling) dried",
+            "Wheat-rye roll (> 50 % and < 90 % wheat) with caraway seeds and salt",
+            "Sweet pepper red, grilled",
+        ):
+            self.assertPortion(name)
+
+    def test_the_pure_fats_the_table_names_as_fat(self) -> None:
+        # Missed until "fat" became a head word; all of them are about 900 kcal.
+        for name in (
+            "Chicken fat",
+            "Duck fat",
+            "Palm fat hydrogenated",
+            "Coconut fat hydrogenated",
+        ):
+            self.assertNotPortion(name)
+
+    def test_what_must_stay_flagged(self) -> None:
+        for name in (
+            "Olive oil",
+            "Gelatine",
+            "Beef tallow/fat",
+            "Lime concentrate",
+            "Pork tenderloin, raw",
+            "Beef marrow, raw",
+            "Chicken breast fillet, raw",
+        ):
+            self.assertNotPortion(name)
+
+    def test_known_gap_the_word_butter(self) -> None:
+        """Cocoa and shea butter are baking fats and are not flagged.
+
+        Deliberate. "butter" cannot be a trigger without also flagging peanut and
+        almond butter, which are portions, and exempting nut words would wrongly
+        exempt sunflower *oil*. Two rare fats slipping through costs less than a word
+        list that will itself be wrong, and this is what the other two defences are
+        for. Asserted so the gap is a decision rather than a surprise.
+        """
+        self.assertPortion("Cocoa butter")
+        self.assertPortion("Shea butter")

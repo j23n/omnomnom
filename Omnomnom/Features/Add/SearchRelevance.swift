@@ -31,15 +31,30 @@ nonisolated enum SearchRelevance {
     /// stranger's entry edging out a measured one on a coin toss.
     static let crowdsourcedPenalty = 0.04
 
-    /// 0 when nothing matches, up to 1 when the name is the query.
+    /// 0 when nothing matches, upwards from there when it does.
+    ///
+    /// The query is tried in the same forms the index is searched in, because a scorer
+    /// that disagrees with the retriever about what a word is produces the worst possible
+    /// outcome: a row that is found and then scored at zero. "Oats" finding "Oat flakes"
+    /// and then refusing to rank it is how that was discovered — and worse, "Oat groats"
+    /// did score, because "groats" happens to contain "oats".
+    ///
+    /// Not clamped at the top. A clamp made every strong match identical, so "Apple raw"
+    /// and "Apple juice" both reached 1 and the tie fell to whichever had the lower id.
+    /// Thresholds read the same either way, and ordering needs the headroom.
     static func score(name: String, query: String) -> Double {
-        let name = fold(name)
-        let query = fold(query)
-        guard !name.isEmpty, !query.isEmpty, let tier = tier(name: name, query: query) else {
-            return 0
-        }
+        let folded = fold(name)
+        guard !folded.isEmpty else { return 0 }
+        return FoodQuery.forms(of: query)
+            .map { scoreOneForm(name: folded, query: fold($0)) }
+            .max() ?? 0
+    }
+
+    /// One already-folded query form against one already-folded name.
+    private static func scoreOneForm(name: String, query: String) -> Double {
+        guard !query.isEmpty, let tier = tier(name: name, query: query) else { return 0 }
         let coverage = min(1, Double(query.count) / Double(name.count))
-        return min(1, tier + coverage * coverageWeight)
+        return max(0, tier + coverage * coverageWeight)
     }
 
     /// The best score over everything a row can be found by: its name, a brand, a tag.

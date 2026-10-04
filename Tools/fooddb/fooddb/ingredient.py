@@ -45,12 +45,16 @@ class Rule:
     also matches inside a compound, which is how "roh" is confirmed by
     "Hähnchenbrust"; shorter ones stay whole-word, because "ei" inside "Weizen"
     would confirm anything.
+    `head_only` restricts a trigger to the head of the name — see `head`. Set it
+    for any word that names a commodity, because those turn up in preparation
+    notes constantly and a note is not what the row is.
     """
 
     name: str
     words: tuple[str, ...] = ()
     fragments: tuple[str, ...] = ()
     requires: tuple[str, ...] = ()
+    head_only: bool = False
 
 
 # Animal protein, for the `raw` rule alone. Raw plants are food; raw meat is not.
@@ -67,6 +71,14 @@ _ANIMAL = (
     "viande", "boeuf", "veau", "porc", "agneau", "poulet", "volaille", "dinde",
     "canard", "gibier", "foie", "rognon", "poisson", "saumon", "cabillaud", "thon",
     "hareng", "maquereau", "truite", "crevette", "crevettes", "oeuf", "oeufs",
+)
+
+# Preparations. A row that names one is a cooked dish, whatever a note after it says
+# went into the pan.
+_PREPARED = (
+    "boiled", "stewed", "grilled", "fried", "roasted", "baked", "cooked", "braised",
+    "steamed", "poached", "simmered", "sauteed", "gekocht", "gebraten", "gegrillt",
+    "gebacken", "gedunstet", "gedampft", "cuit", "cuite", "bouilli", "grille", "rotie",
 )
 
 RULES: tuple[Rule, ...] = (
@@ -108,13 +120,19 @@ RULES: tuple[Rule, ...] = (
         requires=_ANIMAL,
     ),
     # Eaten by the spoonful at most, so a portion bucket means nothing on them.
+    #
+    # "fat" is here and head-only, which is what tells "Chicken fat" and "Palm fat
+    # hydrogenated" from "Fennel boiled (with fat and salt)". "butter" is deliberately
+    # absent: peanut and almond butter are portions, and no rule short of a word list
+    # separates them from the dairy kind.
     Rule(
         name="pure-fat",
         words=(
-            "oil", "lard", "tallow", "shortening", "ghee", "dripping",
-            "schmalz", "butterschmalz", "huile", "saindoux", "suif",
+            "oil", "lard", "tallow", "shortening", "ghee", "dripping", "fat",
+            "schmalz", "butterschmalz", "huile", "saindoux", "suif", "fett",
         ),
         fragments=("speisefett", "pflanzenfett", "brataufett"),
+        head_only=True,
     ),
     # Leavening, thickening and seasoning bases, where 100 g is not a serving and
     # the sodium figure in particular would swamp a day.
@@ -123,9 +141,10 @@ RULES: tuple[Rule, ...] = (
         words=(
             "yeast", "gelatine", "gelatin", "starch", "rennet", "baking",
             "hefe", "backpulver", "starke", "lab",
-            "levure", "gelatine", "amidon", "presure",
+            "levure", "amidon", "presure",
         ),
         fragments=("backpulver", "speisestarke", "starkemehl"),
+        head_only=True,
     ),
     Rule(
         name="salt-or-spice",
@@ -134,20 +153,29 @@ RULES: tuple[Rule, ...] = (
             "salz", "pfeffer", "gewurz", "gewurze",
             "sel", "poivre", "epice", "epices",
         ),
-        # "salted peanuts" and "salt beef" are food; the bare commodity is not.
-        requires=(),
+        head_only=True,
     ),
 )
 
 # Rows whose name contains one of these are food however the rules read, because
 # the commodity word is doing adjectival work: salted nuts, oiled bread, egg in a
 # dish. Checked after the rules and wins over them.
+#
+# The pasta and noodle entries earn their place from the real data: the BLS calls a
+# dried filled pasta "Egg pasta Tortelloni (ricotta and spinach filling) dried",
+# which is a portion however many of the dry-form words it carries, and a glass
+# noodle is named after the starch it is made from.
 _EXEMPT_WORDS: tuple[str, ...] = (
     "salted", "salzig", "gesalzen", "sale", "salee",
     "peanuts", "nuts", "crisps", "chips", "crackers", "biscuit", "biscuits",
     "bread", "brot", "pain", "cake", "kuchen", "gateau",
     "salad", "salat", "salade", "soup", "suppe", "soupe",
     "sardines", "anchovies", "olives", "pickles",
+    "pasta", "noodle", "noodles", "nudeln", "spaghetti", "macaroni", "lasagne",
+    "tortellini", "tortelloni", "ravioli", "gnocchi", "dumpling", "dumplings",
+    "roll", "rolls", "brotchen", "porridge", "muesli", "cereal",
+    # Sweet and bell peppers are vegetables; the spice is "pepper" alone.
+    "sweet", "bell",
 )
 
 
@@ -167,6 +195,35 @@ def _words(folded: str) -> frozenset[str]:
     return frozenset(folded.split())
 
 
+def head(name: str) -> str:
+    """The part of a name that says what the row *is*.
+
+    Composition tables put the food first and qualify it afterwards, so everything
+    from the first comma, bracket or *digit* onwards is a qualifier, and a commodity
+    word appearing only there is a note rather than the subject of the row.
+
+    Both halves of that came from running the rules over the real BLS rather than
+    from thinking about it:
+
+    - Cutting at a comma or bracket: without it, "salt" alone flagged every cooked
+      vegetable in the German table, because they are all named
+      "Fennel boiled (with fat and salt)".
+    - Cutting at a digit: without it, "fat" flagged every dairy product, because the
+      BLS specifies them by fat content — "Gouda cheese 48 % fat in dry matter",
+      "Whipping cream min. 36 % fat". A number before a commodity word makes it a
+      specification, not the food.
+
+    A name that opens with a digit has no head and matches no rule, which is the
+    right answer for "7-grain bread" and costs nothing.
+    """
+    for separator in (",", "(", ";"):
+        name = name.split(separator)[0]
+    for index, character in enumerate(name):
+        if character.isdigit():
+            return name[:index]
+    return name
+
+
 # Shortest a required word may be before it is also looked for inside a compound.
 # Four and below stays whole-word: "ei" would otherwise be found in "Weizen".
 _COMPOUND_MINIMUM = 5
@@ -179,10 +236,13 @@ def _present(term: str, folded: str, words: frozenset[str]) -> bool:
     return len(term) >= _COMPOUND_MINIMUM and term in folded
 
 
-def _fires(rule: Rule, folded: str, words: frozenset[str]) -> bool:
+def _fires(
+    rule: Rule, folded: str, words: frozenset[str], head_words: frozenset[str]
+) -> bool:
     # Triggers stay strict: whole words, plus the compounds a rule lists itself.
     # "oil" must not fire on "boiled", so no length rule applies here.
-    triggered = any(word in words for word in rule.words) or any(
+    candidates = head_words if rule.head_only else words
+    triggered = any(word in candidates for word in rule.words) or any(
         fragment in folded for fragment in rule.fragments
     )
     if not triggered:
@@ -204,7 +264,14 @@ def reasons(name: str, alt_names: tuple[str, ...] = ()) -> frozenset[str]:
     words = _words(folded)
     if any(exempt in words for exempt in _EXEMPT_WORDS):
         return frozenset()
-    return frozenset(rule.name for rule in RULES if _fires(rule, folded, words))
+    # A row that names a preparation is a cooked dish, whatever a note after it says
+    # went into the pan.
+    if any(prepared in words for prepared in _PREPARED):
+        return frozenset()
+    head_words = _words(fold(" ".join([head(name), *(head(alt) for alt in alt_names)])))
+    return frozenset(
+        rule.name for rule in RULES if _fires(rule, folded, words, head_words)
+    )
 
 
 def is_ingredient(name: str, alt_names: tuple[str, ...] = ()) -> bool:

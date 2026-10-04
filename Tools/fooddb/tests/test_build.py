@@ -145,10 +145,22 @@ class EndToEndTests(unittest.TestCase):
         self.out = self.tmp / "foods.sqlite"
         self.sources = self.tmp / "sources.json"
 
+    def popular_fixture(self) -> Path:
+        """A ranking list for the FDC fixtures.
+
+        The shipped list is written against whichever sources ship, so a test that
+        asserts a popularity figure must bring its own: when the bundle moved to the
+        European tables this test failed, which was the list doing its job and the test
+        reaching for something it does not own.
+        """
+        path = self.tmp / "popular.txt"
+        path.write_text("Apples, raw, with skin\n", encoding="utf-8")
+        return path
+
     def run_build(self, fdc: Path = FIXTURES, out: Path | None = None) -> int:
         return main([
             "build", "--fdc", str(fdc), "--out", str(out or self.out),
-            "--sources-out", str(self.sources),
+            "--sources-out", str(self.sources), "--popular", str(self.popular_fixture()),
         ])
 
     def connect(self) -> sqlite3.Connection:
