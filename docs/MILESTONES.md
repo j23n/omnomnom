@@ -189,7 +189,7 @@ caught most of the vegetables in Germany.
   than left as a surprise.
 - **No Swift compiler here.** The Swift half is reasoned, and every numeric expectation in
   its tests was checked by mirroring the same arithmetic in Python and running it over the
-  real database. The Python half is genuinely verified: 182 tests, `ruff check` and `mypy
+  real database. The Python half is genuinely verified: 184 tests, `ruff check` and `mypy
   --strict` clean.
 
 ### Settled against the real French table
