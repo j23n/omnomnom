@@ -47,16 +47,24 @@ nonisolated struct ParsedItem: Identifiable, Hashable, Sendable {
 /// common case, because someone typing a line in order to log it writes a list.
 /// Everything cleverer is the model's job, and where the model exists it does it.
 ///
-/// "with" never splits. "toast with butter" stays one fragment on purpose, so the
-/// matcher can try a composite row before anything is broken into parts.
+/// A line that names its parts is split into them, "with" included: "toast with butter"
+/// is toast and butter. Holding such a fragment together to try a composite row first
+/// dead-ends when no composite exists, and there is nothing to fall back to — typing
+/// "yogurt with bananas, seeds, peanuts" searched for a single row holding both "yogurt"
+/// and "bananas", found none, and left a row with no food that blocked the log, while
+/// "yogurt" and "bananas" each match on their own. Two rows the user can see are worth
+/// more than one row holding nothing.
 nonisolated enum LineParser {
     /// Longest line worth reading. The same bound the model prompt uses, so neither tier
     /// behaves differently from the other on a paragraph.
     static let maximumLength = 500
 
-    /// What separates one food from the next: commas, newlines, semicolons, and the
-    /// words a list is joined with. Never "with".
-    static let separators = [",", ";", "\n", "\r", " and ", " & ", " + ", " plus ", " und ", " et "]
+    /// What separates one food from the next: commas, newlines, semicolons, and the words
+    /// one food is joined to another with, in each language the parser reads.
+    static let separators = [
+        ",", ";", "\n", "\r", " and ", " & ", " + ", " plus ", " und ", " et ",
+        " with ", " mit ", " avec ",
+    ]
 
     /// Words that name a container or a measure rather than a food, dropped once a count
     /// has been read off the front: "2 slices of bread" is bread.
@@ -81,8 +89,8 @@ nonisolated enum LineParser {
     /// The foods in a line, in the order they were written. Empty when there are none.
     ///
     /// A fragment that turns out to be only a size is given to the food before it. People
-    /// write "chicken curry with rice, big portion" and mean the curry was big; dropping
-    /// that silently would lose the one thing they said about the amount.
+    /// write "coffee, big portion" and mean that coffee was big; dropping that silently
+    /// would lose the one thing they said about the amount.
     static func parse(_ line: String) -> [ParsedItem] {
         var items: [ParsedItem] = []
         for fragment in fragments(of: String(line.prefix(maximumLength))) {
@@ -118,6 +126,11 @@ nonisolated enum LineParser {
 
     /// Words that join a container to its food and carry nothing once the container has
     /// gone: "2 slices of bread" must not read back as "of bread".
+    ///
+    /// "with", "mit" and "avec" stay here although they also separate, because a separator
+    /// needs a space on either side and so cannot catch a fragment that *opens* with the
+    /// word: "porridge, with berries" splits on the comma and leaves "with berries", which
+    /// has to read back as berries.
     static let connectors: Set<String> = ["of", "von", "de", "du", "da", "with", "mit", "avec"]
 
     /// A number glued to its unit, as people actually type it: "200g" is 200 grams.
@@ -133,8 +146,8 @@ nonisolated enum LineParser {
     /// What one fragment turned out to hold.
     nonisolated enum Fragment: Hashable, Sendable {
         case food(ParsedItem)
-        /// A size and nothing else: the "big portion" of "chicken curry with rice, big
-        /// portion", which belongs to the food before it rather than to nothing.
+        /// A size and nothing else: the "big portion" of "coffee, big portion", which
+        /// belongs to the food before it rather than to nothing.
         case size(AmountBucket)
         case nothing
     }
@@ -145,9 +158,9 @@ nonisolated enum LineParser {
     /// to nothing is dropped rather than carried as an empty row for the user to delete.
     ///
     /// The name keeps the words as they were written and the lookup term does not. That
-    /// is what the two fields are for: "toast with butter" has to read that way on screen,
-    /// while the search wants "toast butter", because the index ands its tokens together
-    /// and a row called "Bread, buttered" holds no "with" to match.
+    /// is what the two fields are for: "my Müsli" has to read that way on screen, while
+    /// the search wants "musli", because the index ands folded tokens together and no
+    /// food is called "my" anything.
     static func item(from fragment: String) -> ParsedItem? {
         guard case .food(let item) = read(fragment) else { return nil }
         return item

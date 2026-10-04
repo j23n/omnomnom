@@ -21,24 +21,32 @@ struct LineParserTests {
         #expect(items.allSatisfy { $0.amount == nil && $0.count == nil })
     }
 
-    @Test func andJoinsAListAndWithDoesNot() {
-        // "with" holding a fragment together is what lets the matcher try a composite
-        // row before it splits anything.
+    @Test func bothAndAndWithJoinAList() {
+        // A food joined to another food is two foods, however it was joined.
         #expect(parse("oats and banana").map(\.name) == ["oats", "banana"])
-        #expect(parse("toast with butter").map(\.name) == ["toast with butter"])
+        #expect(parse("toast with butter").map(\.name) == ["toast", "butter"])
+    }
+
+    @Test func theReportedLineBecomesOneRowPerFood() {
+        // The line that found the bug: as one composite fragment "yogurt with bananas"
+        // searched for a row holding both words, matched nothing and blocked the log.
+        // Each part matches on its own, so each part is its own row.
+        let items = parse("yogurt with bananas, seeds, peanuts")
+        #expect(items.map(\.name) == ["yogurt", "bananas", "seeds", "peanuts"])
+        #expect(items.map(\.lookupTerm) == ["yogurt", "bananas", "seeds", "peanuts"])
     }
 
     @Test func theLookupTermDropsFillerTheNameKeeps() {
-        // Two fields because they want two things: the name is read by a person, the
-        // term is anded together by an index where a row holding no "with" would miss.
-        let item = try! #require(parse("toast with butter").first)
-        #expect(item.name == "toast with butter")
-        #expect(item.lookupTerm == "toast butter")
+        // Two fields because they want two things: the name is read by a person, the term
+        // is anded together by an index that holds folded words and no "my".
+        let item = try! #require(parse("a bowl of my Müsli").first)
+        #expect(item.name == "my Müsli")
+        #expect(item.lookupTerm == "musli")
     }
 
-    @Test func theLongLineSplitsIntoThree() {
+    @Test func theLongLineSplitsIntoFour() {
         let items = parse("a pancake with oats, peanut butter and banana")
-        #expect(items.map(\.name) == ["pancake with oats", "peanut butter", "banana"])
+        #expect(items.map(\.name) == ["pancake", "oats", "peanut butter", "banana"])
         #expect(items.first?.count == 1)
     }
 
@@ -104,12 +112,12 @@ struct LineParserTests {
     }
 
     @Test func aSizeOnItsOwnBelongsToTheFoodBeforeIt() {
-        // People write it this way and mean the curry was big. Dropping it would lose
-        // the only thing the line said about the amount.
+        // People write it this way and mean a big portion. Dropping it would lose the only
+        // thing the line said about the amount, so it lands on the food it follows.
         let items = parse("chicken curry with rice, big portion")
-        #expect(items.count == 1)
-        #expect(items.first?.name == "chicken curry with rice")
-        #expect(items.first?.size == .more)
+        #expect(items.map(\.name) == ["chicken curry", "rice"])
+        #expect(items.first?.size == nil)
+        #expect(items.last?.size == .more)
     }
 
     @Test func aSizeOnItsOwnWithNothingBeforeItIsDropped() {
@@ -131,7 +139,24 @@ struct LineParserTests {
     }
 
     @Test func aLineIsReadInGermanToo() {
-        #expect(parse("Haferflocken mit Banane und Kaffee").map(\.name) == ["Haferflocken mit Banane", "Kaffee"])
+        #expect(parse("Haferflocken mit Banane und Kaffee").map(\.name) == ["Haferflocken", "Banane", "Kaffee"])
+    }
+
+    @Test func aGermanLineNamingItsPartsBecomesThree() {
+        let items = parse("brot mit erdnussmus und quark")
+        #expect(items.map(\.name) == ["brot", "erdnussmus", "quark"])
+    }
+
+    @Test func aFrenchLineNamingItsPartsBecomesTwo() {
+        // "avec" separates, and "du" is still only a connector, so neither survives into
+        // a name.
+        #expect(parse("du pain avec du beurre").map(\.name) == ["pain", "beurre"])
+    }
+
+    @Test func aConnectiveOpeningAFragmentIsStillDropped() {
+        // A separator needs a space on either side, so the comma split leaves "with
+        // berries" for the connector list to clean up.
+        #expect(parse("porridge, with berries").map(\.name) == ["porridge", "berries"])
     }
 
     @Test func aVeryLongLineIsCappedRatherThanRefused() {
