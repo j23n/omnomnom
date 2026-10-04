@@ -80,12 +80,17 @@ struct LogLineIntent: AppIntent {
 /// `@Parameter` and `@Dependency` wrappers *are* mutable stored properties, must not be.
 nonisolated struct OmnomnomShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
+        // No phrase speaks the line itself. A shortcut phrase can only interpolate a
+        // parameter whose type is an `AppEntity` or an `AppEnum`, and this one is free
+        // text — the whole point is saying a sentence nobody enumerated. So the phrase
+        // starts the intent and `requestValueDialog` on `line` asks for the sentence,
+        // which costs one turn of dialogue and keeps the input open.
         AppShortcut(
             intent: LogLineIntent(),
             phrases: [
                 "Log a meal in \(.applicationName)",
-                "Log \(\.$line) in \(.applicationName)",
-                "\(.applicationName) log \(\.$line)",
+                "Log food in \(.applicationName)",
+                "Log what I ate in \(.applicationName)",
             ],
             shortTitle: "Log a meal",
             systemImageName: "fork.knife"
