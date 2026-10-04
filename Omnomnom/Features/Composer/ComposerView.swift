@@ -375,10 +375,10 @@ private func usualLinesContainer() -> ModelContainer {
     /// rather than by calling it twenty-nine times.
     func record(_ line: String, times: Int, slot: MealSlot) {
         let item = PhraseDraftItem(name: food.name, amount: 50, food: food)
-        // `try?` over a call that already returns an optional nests two levels; flattening
-        // reads better than unwrapping twice.
-        let remembered = try? Phrase.remember(line: line, items: [item], in: context, slot: slot)
-        if let phrase = remembered ?? nil {
+        // `try?` over a call that already returns an optional nests two levels, hence the
+        // second unwrap.
+        if let remembered = try? Phrase.remember(line: line, items: [item], in: context, slot: slot),
+           let phrase = remembered {
             phrase.useCount = times
         }
     }

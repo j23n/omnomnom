@@ -72,10 +72,16 @@ struct TodayView: View {
                 .sheet(item: $composer.resolution) { resolution in
                     ResolutionSheet(
                         resolution: resolution,
+                        day: model.selectedDay,
                         onChange: { composer.update($0) },
                         onRemove: { composer.remove($0) },
                         onPick: { picking = $0 },
-                        onLog: { Task { await log(resolution) } }
+                        onLog: { slot, at in
+                            // The sheet's own rows, not the resolution captured when it
+                            // opened: an amount changed in it has to be the one logged.
+                            let edited = composer.resolution ?? resolution
+                            Task { await log(edited, mealSlot: slot, at: at) }
+                        }
                     )
                     .presentationDetents([.medium, .large])
                 }
@@ -143,15 +149,15 @@ struct TodayView: View {
     }
 
     /// Logs every row, clears the field, and reports what happened in one banner.
-    private func log(_ resolution: LineResolution) async {
+    ///
+    /// The meal and the time come from the sheet, which defaults them to the selected day
+    /// at the current hour and then lets them be changed. They used to be inferred here,
+    /// which meant a line could only ever be logged into the meal its hour implied.
+    private func log(_ resolution: LineResolution, mealSlot: MealSlot, at timestamp: Date) async {
         let logger = EntryLogger(context: context, health: health)
-        // The same day-to-timestamp rule the Quantity sheet uses: the selected day at
-        // the current time, so logging into the past keeps a sensible hour and the meal
-        // slot it implies. One rule for this, not two.
-        let timestamp = QuantitySheet.defaultTimestamp(on: model.selectedDay)
         let outcome = await logger.logLine(
             resolution,
-            mealSlot: MealSlot.inferred(from: timestamp),
+            mealSlot: mealSlot,
             at: timestamp
         )
         composer.clear()

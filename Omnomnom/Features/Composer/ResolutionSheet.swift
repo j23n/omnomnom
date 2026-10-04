@@ -18,16 +18,51 @@ struct ResolutionSheet: View {
     let onChange: (ResolvedRow) -> Void
     let onRemove: (ResolvedRow) -> Void
     let onPick: (ResolvedRow) -> Void
-    let onLog: () -> Void
+    /// Logs the line into the meal and at the time the sheet is showing.
+    ///
+    /// Carried out rather than decided by the caller, because this screen is the one place
+    /// the two are visible and the only place they can be changed. Until it was, every
+    /// line was logged into whichever meal the hour implied, with no way to say otherwise.
+    let onLog: (MealSlot, Date) -> Void
+
+    /// The meal and the moment, defaulted the way the Quantity sheet defaults them.
+    ///
+    /// One rule for this, not two: the selected day at the current wall-clock time, so a
+    /// line logged into the past keeps a sensible hour and the meal that hour implies. The
+    /// slot does not follow the time once it has been shown, because a user who sets one
+    /// of them has said something about it and the screen should not then argue.
+    @State private var mealSlot: MealSlot
+    @State private var timestamp: Date
+
+    init(
+        resolution: LineResolution,
+        day: Date,
+        onChange: @escaping (ResolvedRow) -> Void,
+        onRemove: @escaping (ResolvedRow) -> Void,
+        onPick: @escaping (ResolvedRow) -> Void,
+        onLog: @escaping (MealSlot, Date) -> Void
+    ) {
+        self.resolution = resolution
+        self.onChange = onChange
+        self.onRemove = onRemove
+        self.onPick = onPick
+        self.onLog = onLog
+        let timestamp = QuantitySheet.defaultTimestamp(on: day)
+        _timestamp = State(initialValue: timestamp)
+        _mealSlot = State(initialValue: MealSlot.inferred(from: timestamp))
+    }
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
                     ForEach(resolution.rows) { row in
-                        ResolutionRowView(row: row, checked: resolution.wasChecked) {
-                            onPick(row)
-                        }
+                        ResolutionRowView(
+                            row: row,
+                            checked: resolution.wasChecked,
+                            onPick: { onPick(row) },
+                            onChange: onChange
+                        )
                         .swipeActions(edge: .trailing) {
                             Button("Remove", systemImage: "trash", role: .destructive) {
                                 onRemove(row)
@@ -48,6 +83,15 @@ struct ResolutionSheet: View {
                         LabeledContent("Energy", value: Formatters.amount(energy, unit: .kilocalorie))
                     }
                 }
+
+                Section {
+                    Picker("Meal", selection: $mealSlot) {
+                        ForEach(MealSlot.allCases, id: \.self) { slot in
+                            Text(slot.displayName).tag(slot)
+                        }
+                    }
+                    DatePicker("Time", selection: $timestamp, displayedComponents: [.date, .hourAndMinute])
+                }
             }
             .navigationTitle("Log this")
             .navigationBarTitleDisplayMode(.inline)
@@ -64,7 +108,9 @@ struct ResolutionSheet: View {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            Button(action: onLog) {
+            Button {
+                onLog(mealSlot, timestamp)
+            } label: {
                 Text("Log")
                     .frame(maxWidth: .infinity)
             }
@@ -122,7 +168,8 @@ private func previewRow(
             ],
             wasChecked: false
         ),
-        onChange: { _ in }, onRemove: { _ in }, onPick: { _ in }, onLog: {}
+        day: .now,
+        onChange: { _ in }, onRemove: { _ in }, onPick: { _ in }, onLog: { _, _ in }
     )
 }
 
@@ -137,7 +184,8 @@ private func previewRow(
             ],
             wasChecked: true
         ),
-        onChange: { _ in }, onRemove: { _ in }, onPick: { _ in }, onLog: {}
+        day: .now,
+        onChange: { _ in }, onRemove: { _ in }, onPick: { _ in }, onLog: { _, _ in }
     )
 }
 
@@ -151,7 +199,8 @@ private func previewRow(
             ],
             wasChecked: false
         ),
-        onChange: { _ in }, onRemove: { _ in }, onPick: { _ in }, onLog: {}
+        day: .now,
+        onChange: { _ in }, onRemove: { _ in }, onPick: { _ in }, onLog: { _, _ in }
     )
 }
 #endif

@@ -118,6 +118,9 @@ struct LineResolver {
             choice: choice,
             amount: amount(for: item, choice: choice, reference: stored.amount),
             bucket: item.size ?? .usual,
+            // The reference a step multiplies is what was stored, so "less" after the
+            // line already said "big" is less than usual rather than less than big.
+            baseAmount: stored.amount,
             origin: .item,
             confidence: .settled
         )
@@ -148,6 +151,7 @@ struct LineResolver {
                 choice: choice,
                 amount: amount(for: item, choice: choice, reference: nil),
                 bucket: bucket(for: item, choice: choice, reference: nil),
+                baseAmount: choice.lastAmount,
                 origin: .database,
                 confidence: best.confidence
             )
@@ -159,6 +163,7 @@ struct LineResolver {
                 choice: product,
                 amount: amount(for: item, choice: product, reference: nil),
                 bucket: bucket(for: item, choice: product, reference: nil),
+                baseAmount: product.lastAmount,
                 origin: .product,
                 confidence: .probable
             )

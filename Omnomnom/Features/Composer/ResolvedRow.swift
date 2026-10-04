@@ -44,6 +44,14 @@ nonisolated struct ResolvedRow: Identifiable, Hashable, Sendable {
     /// food eaten for the first time, where "usual" would mean nothing and the row shows
     /// a portion or a plain figure instead.
     var bucket: AmountBucket?
+    /// What a step multiplies: what this person last had, before any step was applied.
+    ///
+    /// Held beside `amount` rather than recovered from it, because `AmountBucket.amount(of:)`
+    /// rounds to something a person recognises and dividing that rounding back out drifts:
+    /// 40 g stepped to More is 55 g, and 55 g read back as a reference is 39. Keeping the
+    /// reference means Less after More lands on the amount it started from, and that every
+    /// step is measured from the same place however many times it is changed.
+    var baseAmount: Double
     var origin: RowOrigin
     var confidence: MatchConfidence
     /// Set when the model judged the amount and the food not to go together.
@@ -51,14 +59,17 @@ nonisolated struct ResolvedRow: Identifiable, Hashable, Sendable {
 
     init(
         id: UUID = UUID(), name: String, choice: FoodChoice?, amount: Double,
-        bucket: AmountBucket? = nil, origin: RowOrigin, confidence: MatchConfidence,
-        implausible: Bool = false
+        bucket: AmountBucket? = nil, baseAmount: Double? = nil, origin: RowOrigin,
+        confidence: MatchConfidence, implausible: Bool = false
     ) {
         self.id = id
         self.name = name
         self.choice = choice
         self.amount = amount
         self.bucket = bucket
+        // Defaulted, so every existing caller keeps working and a row that was never
+        // stepped is its own reference.
+        self.baseAmount = baseAmount ?? amount
         self.origin = origin
         self.confidence = confidence
         self.implausible = implausible
@@ -82,6 +93,41 @@ nonisolated struct ResolvedRow: Identifiable, Hashable, Sendable {
     /// The name to show: the food's, or what the line called it when there is no food.
     var displayName: String {
         choice?.name ?? name
+    }
+
+    /// Whether steps mean anything on this row.
+    ///
+    /// Two conditions, and both matter. There has to be a reference, which `bucket` being
+    /// set already records — "usual" has to mean this person's usual, so a food eaten for
+    /// the first time offers no steps. And the amount has to be a weight or a volume:
+    /// steps round to the nearest 5 or 10 of the food's own unit, which is sensible in
+    /// grams and nonsense in servings, where 0.7 of one serving would round to none.
+    var canStep: Bool {
+        guard bucket != nil, let choice else { return false }
+        if case .recipe = choice.source { return false }
+        return baseAmount > 0
+    }
+
+    /// The row with a step applied, measured from the reference rather than from wherever
+    /// the last step left the amount.
+    func stepped(to bucket: AmountBucket) -> ResolvedRow {
+        var copy = self
+        copy.bucket = bucket
+        copy.amount = bucket.amount(of: baseAmount)
+        return copy
+    }
+
+    /// The row with an amount the user typed.
+    ///
+    /// It becomes the new reference and clears the step, because a figure someone entered
+    /// is not "usual" or "more" than anything — and because the next step they take should
+    /// be measured from what they just said, not from what the app had guessed.
+    func set(amount: Double) -> ResolvedRow {
+        var copy = self
+        copy.amount = amount
+        copy.baseAmount = amount
+        copy.bucket = nil
+        return copy
     }
 }
 
