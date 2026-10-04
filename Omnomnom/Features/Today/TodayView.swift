@@ -7,7 +7,16 @@ import SwiftUI
 struct TodayView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.appRouter) private var router
+    @Environment(\.modelContext) private var context
+    @Environment(\.foodRepository) private var repository
+    @Environment(\.health) private var health
+    /// The validator runs on the same model the estimate module uses, behind the same
+    /// opt-in, so a user who has not turned that on is not quietly handed a model call.
+    @AppStorage(EstimationModule.enabledKey) private var estimationEnabled = false
     @State private var model: TodayViewModel
+    @State private var composer = ComposerModel()
+    /// A row of the resolution sheet whose food the user wants to change.
+    @State private var picking: ResolvedRow?
     /// A food the system asked the app to open, handed to the search screen once.
     @State private var opening: FoodChoice?
 
@@ -56,7 +65,27 @@ struct TodayView: View {
                     }
                 }
                 .safeAreaBar(edge: .bottom) {
-                    TodayBottomBar(model: model)
+                    TodayBottomBar(model: model, composer: composer) {
+                        composer.submit(using: resolver)
+                    }
+                }
+                .sheet(item: $composer.resolution) { resolution in
+                    ResolutionSheet(
+                        resolution: resolution,
+                        onChange: { composer.update($0) },
+                        onRemove: { composer.remove($0) },
+                        onPick: { picking = $0 },
+                        onLog: { Task { await log(resolution) } }
+                    )
+                    .presentationDetents([.medium, .large])
+                }
+                .fullScreenCover(item: $picking) { row in
+                    FoodSearchView(mode: .pick(multiple: false, onPick: { choose($0, for: row) }))
+                }
+                .onChange(of: composer.banner) { _, banner in
+                    guard let banner else { return }
+                    model.show(banner: banner)
+                    composer.dismissBanner()
                 }
                 .fullScreenCover(isPresented: $model.isAddPresented) {
                     FoodSearchView(
@@ -86,6 +115,63 @@ struct TodayView: View {
                     }
                 }
         }
+    }
+
+    /// The four rungs, wired to this screen's environment.
+    ///
+    /// The validator is present only when the estimation opt-in is on, which is the same
+    /// switch the photo tier uses. Without it the line still resolves from history and
+    /// the bundled tables; fewer rows settle and the sheet says so.
+    private var resolver: LineResolver {
+        LineResolver(
+            context: context,
+            repository: repository,
+            validator: estimationEnabled ? FoundationMatchValidator() : nil
+        )
+    }
+
+    /// Logs every row, clears the field, and reports what happened in one banner.
+    private func log(_ resolution: LineResolution) async {
+        let logger = EntryLogger(context: context, health: health)
+        // The same day-to-timestamp rule the Quantity sheet uses: the selected day at
+        // the current time, so logging into the past keeps a sensible hour and the meal
+        // slot it implies. One rule for this, not two.
+        let timestamp = QuantitySheet.defaultTimestamp(on: model.selectedDay)
+        let outcome = await logger.logLine(
+            resolution,
+            mealSlot: MealSlot.inferred(from: timestamp),
+            at: timestamp
+        )
+        composer.clear()
+        model.show(banner: Self.loggedMessage(outcome, of: resolution.rows.count))
+    }
+
+    /// Hands a picked food to the row that asked for it, keeping the amount the row
+    /// already had: the user changed what the food is, not how much of it there was.
+    private func choose(_ choice: FoodChoice, for row: ResolvedRow) {
+        var updated = row
+        updated.choice = choice
+        updated.confidence = .settled
+        updated.implausible = false
+        if updated.amount == 0 {
+            updated.amount = choice.lastAmount ?? 100
+        }
+        composer.update(updated)
+        picking = nil
+    }
+
+    /// One sentence for the whole line, naming only what the user can act on.
+    static func loggedMessage(_ outcome: LineLogOutcome, of rows: Int) -> String {
+        if outcome.loggedCount == 0 {
+            return "Nothing could be logged from that line."
+        }
+        let logged = outcome.loggedCount == 1 ? "Logged 1 item." : "Logged \(outcome.loggedCount) items."
+        var problems = outcome.failed > 0 ? ["\(outcome.failed) could not be logged."] : []
+        var seen: Set<String> = []
+        for message in outcome.results.compactMap(\.bannerMessage) where seen.insert(message).inserted {
+            problems.append(message)
+        }
+        return ([logged] + problems).joined(separator: " ")
     }
 }
 

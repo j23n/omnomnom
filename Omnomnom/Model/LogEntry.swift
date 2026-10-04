@@ -39,6 +39,9 @@ final class LogEntry {
     var orphaned: Bool = false
     /// True for an entry the user confirmed from an on-device estimate rather than a food.
     var isEstimate: Bool = false
+    /// Raw `EntryOrigin`: how this entry came to exist. Defaulted, so entries written
+    /// before the app recorded it read as picked, which is what they were.
+    var originRaw: String = EntryOrigin.picked.rawValue
     /// Servings logged, for a recipe entry; `nil` for a food. `rawAmount` holds what
     /// those servings, or that food, came to either way.
     var servings: Double?
@@ -87,6 +90,12 @@ final class LogEntry {
             snapshotSugar = newValue.sugar
             snapshotSodium = newValue.sodium
         }
+    }
+
+    /// How the entry came to exist; see `EntryOrigin`.
+    var origin: EntryOrigin {
+        get { EntryOrigin(rawValue: originRaw) ?? .picked }
+        set { originRaw = newValue.rawValue }
     }
 
     var mealSlot: MealSlot {
