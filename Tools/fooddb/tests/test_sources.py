@@ -36,23 +36,34 @@ class MultiSourceBuildTests(unittest.TestCase):
         self.addCleanup(conn.close)
 
         counts = dict(conn.execute("SELECT source, count(*) FROM foods GROUP BY source").fetchall())
-        self.assertEqual(counts, {"ciqual": 2, "bls": 5})
+        # Four from the BLS, not five: the German-only row is dropped for want of an
+        # English name rather than shown in German.
+        self.assertEqual(counts, {"ciqual": 2, "bls": 4})
 
-        # Both sources publish English names beside their own, so a row reads in
-        # English wherever one exists and in the source's language where it does not.
+        # One language ships, from both sources: a row with no English name is
+        # dropped rather than shown in French or German.
         locales = {
             (source, locale)
             for source, locale in conn.execute("SELECT DISTINCT source, name_locale FROM foods")
         }
-        self.assertEqual(locales, {("ciqual", "en"), ("bls", "en"), ("bls", "de")})
+        self.assertEqual(locales, {("ciqual", "en"), ("bls", "en")})
 
         meta = dict(conn.execute("SELECT key, value FROM meta").fetchall())
         self.assertEqual(meta["schema_version"], "3")
-        self.assertEqual(meta["food_count"], "7")
+        self.assertEqual(meta["food_count"], "6")
         self.assertEqual(meta["ciqual_version"], "unknown")
         self.assertEqual(meta["bls_version"], "4.0")
 
-    def test_a_food_is_found_by_any_of_its_names(self) -> None:
+    def test_a_food_is_found_by_its_english_name_and_only_that(self) -> None:
+        """The index holds one language, and both tables' rows are in it together.
+
+        "pomme" and "hafer" are the names these two tables publish beside their
+        English ones, and they find nothing. That is the point rather than a gap:
+        indexing them made a German bare noun reach the wrong food, because a
+        compound's head noun comes last in German and an index reads forwards. The
+        names are still in the readers, so this is a line to change rather than work
+        to redo.
+        """
         self.assertEqual(self.build(), 0)
         conn = sqlite3.connect(self.out)
         self.addCleanup(conn.close)
@@ -64,11 +75,12 @@ class MultiSourceBuildTests(unittest.TestCase):
             ).fetchall()
             return [row[0] for row in rows]
 
-        self.assertEqual(search("pomme"), ["Apple, pulp and skin, raw"])
-        self.assertEqual(search("apfel"), ["Apple raw"])
-        self.assertEqual(search("hafer"), ["Oat whole grain, raw"])
+        self.assertEqual(search("pomme"), [])
+        self.assertEqual(search("apfel"), [])
+        self.assertEqual(search("hafer"), [])
         self.assertEqual(search("bread"), ["Sandwich bread"])
         self.assertEqual(search("apple"), ["Apple raw", "Apple, pulp and skin, raw"])
+        self.assertEqual(search("oat"), ["Oat whole grain, raw"])
 
     def test_the_manifest_names_only_what_shipped(self) -> None:
         self.assertEqual(self.build(), 0)

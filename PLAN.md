@@ -136,8 +136,8 @@ Only permissively licensed sources go in the bundle, now or later. Open Food Fac
 
 | Source | Foods | Licence | Status |
 | --- | --- | --- | --- |
-| [Ciqual](https://ciqual.anses.fr/) (ANSES, France) | 3,484 | Licence Ouverte / Etalab | Bundled. French and English names, both indexed |
-| [BLS 4.0](https://www.blsdb.de/) (MRI, Germany) | 7,140 | CC BY 4.0, attribution to Max Rubner-Institut | Bundled. German and English names, both indexed; strong on composite dishes |
+| [Ciqual](https://ciqual.anses.fr/) (ANSES, France) | 3,484 | Licence Ouverte / Etalab | Bundled for its English names; the French ones are read and dropped |
+| [BLS 4.0](https://www.blsdb.de/) (MRI, Germany) | 7,140 | CC BY 4.0, attribution to Max Rubner-Institut | Bundled for its English names; strong on composite dishes |
 | [FDC Foundation + SR Legacy](https://fdc.nal.usda.gov/) (USDA) | \~9,000 | CC0 1.0 | Readable, not built in. Citation requested, not required |
 
 Expect roughly 10,000 rows, well under 5 MB including an FTS5 index.
@@ -156,7 +156,31 @@ foods_fts(name, alt_names)         -- FTS5 external content, unicode61, diacriti
 portions(id, food_id, label, grams, seq)   -- "1 medium", "1 slice"
 ```
 
-`is_ingredient` marks a row that is an ingredient or a dry, raw or concentrated form rather than a portion anyone eats, which is what keeps a 200 g serving of coffee powder from being auto-matched to the word "coffee"; see the validation section for the three defences it is the first of. `alt_names` holds the same food's names in the source's other languages, newline separated, indexed for search and never displayed: typing "pomme" finds the row that reads "Apple, pulp and skin, raw", and typing "Apfel" finds "Apfel roh". `id` is assigned by the build, never the source's own identifier; `source_ref` carries that. `kcal_100g` is the only nutrient that must be present, the rest are null when the source lacks them, never zero. `popularity` is the curated ranking boost. The `source` column exists for attribution, so the UI can name where a value came from. The full DDL lives in `Tools/fooddb/fooddb/schema.sql` and is the reference; this block is a summary.
+### One language
+
+The app ships English names only, and the French and German names both tables publish
+are read and then dropped.
+
+Indexing them looked free — a German speaker could type "Milch", a French speaker
+"pomme" — and measuring it against the built database said otherwise. German builds a
+compound by putting the head noun last: "Vollmilch" is a milk, "Milchschokolade" is a
+chocolate. An FTS index can only be searched forwards, so `"Milch"*` reached 176 rows
+and not one of the 29 that were milk, and the scorer compounded it by reading a
+compound's head as the better match — so "Milch" settled, confidently, on milk
+chocolate at 532 kcal against 62 for milk. That is the silent factor-of-ten error the
+whole matcher exists to prevent, arriving through the feature meant to be generous.
+
+Fixing it properly means a reversed-token index, so a query can reach a token by its
+tail, and a tier that tells a compound's tail from its head — the tail means the row
+*is* that food, the head means it merely contains it, which is the opposite of English
+word order. Both were prototyped and both work: "Milch" then finds whole milk, and
+"Tee", "Wasser", "Brot" and "Salat" come right with it. Neither ships, because one
+language is what the app needs now and a half-working second one is worse than none.
+
+The readers still return the other names. This is a decision about what to ship rather
+than about what the tables hold, and `build.NAME_LOCALE_SHIPPED` is the line to change.
+
+`is_ingredient` marks a row that is an ingredient or a dry, raw or concentrated form rather than a portion anyone eats, which is what keeps a 200 g serving of coffee powder from being auto-matched to the word "coffee"; see the validation section for the three defences it is the first of. `alt_names` holds other names a row can be found by, newline separated, indexed for search and never displayed. It is empty in the shipped bundle: the app is English-only, and the sources' French and German names are read and dropped — see "One language" below. `id` is assigned by the build, never the source's own identifier; `source_ref` carries that. `kcal_100g` is the only nutrient that must be present, the rest are null when the source lacks them, never zero. `popularity` is the curated ranking boost. The `source` column exists for attribution, so the UI can name where a value came from. The full DDL lives in `Tools/fooddb/fooddb/schema.sql` and is the reference; this block is a summary.
 
 ### Column mapping
 
@@ -816,7 +840,7 @@ Steps 1 to 4 were the shippable app under revision 3. Under revision 4 the shipp
 
 Kept here so the v1 pipeline does not paint itself into a corner.
 
-- `name_locale` says which language a row's display name is in, so search can rank the user's own language first without a schema change. Ciqual and the BLS both publish English names beside their own, so most rows read in English and are found in French or German through `alt_names`.
+- `name_locale` says which language a row's display name is in. Every shipped row is `en`; the column stays because it is what another language would be added through.
 - `source` and `source_ref` stay per row, so a later source never overwrites an FDC row's provenance.
 - Ciqual publishes values as strings with markers such as `<` and `traces`; both are stored as zero with `is_estimated` set, so a sum never silently omits them.
 - Cross-source overlap is settled at build time by name: the first source to claim a normalised name keeps it, in the order the sources are listed. Across languages there is almost nothing to settle, which is why Ciqual and the BLS coexist without a curation pass.

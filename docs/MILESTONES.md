@@ -177,10 +177,10 @@ caught most of the vegetables in Germany.
 
 ### Open
 
-- **Ciqual is built from a truncated export.** `compo*.xml` is 70 MB and arrived cut at a
-  block boundary: 19,682 of about 258,000 rows, covering 266 of the 3,484 foods. The reader
-  itself is now exercised against real data (see below); what is missing is breadth, and
-  the French side of the search index with it.
+- **A second language is not built.** The readers return the French and German names and
+  the build drops them; shipping them needs a reversed-token index and a scorer that tells
+  a compound's tail from its head. Both are prototyped and measured, neither is written.
+  See "The bundle ships one language" below and "One language" in `PLAN.md`.
 - **Composite-before-split** is specified in `PLAN.md` but lands with the parser, since
   there are no fragments to split until the composer exists.
 - **"Butter" is a known gap in the flag.** Cocoa and shea butter are baking fats and are
@@ -189,7 +189,7 @@ caught most of the vegetables in Germany.
   than left as a surprise.
 - **No Swift compiler here.** The Swift half is reasoned, and every numeric expectation in
   its tests was checked by mirroring the same arithmetic in Python and running it over the
-  real database. The Python half is genuinely verified: 181 tests, `ruff check` and `mypy
+  real database. The Python half is genuinely verified: 182 tests, `ruff check` and `mypy
   --strict` clean.
 
 ### Settled against the real French table
@@ -227,15 +227,42 @@ and marzipan, and "purée" without catching mashed potatoes. One flour of twenty
 because its note says "(for bread)" and the exemption list is checked first — which is the
 exemption doing its job, since it is there to stop a word in a note flagging the bread.
 
-Re-running the bare-noun queries over the merged database, 25 of 26 settle on a sensible
-row, and the one that does not is informative: "yoghurt" returns nothing, because both
-tables spell it "yogurt". Of 166 everyday English words, 8 return nothing — one spelling
-variant, three regional synonyms, two compounds written as one word, and two foods neither
-table holds. In German, 70 of 72 work, which is what matters most here. In French only 34
-of 54 do, and that is entirely the truncation: every missing word appears in 5 to 80 French
-names in `alim.xml`, none of whose rows have values yet. No code was changed for any of
-this; a curated synonym list is the obvious answer and it should be built against the full
-export rather than against a 266-food sample.
+### The bundle ships one language
+
+The full composition file arrived and the whole table built: 3,341 Ciqual rows beside
+7,099 from the BLS, 41 duplicate names dropped, one 1.8 MB database.
+
+With it came the measurement that decided the language question. Indexing the French and
+German names each table publishes alongside its English ones had looked free. It was not.
+German builds a compound by putting the head noun last — "Vollmilch" is a milk,
+"Milchschokolade" is a chocolate — and an FTS index can only be searched forwards, so
+`"Milch"*` reached 176 rows and not one of the 29 that were milk. Scoring then made it
+worse by reading the compound's *head* as the better match, so "Milch" settled,
+confidently, on milk chocolate at 532 kcal against 62 for milk. Thirteen of 30 German
+bare nouns were wrong the same way: "Tee" meant tea biscuits, "Wasser" watermelon,
+"Brot" breadfruit, "Salat" salad cream.
+
+A reversed-token index plus a tier that tells a compound's tail from its head fixes it,
+and both were prototyped against the real database: "Milch" then finds whole milk, and
+"Tee", "Wasser", "Brot", "Salat", "Zwiebel" and "Schinken" come right with it. Neither
+ships. The app needs one language, a half-working second one is worse than none, and the
+readers still return the other names so this stays a line to change rather than work to
+redo. French went the same way for the same reason, having briefly been curated.
+
+So the bundle is English-only, and the curated list was measured against it rather than
+assumed. Reading the top match for eighty everyday bare nouns found that the words with
+an entry resolved well and the words without one often did not: "cream" meant fruit ice
+cream, "prawns" meant prawn crackers at 508 kcal against 91 for prawns, "fish" meant fish
+stock at 8. Eighteen entries later, every one of those eighty resolves and nine are newly
+correct. The list is 93 entries, all 93 matching a real row.
+
+Three misses survive and are written down rather than left to be found. "Ham" means
+hamburger and "burger" means burger sauce, because "hamburger" both begins with one and
+ends with the other and an index read forwards favours the first — the English echo of
+the German problem, rare enough to leave. "Peas" means pear, which costs nothing: both
+are 58 kcal. And "oil" and "margarine" rank a dish containing them above the ingredient
+itself, which is the ingredient flag working as designed; neither settles, so the user is
+asked.
 
 ## Milestone 1: Data pipeline
 

@@ -113,7 +113,9 @@ class LoadTests(unittest.TestCase):
         self.assertEqual(apple.category, "fruits")
         self.assertEqual(apple.nutrients["kcal_100g"], 54.3)
         self.assertEqual(apple.nutrients["sodium_mg_100g"], 1.2)
-        self.assertIn("Pomme, pulpe et peau, crue", apple.alt_names)
+        # The French name is read and then dropped: the app is English-only, so
+        # "pomme" finds nothing. See `build.NAME_LOCALE_SHIPPED`.
+        self.assertEqual(apple.alt_names, ())
 
     def test_trace_marks_the_food_estimated_and_stores_zero(self) -> None:
         apple = next(row for row in self.rows() if row.source_ref == "13001")

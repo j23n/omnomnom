@@ -102,3 +102,28 @@ Chocolate
 Oatmeal biscuits
 Fruit ice cream
 Potato crisps/potato chips (various types)
+
+# Everyday words the list was missing
+#
+# Found by reading the top match for eighty bare nouns against the built database.
+# The words with an entry above resolved well; the words without one resolved on text
+# alone and often badly — "cream" meant fruit ice cream, "prawns" meant prawn
+# crackers at 508 kcal, "fish" meant fish stock at 8.
+Cream 30% fat, liquid, UHT
+Shrimp or prawn, boiled
+Fish, cooked (average)
+Muesli (average)
+Breakfast cereals (average)
+Olive, black, in brine
+Couscous (durum wheat) boiled
+Melon, honeydew, flesh without skin, without seeds, raw
+Mango raw
+Pineapple raw
+Hummus, prepacked
+Bacon, back
+Sausage (average)
+Sugar, white
+Cake (average)
+Croissant (average)
+Waffles (cake batter)
+Bread, bagel

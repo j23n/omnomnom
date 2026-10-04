@@ -169,12 +169,30 @@ def load_fdc_bundle(bundle: Bundle, summary: BuildSummary) -> list[FoodRow]:
     return _finish(rows, summary, source, root, no_energy, blank)
 
 
-def load_ciqual_bundle(bundle: Bundle, summary: BuildSummary) -> list[FoodRow]:
-    """Read the Ciqual export into FoodRows.
+# The app is English-only, so a row is kept for its English name and nothing else.
+#
+# Both tables publish an English name beside their own language, and indexing those
+# other names looked free: a French or German speaker could type what they call a
+# food. Measuring it said otherwise. German builds a compound by putting the head
+# noun last, so "Vollmilch" is a milk and "Milchschokolade" is a chocolate — but an
+# index can only be searched forwards, so "Milch" reached 176 rows and not one of
+# the 29 that were milk, and scoring made it worse by reading the compound's head as
+# the better match. Fixing that properly needs a reversed index and tiers that tell
+# a compound's head from its tail, in a database the app does not yet need.
+#
+# So the other names are read and dropped rather than indexed. `names_for` in both
+# readers still returns them, because this is a decision about what to ship rather
+# than about what the tables hold, and it is the one line to change when another
+# language is worth doing properly.
+NAME_LOCALE_SHIPPED = NAME_LOCALE
 
-    Ciqual publishes English names beside the French ones; when this edition has
-    them the English name is what the app shows and the French one is indexed for
-    search, so the same build serves both languages.
+
+def load_ciqual_bundle(bundle: Bundle, summary: BuildSummary) -> list[FoodRow]:
+    """Read the Ciqual export into FoodRows, keeping the English name.
+
+    A row with no English name is dropped rather than shown in French, which is the
+    same bargain as dropping a row with no energy value: a bundle the app can read
+    is worth more than a row it cannot.
     """
     source = bundle.source
     files = ciqual.locate_files(bundle.root)
@@ -188,10 +206,10 @@ def load_ciqual_bundle(bundle: Bundle, summary: BuildSummary) -> list[FoodRow]:
     rows: list[FoodRow] = []
     no_energy = blank = 0
     for food in foods:
-        name, locale, others = ciqual.names_for(food, prefer_english)
-        if not name:
+        name, locale, _ = ciqual.names_for(food, prefer_english)
+        if not name or locale != NAME_LOCALE_SHIPPED:
             blank += 1
-            log.warning("%s %s: no name in either language, dropped", source, food.code)
+            log.debug("dropping %s %s: no English name", source, food.code)
             continue
         values, estimated = ciqual.map_nutrients(composition.get(food.code, {}))
         if values[mapping.ENERGY_COLUMN] is None:
@@ -211,17 +229,16 @@ def load_ciqual_bundle(bundle: Bundle, summary: BuildSummary) -> list[FoodRow]:
                 portions=(),
                 name_locale=locale,
                 is_estimated=1 if estimated else 0,
-                alt_names=tuple(others),
             )
         )
     return _finish(rows, summary, source, bundle.root, no_energy, blank)
 
 
 def load_bls_bundle(bundle: Bundle, summary: BuildSummary) -> list[FoodRow]:
-    """Read the BLS table into FoodRows.
+    """Read the BLS table into FoodRows, keeping the English name.
 
-    Version 4.0 names every food in English as well as German, so a row reads in
-    English and is found by typing either, the same bargain Ciqual offers.
+    Version 4.0 names every food in English as well as German; a row without an
+    English name is dropped, as in `load_ciqual_bundle`.
     """
     source = bundle.source
     published, blank, where = bls.read(bundle.root, bundle.sheet)
@@ -231,7 +248,11 @@ def load_bls_bundle(bundle: Bundle, summary: BuildSummary) -> list[FoodRow]:
         values: dict[str, float | None] = {
             column: entry.values.get(column) for column in mapping.NUTRIENT_COLUMNS
         }
-        name, locale, others = bls.names_for(entry)
+        name, locale, _ = bls.names_for(entry)
+        if not name or locale != NAME_LOCALE_SHIPPED:
+            blank += 1
+            log.debug("dropping %s %s: no English name", source, entry.key)
+            continue
         if values[mapping.ENERGY_COLUMN] is None:
             no_energy += 1
             log.debug("dropping %s %s: no energy", source, name)
@@ -247,7 +268,6 @@ def load_bls_bundle(bundle: Bundle, summary: BuildSummary) -> list[FoodRow]:
                 nutrients=values,
                 portions=(),
                 name_locale=locale,
-                alt_names=tuple(other for other in others if other and other != name),
             )
         )
     return _finish(rows, summary, source, Path(where), no_energy, blank)

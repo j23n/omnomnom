@@ -326,6 +326,13 @@ class RealCiqualNameTests(unittest.TestCase):
     partir de boisson concentrée", where the food is everything before the connective
     and what follows is the recipe. Every case here was wrong the first time the rules
     met the table.
+
+    These pass the French name explicitly, which the shipped build no longer does: it
+    keeps English names only, so in the bundle `alt_names` is empty. They are kept
+    because they pin `reasons`, whose contract is unchanged and whose foreign-language
+    vocabulary is what a second language would be built on — and because the English
+    half of each name is a real Ciqual row either way. Where a case turns on the French
+    name alone, it says so.
     """
 
     def assertPortion(self, name: str, *alt: str) -> None:
@@ -419,16 +426,41 @@ class RealCiqualNameTests(unittest.TestCase):
         # The one row "flour" got wrong: the English spells out what it is made of.
         self.assertPortion("Weizentortilla", "Wheat flour tortilla")
 
-    def test_an_alt_name_can_close_a_gap_the_display_name_leaves_open(self) -> None:
-        """"Cocoa butter" is flagged in Ciqual and not in the BLS, and that is correct.
+    def test_an_alt_name_could_close_a_gap_the_display_name_leaves_open(self) -> None:
+        """What a second name buys, on the one row that shows it.
 
-        The rules read every name a source publishes, and Ciqual publishes "Huile ou
-        beurre de cacao" — it says oil where the English says butter. The gap recorded
-        in `test_known_gap_the_word_butter` is a gap only where no alt name mentions a
-        fat, which is the alt-name matching earning its place.
+        Ciqual calls cocoa butter "Huile ou beurre de cacao" — it says oil where the
+        English says butter — so the rules flag it when handed both names and not when
+        handed one. The shipped bundle hands them one, so `Cocoa butter` really is
+        unflagged there, exactly as `test_known_gap_the_word_butter` says. Asserted
+        from both sides so the cost of shipping one language is written down rather
+        than inferred.
         """
         self.assertNotPortion("Cocoa butter", "Huile ou beurre de cacao")
         self.assertPortion("Cocoa butter")
+
+    def test_a_row_that_says_it_is_already_drinkable(self) -> None:
+        """Ciqual names a cup of coffee for the powder it came from.
+
+        "Instant coffee, no added sugars, ready-to-drink" is 1.6 kcal, and `instant`
+        demoted it along with ten other drinks — the cups of coffee, cocoa and chicory
+        a person is most likely to say out loud. A row that says it is ready to drink
+        is saying the figures are the serving's, which is the exact inverse of why
+        `powder`, `instant` and `concentrate` exist.
+        """
+        for name in (
+            "Instant coffee, no added sugars, ready-to-drink",
+            "Instant cocoa or chocolate beverage, with sugar(s), ready-to-drink",
+            "Broth or stock, beef, dehydrated and reconstituted",
+            "Pastry cream or custard, instant, reconstituted",
+        ):
+            self.assertPortion(name)
+
+    def test_the_unprepared_twin_stays_flagged(self) -> None:
+        # The exemption turns on the words "ready to drink" and "reconstituted" and
+        # nothing else, so the packet each of these describes is still a packet.
+        for name in ("Coffee, powder, instant", "Broth or stock, beef, dehydrated"):
+            self.assertNotPortion(name)
 
     def test_known_gap_tomato_paste(self) -> None:
         """Tomato paste is not flagged, and that is the price of the juice fix.

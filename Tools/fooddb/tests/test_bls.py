@@ -217,18 +217,33 @@ class LoadTests(unittest.TestCase):
     def rows(self) -> list[b.FoodRow]:
         return b.load_bls_bundle(bls.find_bundle(FIXTURES), b.BuildSummary())
 
-    def test_rows_carry_both_names_and_the_english_one_is_shown(self) -> None:
+    def test_the_english_name_is_shown_and_the_german_one_is_not_indexed(self) -> None:
+        """The reader still reads both names; the build keeps one.
+
+        `bls.names_for` returns the German name as well, and the bundle drops it, so
+        "Hafer" finds nothing. That is the English-only decision in `build`, not a
+        limit of the table — see `NAME_LOCALE_SHIPPED`.
+        """
         oats = next(row for row in self.rows() if row.source_ref == "C131000")
         self.assertEqual(oats.name, "Oat whole grain, raw")
         self.assertEqual(oats.name_locale, "en")
-        self.assertEqual(oats.alt_names, ("Hafer ganzes Korn, roh",))
+        self.assertEqual(oats.alt_names, ())
         self.assertIsNone(oats.category)
 
-    def test_rows_without_energy_or_a_name_are_dropped(self) -> None:
+    def test_the_reader_still_offers_both_names(self) -> None:
+        # Asserted separately from the bundle, so the day another language is worth
+        # shipping, this is the line that shows the name was there all along.
+        published, _, _ = bls.read(bls.find_bundle(FIXTURES).root)
+        oats = next(row for row in published if row.key == "C131000")
+        self.assertEqual(bls.names_for(oats)[2], ["Hafer ganzes Korn, roh"])
+
+    def test_rows_without_energy_or_an_english_name_are_dropped(self) -> None:
         summary = b.BuildSummary()
         b.load_bls_bundle(bls.find_bundle(FIXTURES), summary)
         self.assertEqual(summary.dropped_no_energy["bls"], 1)
-        self.assertEqual(summary.dropped_blank_name["bls"], 1)
+        # Two now: the row with no name at all, and the German-only row that used to
+        # be shown in German.
+        self.assertEqual(summary.dropped_blank_name["bls"], 2)
 
 
 if __name__ == "__main__":

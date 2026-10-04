@@ -205,6 +205,25 @@ _EXEMPT_WORDS: tuple[str, ...] = (
 )
 
 
+# Phrases that say the row is the prepared form, whatever it was prepared from.
+#
+# The inverse of `powder`, `instant`, `concentrate` and `dried-ingredient`: those
+# rules exist because a packet's figures are not a serving's, and a row saying it is
+# ready to drink is telling us the figures are the serving's after all. Ciqual names
+# a cup of coffee "Instant coffee, no added sugars, ready-to-drink" at 1.6 kcal, and
+# `instant` demoted every one of them — eleven drinks, and the most ordinary things
+# anyone would say out loud. Reconstituted broth and custard are the same case.
+#
+# Phrases rather than words, so they are checked against the folded text: folding
+# turns "ready-to-drink" into "ready to drink", which is why the hyphens are absent.
+_EXEMPT_PHRASES: tuple[str, ...] = (
+    "ready to drink",
+    "pret a boire",
+    "reconstituted",
+    "reconstitue",
+)
+
+
 def fold(text: str) -> str:
     """Casefolded, diacritics stripped, punctuation turned to spaces.
 
@@ -334,6 +353,8 @@ def reasons(name: str, alt_names: tuple[str, ...] = ()) -> frozenset[str]:
         return frozenset()
     words = _words(folded)
     if any(exempt in words for exempt in _EXEMPT_WORDS):
+        return frozenset()
+    if any(phrase in folded for phrase in _EXEMPT_PHRASES):
         return frozenset()
     # A row that names a preparation is a cooked dish, whatever a note after it says
     # went into the pan.
