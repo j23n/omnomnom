@@ -6,6 +6,7 @@ struct SettingsView: View {
     @AppStorage(BarcodeModule.enabledKey) private var barcodeScanningEnabled = false
     @AppStorage(BarcodeModule.productSearchKey) private var productSearchEnabled = false
     @AppStorage(EstimationModule.enabledKey) private var mealEstimationEnabled = false
+    @AppStorage(EstimationProvider.key) private var providerRaw = EstimationProvider.onDevice.rawValue
     @AppStorage(SamplingCadence.key) private var cadenceRaw = SamplingCadence.standard.rawValue
     @Environment(\.health) private var health
     @Environment(\.scenePhase) private var scenePhase
@@ -16,6 +17,10 @@ struct SettingsView: View {
 
     private var cadence: SamplingCadence {
         SamplingCadence(rawValue: cadenceRaw) ?? .standard
+    }
+
+    private var provider: EstimationProvider {
+        EstimationProvider(rawValue: providerRaw) ?? .onDevice
     }
 
     init(estimationAvailability: EstimationAvailability? = nil) {
@@ -41,7 +46,15 @@ struct SettingsView: View {
                     Toggle("Barcode scanning", isOn: $barcodeScanningEnabled)
                     Toggle("Product search", isOn: $productSearchEnabled)
                     Toggle("Meal estimation", isOn: $mealEstimationEnabled)
-                    if let estimation, !estimation.isAvailable {
+                    NavigationLink {
+                        EstimationProviderView()
+                    } label: {
+                        LabeledContent("Estimates from", value: provider.displayName)
+                    }
+                    // Only about the on-device model, so it is not shown when something
+                    // else is answering: a remote endpoint works on a device that has no
+                    // Apple Intelligence at all, which is half the reason it exists.
+                    if provider == .onDevice, let estimation, !estimation.isAvailable {
                         Text(estimation.message)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -49,7 +62,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Modules")
                 } footer: {
-                    Text(Self.modulesFooter)
+                    Text(modulesFooter)
                 }
                 Section {
                     NavigationLink("Headline figures") {
@@ -101,13 +114,29 @@ struct SettingsView: View {
 
     /// One paragraph per module; the toggle stays enabled when the model is unavailable
     /// so the choice is remembered for when it is.
-    private static let modulesFooter = """
+    ///
+    /// The estimation paragraph follows the chosen provider. It used to promise that
+    /// nothing is sent anywhere, which a remote endpoint makes untrue, and a sentence in
+    /// Settings claiming a guarantee the app is no longer keeping is worse than no
+    /// sentence at all.
+    private var modulesFooter: String {
+        """
         Barcode scans run on this device. Looking up a product sends its barcode to Open Food Facts; results are kept on this device.
 
         Product search sends what you type to Open Food Facts, so branded products can be found by name. The bundled database holds generic foods only and never a brand.
 
-        Estimates are produced on this device by Apple Intelligence. Nothing is sent anywhere. They are rough and you confirm every value before it is logged.
+        \(Self.estimationNote(for: provider))
         """
+    }
+
+    private static func estimationNote(for provider: EstimationProvider) -> String {
+        switch provider {
+        case .onDevice:
+            "Estimates are produced on this device by Apple Intelligence. Nothing is sent anywhere. They are rough and you confirm every value before it is logged."
+        case .remote:
+            "Estimates are produced by the endpoint you entered, so the meal you type is sent to it. They are rough and you confirm every value before it is logged."
+        }
+    }
 }
 
 #if DEBUG
