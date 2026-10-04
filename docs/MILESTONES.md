@@ -11,7 +11,7 @@ Status log for the build order in `PLAN.md`. Each milestone is planned, implemen
 | 5 | Barcode | done, awaiting first build | 2026-09-21 |
 | 6 | AI estimation | done, awaiting first build | 2026-09-21 |
 | 7 | Internationalization | sources bundled, UI pending | |
-| 8 | The matcher: confidence, thresholds, popularity | planned | |
+| 8 | The matcher: confidence, thresholds, popularity | done, awaiting first build | |
 | 9 | Phrase memory | planned | |
 | 10 | Composer and resolution sheet | planned | |
 | 11 | Buckets and coverage | planned | |
@@ -22,6 +22,52 @@ Status log for the build order in `PLAN.md`. Each milestone is planned, implemen
 
 Milestones 8 to 15 come from `PLAN.md` revision 4, which rethinks logging around one line of
 natural language and puts trends back in scope. The shippable app is now 1 to 4 plus 8 to 12.
+
+## Milestone 8: The matcher
+
+### Plan
+
+Auto-matching a typed fragment to a bundled row is what every later saving rests on, so
+it comes first and its gate is behaviour rather than review: a confidence a threshold can
+be hung on, an honest "not sure", and the deterministic defence against a row that is a
+confidently wrong answer.
+
+### What landed
+
+- `Tools/fooddb/fooddb/ingredient.py` and an `is_ingredient` column, schema version 3.
+  Named rules over a row's display name together with its other-language names, applied
+  in one pass over every source. Thirty-three tests, weighted towards the negatives: raw
+  fruit, dried fruit, boiled potatoes, salted peanuts and oat biscuits must all come back
+  clean, since a false positive demotes a food people eat.
+- `BundledFood` carries `altNames` and `isIngredient`, and the reader selects both.
+  Scoring over the other-language names is not a nicety: a French query against a Ciqual
+  row that displays English scores 0.829 with them and exactly 0 without, so without this
+  auto-matching only ever worked in the language on screen.
+- `FoodMatch` and `FoodMatcher`: a score with an ingredient penalty of 0.35 and a capped
+  popularity prior, and three confidences — settled at 0.78, probable at 0.42, unsure
+  below. An ingredient form is always unsure, never merely "not settled": typing "coffee"
+  scores the powder at 0.49, which is probable, and a marker is not enough for a row that
+  is wrong by a hundredfold.
+- Twenty-two tests in `OmnomnomTests/FoodMatcherTests.swift`.
+
+The thresholds were settled by running the same arithmetic over real Ciqual and BLS
+names, not by choosing numbers that read well. "Coffee" gives brewed 0.838 and settled
+against powder 0.489 and blocked; "chicken" gives grilled 0.846 against raw 0.503;
+"milk" gives whole 0.829 against dried 0.480. The penalty is larger than the gap between
+any two match tiers, which is what stops a powder outranking the drink it shares a name
+with however the two happen to score.
+
+### Open
+
+- **The curated popularity list is still FDC-shaped**, so against a Ciqual and BLS build
+  every row scores zero on the prior and that term vanishes. The mechanism is in and
+  capped; the list needs rewriting against the real names, which needs the real downloads,
+  which this environment's egress policy blocks. It stays the top risk in `PLAN.md`.
+- **Composite-before-split** is specified in `PLAN.md` but lands with the parser, since
+  there are no fragments to split until the composer exists.
+- **No Swift compiler here**, so the Swift half is reasoned and arithmetically checked
+  rather than built. The Python pipeline half is genuinely verified: 158 tests, `ruff
+  check` and `mypy --strict` clean.
 
 ## Milestone 1: Data pipeline
 

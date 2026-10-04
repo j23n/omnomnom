@@ -10,7 +10,8 @@ actor SQLiteDatabase {
 
     private static let foodColumns = """
         f.id, f.name, f.category, f.kcal_100g, f.protein_100g, f.carb_100g, f.fat_100g, \
-        f.satfat_100g, f.fiber_100g, f.sugar_100g, f.sodium_mg_100g, f.popularity
+        f.satfat_100g, f.fiber_100g, f.sugar_100g, f.sodium_mg_100g, f.popularity, \
+        f.alt_names, f.is_ingredient
         """
 
     private static let searchSQL = """
@@ -72,6 +73,13 @@ actor SQLiteDatabase {
         return value
     }
 
+    /// The build stores a row's other-language names newline separated, and null when
+    /// the source publishes none.
+    private static func altNames(_ stored: String?) -> [String] {
+        guard let stored, !stored.isEmpty else { return [] }
+        return stored.split(separator: "\n").map(String.init).filter { !$0.isEmpty }
+    }
+
     private func readFood(_ statement: OpaquePointer) -> BundledFood {
         let per100g = Nutrition(
             energy: connection.double(statement, 3),
@@ -88,7 +96,9 @@ actor SQLiteDatabase {
             name: connection.text(statement, 1) ?? "",
             category: connection.text(statement, 2),
             per100g: per100g,
-            popularity: connection.int(statement, 11)
+            popularity: connection.int(statement, 11),
+            altNames: Self.altNames(connection.text(statement, 12)),
+            isIngredient: connection.int(statement, 13) != 0
         )
     }
 }
