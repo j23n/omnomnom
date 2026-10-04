@@ -65,6 +65,9 @@ extension EntryLogger {
                 AppLog.store.error("line not remembered: \(error.localizedDescription, privacy: .public)")
             }
         }
+        if remembered {
+            WidgetSnapshotWriter.update(in: context)
+        }
         AppLog.store.info("logged \(results.count) of \(resolution.rows.count) rows from one line")
         return LineLogOutcome(results: results, failed: failed, remembered: remembered)
     }

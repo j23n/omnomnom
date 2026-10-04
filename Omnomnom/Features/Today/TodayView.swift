@@ -82,6 +82,10 @@ struct TodayView: View {
                 .fullScreenCover(item: $picking) { row in
                     FoodSearchView(mode: .pick(multiple: false, onPick: { choose($0, for: row) }))
                 }
+                .onOpenURL { url in
+                    guard let id = WidgetSnapshot.phraseID(from: url) else { return }
+                    Task { await logFromWidget(id) }
+                }
                 .onChange(of: router.pendingLine) { _, line in
                     // Siri took a line it could not finish. The composer picks it up so
                     // the user lands on the question rather than on an empty field.
@@ -151,6 +155,30 @@ struct TodayView: View {
             at: timestamp
         )
         composer.clear()
+        model.show(banner: Self.loggedMessage(outcome, of: resolution.rows.count))
+    }
+
+    /// Logs the line a widget tap named.
+    ///
+    /// Written without asking again, because the tap on the widget is the tap: the rule is
+    /// that nothing reaches Health unless the user acted, not that they must act twice.
+    /// The day is shown underneath it straight away, so what was written is visible rather
+    /// than only reported.
+    private func logFromWidget(_ id: UUID) async {
+        model.showToday()
+        guard let phrase = WidgetSnapshotWriter.phrase(id: id, in: context),
+              let resolution = resolver.resolution(for: phrase)
+        else {
+            model.show(banner: "That line can't be logged any more.")
+            return
+        }
+        let timestamp = Date.now
+        let logger = EntryLogger(context: context, health: health)
+        let outcome = await logger.logLine(
+            resolution,
+            mealSlot: phrase.lastSlot ?? MealSlot.inferred(from: timestamp),
+            at: timestamp
+        )
         model.show(banner: Self.loggedMessage(outcome, of: resolution.rows.count))
     }
 

@@ -789,7 +789,7 @@ Revision 4 adds the following. They are ordered so that each one is useful on it
 11. **Buckets and coverage.** Portion buckets with the reference ladder, `DayRecord`, marking a day complete, and partial-day totals on Today.
 12. **Trends.** Statistics-collection queries per nutrient, the three charts, the coverage strip, the range switcher.
 13. **Baseline days.** `BaselinePhrase`, proposals on Today, accept and deviate.
-14. **Widget and Siri.** Top phrases on the Lock Screen, an App Intent for a spoken line.
+14. **Widget and Siri.** Top phrases on the home and Lock Screen, an App Intent for a spoken line. The widget reads a small snapshot the app writes into an App Group and a tap deep-links into the app to log, rather than sharing the SwiftData store: a widget extension is the wrong place to write to Health, sharing the store would mean the whole model layer in both targets, and putting the store in an App Group would move its container and oblige a migration. It shows lines to tap and no figure about a day, because a widget that fits three numbers is read as a score.
 15. **Sampling.** Cadence setting, day nomination, means over in-sample complete days.
 
 Steps 1 to 4 were the shippable app under revision 3. Under revision 4 the shippable app is 1 to 4 plus 8 to 12: the matcher, the memory, the composer, coverage and the charts. Steps 13 to 15 are additive, and 15 is the first thing to cut.

@@ -17,7 +17,7 @@ Status log for the build order in `PLAN.md`. Each milestone is planned, implemen
 | 11 | Buckets and coverage | done, awaiting first build | |
 | 12 | Trends | done, awaiting first build | |
 | 13 | Baseline days | done, awaiting first build | |
-| 14 | Widget and Siri | Siri done; widget needs a target and a decision | |
+| 14 | Widget and Siri | done, awaiting first build | |
 | 15 | Sampling | done, awaiting first build | |
 
 Milestones 8 to 15 come from `PLAN.md` revision 4, which rethinks logging around one line of
@@ -73,29 +73,44 @@ over: a complete day counts toward every mean whether or not the schedule asked 
 Membership is derived from the date, which is also why the day record carries no sample
 flag — it would have been a field nothing reads.
 
-### Milestone 14: Siri yes, widget no
+### Milestone 14: Siri and the widget
 
-The App Intent is in. `LogLineIntent` runs the same four rungs without opening the app,
-logs only what settles, and leaves anything else on `AppRouter` for the composer with the
-dialog saying so. Two outcomes and no third, which is what makes it safe from a lock
-screen: it cannot put a figure into Health that nobody stood behind.
+The App Intent runs the same four rungs without opening the app, logs only what settles,
+and leaves anything else on `AppRouter` for the composer with the dialog saying so. Two
+outcomes and no third, which is what makes it safe from a lock screen: it cannot put a
+figure into Health that nobody stood behind.
 
-The widget is **not** built, and deliberately not faked. It needs two things this
-environment cannot give honestly:
+The widget is a fourth target, `OmnomnomWidget`, plus a small `OmnomnomShared` folder that
+both it and the app compile.
 
-- **A new Xcode target.** The project uses file-system-synchronised groups, so new source
-  files need no project edit at all — but a target does, and hand-writing one into
-  `project.pbxproj` with no way to open or build the result is how a project file gets
-  quietly corrupted.
-- **A decision about where the store lives.** A widget reads the same SwiftData store,
-  which means an App Group, which *moves the store's container*. For anyone who already
-  has entries that is a data migration, and it is not a thing to slip in alongside a
-  convenience feature. It wants to be its own change, with the migration written and
-  tested first.
+**The widget does not share the store, and that is the design rather than a compromise.**
+It reads a small JSON snapshot the app writes into the App Group, and a tap deep-links
+into the app, which resolves the line and logs it. Three reasons, worst first:
 
-What is worth remembering when it is picked up: a widget that fits three numbers will be
-read as a score, which is the most verdict-shaped surface the app would have. Top phrases
-to log in one tap is the safer content.
+1. A widget extension is the wrong place to write to HealthKit, and logging a meal means
+   eight samples and a correlation.
+2. Sharing the SwiftData store would mean the whole model layer in both targets — the
+   entities, the logger, the Health actor, the resolver — which is a local Swift package
+   and a refactor, not a widget.
+3. It leaves the store exactly where it is. Putting it in an App Group moves its
+   container, which is a data migration for anyone who already has entries. Avoiding that
+   is worth more than saving a screen transition, and it is what made this shippable now
+   rather than after a migration.
+
+It shows lines to tap and no figure about any day. A widget that fits three numbers will
+be read as a score, which would be the most verdict-shaped surface in the app.
+
+The project file was edited by hand and then checked structurally: every referenced id
+resolves, every defined id is used, braces and parentheses balance, all fourteen sections
+pair, and the widget is present in the targets list, the target attributes, the app's
+dependencies, the embed phase and the products group. That is not the same as opening it
+in Xcode, which is still the first thing to do.
+
+**To verify on device, in this order:** that Xcode opens the project without repairing it;
+that the App Group is provisioned for both bundle ids; and that a tap on a tile reaches
+`onOpenURL`. WidgetKit routes a widget's own links to its host app, so the `omnomnom://`
+scheme should need no registration — if it turns out to, that is a `CFBundleURLTypes`
+entry and the app currently generates its Info.plist.
 
 ## Milestone 8: The matcher
 
