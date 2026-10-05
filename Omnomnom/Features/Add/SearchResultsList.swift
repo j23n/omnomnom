@@ -17,6 +17,8 @@ struct SearchResultsList: View {
     let products: ProductResults
     /// The Scan and Estimate row for the no-results state; `nil` in pick mode.
     let modules: ModuleButtonsRow?
+    /// Puts a row's food in the tray; `nil` where there is no tray.
+    var onAdd: ((SearchResult) -> Void)?
     let onSelect: (SearchResult) -> Void
 
     private var hasStatus: Bool {
@@ -71,12 +73,17 @@ struct SearchResultsList: View {
 
     private func rows(_ results: [SearchResult], showsSource: Bool) -> some View {
         ForEach(results) { result in
-            Button {
-                onSelect(result)
-            } label: {
-                SearchResultRow(result: result, showsSource: showsSource)
-            }
-            .buttonStyle(.plain)
+            PickableResultRow(
+                result: result,
+                showsSource: showsSource,
+                onAdd: onAdd.flatMap { add -> (() -> Void)? in
+                    // A product found by name has no values yet, so there is nothing to
+                    // put in a tray until the row itself is tapped and it is fetched.
+                    guard case .choice = result.action else { return nil }
+                    return { add(result) }
+                },
+                onSelect: { onSelect(result) }
+            )
         }
     }
 }

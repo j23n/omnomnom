@@ -199,6 +199,27 @@ nonisolated struct LineResolution: Identifiable, Hashable, Sendable {
         self.meal = meal
     }
 
+    /// Puts an edited row back where it was, by identity.
+    ///
+    /// A row that is not in the line is ignored rather than appended: it came from a
+    /// screen that has been left behind, and a late callback must not conjure a food back
+    /// into a meal the user has moved on from.
+    mutating func replace(_ row: ResolvedRow) {
+        guard let index = rows.firstIndex(where: { $0.id == row.id }) else { return }
+        rows[index] = row
+    }
+
+    /// Appends a food the user named themselves, which is how something the line never
+    /// said — or something the model missed — joins this meal rather than a second one.
+    mutating func append(_ row: ResolvedRow) {
+        rows.append(row)
+    }
+
+    /// Drops a row the user does not want.
+    mutating func remove(_ row: ResolvedRow) {
+        rows.removeAll { $0.id == row.id }
+    }
+
     /// Everything the line comes to, over the rows that have a food.
     var total: Nutrition {
         rows.compactMap(\.nutrition).reduce(.empty, +)

@@ -16,6 +16,8 @@ struct RecentsList: View {
     let includesRecipes: Bool
     /// The Scan and Estimate row; `nil` in pick mode.
     let modules: ModuleButtonsRow?
+    /// Puts a row's food in the tray; `nil` where there is no tray.
+    var onAdd: ((SearchResult) -> Void)?
     let onSelect: (SearchResult) -> Void
 
     @Query(sort: \Food.lastUsed, order: .reverse) private var foods: [Food]
@@ -79,12 +81,12 @@ struct RecentsList: View {
 
     private func rows(_ results: [SearchResult]) -> some View {
         ForEach(results) { result in
-            Button {
-                onSelect(result)
-            } label: {
-                SearchResultRow(result: result, showsSource: false)
-            }
-            .buttonStyle(.plain)
+            PickableResultRow(
+                result: result,
+                showsSource: false,
+                onAdd: onAdd.map { add in { add(result) } },
+                onSelect: { onSelect(result) }
+            )
         }
     }
 }

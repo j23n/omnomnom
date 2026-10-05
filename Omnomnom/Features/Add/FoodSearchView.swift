@@ -38,12 +38,19 @@ enum AddFoodMode {
 /// Presented full screen rather than as a sheet. Finding a food is the longest task in
 /// the app, and it deserves the whole display and a search field that is there from the
 /// first frame instead of arriving after the list.
+///
+/// In log mode every row carries a plus, which puts that food in the tray and leaves the
+/// screen where it is. Tapping the row itself still opens the Quantity sheet and logs the
+/// one food, as it always did — until a tray has been started, after which a tap adds to it
+/// too, because one rule has to hold while a tray is up: nothing is logged until Log is
+/// tapped. Logging four foods used to mean opening this screen four times.
 struct FoodSearchView: View {
     let mode: AddFoodMode
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.foodRepository) private var foodRepository
     @Environment(\.modelContext) private var context
+    @Environment(\.health) private var health
 
     @State private var searchText = ""
     @State private var local: [SearchResult] = []
@@ -60,6 +67,11 @@ struct FoodSearchView: View {
     /// them, so the bottom bar can say what happened without anything else moving.
     @State private var pickedCount = 0
     @State private var lastPicked: String?
+    /// The foods gathered to be logged together, as the line they amount to; `nil` until
+    /// the first one goes in. In log mode only: a pick hands its food straight back.
+    @State private var tray: LineResolution?
+    /// Whether the tray's own screen is up, where the amounts are set.
+    @State private var isReviewing = false
     @FocusState private var fieldFocused: Bool
     @AppStorage(BarcodeModule.productSearchKey) private var productSearchEnabled = false
 
@@ -83,6 +95,12 @@ struct FoodSearchView: View {
     private var picksSeveral: Bool {
         if case .pick(let multiple, _) = mode { return multiple }
         return false
+    }
+
+    /// Whether this screen gathers foods before logging them, which is log mode and only
+    /// log mode: a pick hands its food back to whatever asked for it.
+    private var collects: Bool {
+        logDay != nil
     }
 
     private var title: String {
@@ -112,10 +130,16 @@ struct FoodSearchView: View {
                     SearchResultsList(
                         sections: sections, databaseError: databaseError,
                         products: products, modules: modules,
+                        onAdd: collects ? { collect($0) } : nil,
                         onSelect: { select($0) }
                     )
                 } else {
-                    RecentsList(includesRecipes: includesRecipes, modules: modules) { select($0) }
+                    RecentsList(
+                        includesRecipes: includesRecipes,
+                        modules: modules,
+                        onAdd: collects ? { collect($0) } : nil,
+                        onSelect: { select($0) }
+                    )
                 }
             }
             .navigationTitle(title)
@@ -130,6 +154,32 @@ struct FoodSearchView: View {
             .safeAreaBar(edge: .bottom) {
                 if pickedCount > 0 {
                     pickedBar
+                } else if let tray {
+                    TrayBar(tray: tray, onReview: { isReviewing = true }, onLog: logGathered)
+                }
+            }
+            .sheet(isPresented: $isReviewing) {
+                if let tray, let day = logDay {
+                    NavigationStack {
+                        ResolutionScreen(
+                            resolution: tray,
+                            day: day,
+                            onChange: { self.tray?.replace($0) },
+                            onRemove: { drop($0) },
+                            onAdd: { self.tray?.append($0) },
+                            onLog: { slot, at in Task { await logTray(mealSlot: slot, at: at) } }
+                        )
+                        // Presented rather than pushed, because the search screen it
+                        // would be pushed onto is itself what the tray's own Add a food
+                        // puts up. Its way out has to come from here: the screen was
+                        // written to be the top of a stack and so carries no Back of its
+                        // own, and leaving it must not log anything.
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("Back") { isReviewing = false }
+                            }
+                        }
+                    }
                 }
             }
             .sheet(item: $sheet, onDismiss: { advance() }) { sheet in
@@ -204,6 +254,11 @@ struct FoodSearchView: View {
     /// the field cleared and focused, so the next ingredient is one word away.
     /// Otherwise a bundled hit, which knows nothing of past use, gets `lastAmount` from
     /// its stored row before the Quantity sheet opens.
+    ///
+    /// Once a tray has been started, tapping a row puts the food in it rather than opening
+    /// the Quantity sheet. One rule holds while the tray is up — nothing is logged until
+    /// Log is tapped — and the alternative was a sheet that logged one food and closed the
+    /// screen on four others the user had gathered.
     private func present(_ choice: FoodChoice) {
         if case .pick(let multiple, let onPick) = mode {
             onPick(choice)
@@ -217,17 +272,98 @@ struct FoodSearchView: View {
             fieldFocused = true
             return
         }
-        var prepared = choice
-        if let bundledID = choice.bundledID {
-            do {
-                if let food = try Food.bundled(id: bundledID, in: context) {
-                    prepared = choice.with(lastAmount: food.lastGrams)
-                }
-            } catch {
-                AppLog.store.error("food lookup failed: \(error.localizedDescription, privacy: .public)")
-            }
+        let prepared = remembered(choice)
+        guard tray == nil else {
+            collect(prepared)
+            return
         }
         sheet = .quantity(prepared)
+    }
+
+    /// Puts a row's food in the tray and leaves the screen where it is, with the field
+    /// cleared for the next one.
+    private func collect(_ result: SearchResult) {
+        guard case .choice(let choice) = result.action else { return }
+        collect(remembered(choice))
+    }
+
+    /// The same, for a food that is already in hand.
+    ///
+    /// The amount is what this person last had of it, which is the only honest default and
+    /// the one the steps on the tray's screen then measure from; a food they have never had
+    /// starts at 100 of its own unit, or one serving of a recipe, and no steps are offered
+    /// for it. Everything in a tray is `chosen` and settled: nobody guessed any of it.
+    private func collect(_ choice: FoodChoice) {
+        let row = ResolvedRow(
+            name: choice.name,
+            choice: choice,
+            amount: choice.lastAmount ?? (choice.isRecipe ? 1 : EntryLogger.defaultAmount),
+            baseAmount: choice.lastAmount,
+            origin: .chosen,
+            confidence: .settled
+        )
+        if tray == nil {
+            // No line behind it, and the key a phrase is remembered under is made from a
+            // line: a tray teaches the app nothing, which is right. Nobody said anything.
+            tray = LineResolution(line: "", rows: [row], wasChecked: false)
+        } else {
+            tray?.append(row)
+        }
+        searchText = ""
+        fieldFocused = true
+    }
+
+    /// Takes a food out of the tray, and closes the tray's screen with the last of them.
+    private func drop(_ row: ResolvedRow) {
+        tray?.remove(row)
+        if tray?.rows.isEmpty ?? true {
+            tray = nil
+            isReviewing = false
+        }
+    }
+
+    /// Logs the tray where it stands, into the meal this hour implies on the day being
+    /// looked at. The tray's own screen is where another meal or another time is chosen.
+    private func logGathered() {
+        guard let day = logDay else { return }
+        let slot = MealSlot.inferred(from: QuantitySheet.defaultTimestamp(on: day))
+        Task { await logTray(mealSlot: slot, at: slot.timestamp(on: day)) }
+    }
+
+    /// Logs everything in the tray, into one meal at one time.
+    ///
+    /// Through `logLine`, which is the same path a typed line takes, so there is one way a
+    /// row of foods reaches Health rather than two. Nothing is remembered as a phrase: the
+    /// line is empty because there was no line, and `Phrase.remember` wants a key it can
+    /// normalise from one.
+    ///
+    /// No undo is offered afterwards, and none is owed. Log is the sign-off here — that is
+    /// what the tray is for — where a typed line is written without one and needs the way
+    /// back that `LoggedLine` gives it.
+    private func logTray(mealSlot: MealSlot, at timestamp: Date) async {
+        guard let gathered = tray else { return }
+        let logger = EntryLogger(context: context, health: health)
+        let outcome = await logger.logLine(gathered, mealSlot: mealSlot, at: timestamp, origin: .picked)
+        tray = nil
+        isReviewing = false
+        if case .log(_, _, let onMessage) = mode {
+            onMessage(LoggedLine(resolution: gathered, outcome: outcome).message)
+        }
+        dismiss()
+    }
+
+    /// A bundled hit knows nothing of past use, so what this person last had of it comes
+    /// from its stored row. Everything else already carries it.
+    private func remembered(_ choice: FoodChoice) -> FoodChoice {
+        guard let bundledID = choice.bundledID else { return choice }
+        do {
+            if let food = try Food.bundled(id: bundledID, in: context) {
+                return choice.with(lastAmount: food.lastGrams)
+            }
+        } catch {
+            AppLog.store.error("food lookup failed: \(error.localizedDescription, privacy: .public)")
+        }
+        return choice
     }
 
     /// Runs once a sheet is gone: a product typed from its label carries on as any

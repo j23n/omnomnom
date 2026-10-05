@@ -999,3 +999,38 @@ to what was last had of it, or to one.
 
 Tests: thirteen, over what the mark says with and without words behind it, what the question
 asks, and every branch of the amount a correction logs.
+
+## A tray, so four foods cost one visit
+
+Logging four foods by searching meant opening the search screen four times: a tap opened the
+Quantity sheet, the sheet logged one food and closed the screen, and the second food started
+from the beginning. Every row in log mode now carries a plus, which puts that food in a tray
+and leaves the screen exactly where it is, field cleared for the next word.
+
+The tray is a `LineResolution` of `chosen`, settled rows, which is the whole reason this cost
+so little: the screen a typed line is signed off on already edits amounts, adds a food,
+removes a row and picks the meal and the time, so it is the tray's screen too, and
+`EntryLogger.logLine` is the one path both reach Health through. The bar at the bottom says
+what is in the tray, what it comes to, and that none of it is logged yet — in those words,
+because a row that goes quietly into a tray looks exactly like a row that was logged.
+
+One rule holds while a tray is up: nothing is logged until Log is tapped. So a row tap, which
+opens the Quantity sheet and logs the one food as it always did, adds to the tray instead
+once the tray has something in it. The alternative was a sheet that logged one food and
+closed the screen on four others the user had gathered.
+
+No undo is offered afterwards and none is owed: Log *is* the sign-off here, which is what the
+tray is for. The typed line has no sign-off and that is why it has `LoggedLine`.
+
+A tray teaches the app nothing. A phrase is remembered under a key made from the line that
+was typed, there was no line, and `PhraseKey.normalise("")` is `nil` — so `logLine` writes
+the entries and remembers nothing, which is right. Nobody said anything.
+
+Row editing moved onto `LineResolution` itself (`replace`, `append`, `remove`) rather than
+being written twice, once in the composer and once here. A row whose identity is not in the
+line is ignored rather than appended, which is the guarantee that a late callback from a
+screen the user has left cannot put a food back into a meal they have moved on from.
+
+Tests: eleven, over what the bar says with one food, several, and a food the tables hold no
+energy figure for, every row edit including the late callback, and that nothing gathered
+blocks or carries a mark.

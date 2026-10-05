@@ -58,6 +58,45 @@ struct SearchResultRow: View {
     }
 }
 
+/// A result as a row of a list: the row, and the tray's plus where there is a tray.
+///
+/// Two buttons side by side rather than one with something inside it, because a control
+/// inside a button is a control that never gets tapped. The row opens the food; the plus
+/// puts it in the tray and leaves the screen where it is, which is the whole point of the
+/// tray — four foods in one visit costs four taps and one Log.
+///
+/// The plus is absent, not disabled, where a row cannot go in the tray: a product Open
+/// Food Facts knows by name but not by its values has to be fetched before anything can
+/// be done with it, and that is what tapping the row does.
+struct PickableResultRow: View {
+    let result: SearchResult
+    var showsSource: Bool = true
+    /// Puts this food in the tray; `nil` where there is no tray or this row cannot join it.
+    var onAdd: (() -> Void)?
+    let onSelect: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button(action: onSelect) {
+                SearchResultRow(result: result, showsSource: showsSource)
+            }
+            .buttonStyle(.plain)
+            if let onAdd {
+                Button(action: onAdd) {
+                    Image(systemName: "plus")
+                        .font(.body.weight(.semibold))
+                        .frame(width: 32, height: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.tint)
+                .accessibilityLabel("Add \(result.name)")
+                .accessibilityHint("Puts it in the tray. Nothing is logged until you tap Log")
+            }
+        }
+    }
+}
+
 #if DEBUG
 #Preview("With a pill, as Other foods show them", traits: .sizeThatFitsLayout) {
     VStack(alignment: .leading, spacing: 16) {
@@ -84,6 +123,25 @@ struct SearchResultRow: View {
         }
     }
     .padding()
+    .environment(\.dynamicTypeSize, .accessibility5)
+}
+
+#Preview("With the tray's plus", traits: .sizeThatFitsLayout) {
+    List {
+        ForEach(PreviewStore.searchSections.others) { result in
+            PickableResultRow(result: result, onAdd: {}, onSelect: {})
+        }
+    }
+    .listStyle(.plain)
+}
+
+#Preview("The plus at accessibility 5", traits: .sizeThatFitsLayout) {
+    List {
+        ForEach(PreviewStore.searchSections.others.prefix(2)) { result in
+            PickableResultRow(result: result, onAdd: {}, onSelect: {})
+        }
+    }
+    .listStyle(.plain)
     .environment(\.dynamicTypeSize, .accessibility5)
 }
 #endif

@@ -147,8 +147,8 @@ final class ComposerModel {
 
     /// Replaces one row, which is what naming a food or setting an amount does.
     func update(_ row: ResolvedRow) {
-        guard var resolution, let index = resolution.rows.firstIndex(where: { $0.id == row.id }) else { return }
-        resolution.rows[index] = row
+        guard var resolution else { return }
+        resolution.replace(row)
         show(resolution)
     }
 
@@ -157,7 +157,7 @@ final class ComposerModel {
     /// than into a second one.
     func add(_ row: ResolvedRow) {
         guard var resolution else { return }
-        resolution.rows.append(row)
+        resolution.append(row)
         show(resolution)
     }
 
@@ -165,7 +165,7 @@ final class ComposerModel {
     /// nothing could be placed on.
     func remove(_ row: ResolvedRow) {
         guard var resolution else { return }
-        resolution.rows.removeAll { $0.id == row.id }
+        resolution.remove(row)
         if resolution.rows.isEmpty {
             clearUnplaced()
         } else {
