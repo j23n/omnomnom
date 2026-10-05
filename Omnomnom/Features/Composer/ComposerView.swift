@@ -43,7 +43,7 @@ struct ComposerView: View {
                     .autocorrectionDisabled(false)
                     .submitLabel(.done)
                     .focused($isFocused)
-                    .onSubmit(onSubmit)
+                    .onSubmit(send)
                     .accessibilityLabel("What did you eat")
                     .accessibilityHint("Type or dictate a meal, such as oats, banana, coffee")
                 camera
@@ -67,7 +67,7 @@ struct ComposerView: View {
     /// field and a keyboard up it closes the keyboard.
     @ViewBuilder private var trailing: some View {
         if isFocused, !model.canSubmit, !model.isResolving {
-            Button { isFocused = false } label: {
+            Button(action: putKeyboardAway) {
                 Image(systemName: "keyboard.chevron.compact.down")
             }
             .buttonStyle(.plain)
@@ -79,7 +79,7 @@ struct ComposerView: View {
     }
 
     private var submit: some View {
-        Button(action: onSubmit) {
+        Button(action: send) {
             if model.isResolving {
                 ProgressView().controlSize(.small)
             } else {
@@ -90,6 +90,34 @@ struct ComposerView: View {
         .buttonBorderShape(.circle)
         .disabled(!model.canSubmit)
         .accessibilityLabel(model.isResolving ? "Working" : "Log this line")
+    }
+
+    /// Sends what is in the field, with the keyboard put away first.
+    ///
+    /// The order is the fix for a keyboard that came back on its own. UIKit hands the
+    /// keyboard back to whatever held it when a pushed screen pops, so a field still
+    /// focused when the sign-off screen went up got one again the moment the meal was
+    /// logged — and SwiftUI, never told of a focus change, laid this bar out as though
+    /// there were no keyboard, which left it standing over the field and over the only
+    /// control that puts it away. Resigning before the push leaves nothing to hand back.
+    ///
+    /// Every way in goes through here: the button, the Return key, and a suggested line.
+    private func send() {
+        isFocused = false
+        onSubmit()
+    }
+
+    /// Puts the keyboard down, by both routes.
+    ///
+    /// `isFocused` is the one that normally does it. The resign goes out as well because
+    /// the field can be holding the keyboard while SwiftUI believes nothing is focused,
+    /// and in that state clearing a focus that already reads false changes nothing — which
+    /// is exactly the state this control exists for.
+    private func putKeyboardAway() {
+        isFocused = false
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil
+        )
     }
 
     /// The camera, and the library when there is no camera.
@@ -139,13 +167,12 @@ struct ComposerView: View {
     /// Takes a suggested line as though it had been typed, and resolves it at once.
     ///
     /// The text is left in the field rather than cleared, so a line that resolves to
-    /// nothing is still there to edit. Focus goes because the sheet is about to cover the
-    /// keyboard, and a keyboard left standing behind it is only something to dismiss
-    /// twice.
+    /// nothing is still there to edit. The rest is `send`'s doing: the keyboard goes
+    /// before the screen does, since one left standing behind it is only something to
+    /// dismiss twice.
     private func fill(_ line: String) {
         model.line = line
-        isFocused = false
-        onSubmit()
+        send()
     }
 }
 
