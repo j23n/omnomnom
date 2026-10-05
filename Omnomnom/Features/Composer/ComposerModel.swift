@@ -29,6 +29,16 @@ final class ComposerModel {
     var isLogging = false
     /// One sentence when something went wrong that the user can do nothing about.
     var banner: String?
+    /// What the last send wrote, while the way back from it is still offered. On no timer,
+    /// because a line is logged without being signed off and the undo is the other half of
+    /// that; it goes on the next send, on a change of day, or when it is dismissed.
+    var lastLogged: LoggedLine?
+    /// The day a line goes into.
+    ///
+    /// The field is on every tab, and only one of them has a day in it. So the day is held
+    /// here: Today sets it to whatever is on screen, and every other tab sets it back to
+    /// today, which is the only day they could mean.
+    var day: Date = Calendar.current.startOfDay(for: .now)
 
     private var task: Task<Void, Never>?
 
@@ -86,6 +96,27 @@ final class ComposerModel {
             await write(placed)
             isLogging = false
         }
+    }
+
+    /// Points the field at a day, and drops an offer that was about another one.
+    ///
+    /// An Undo names entries on the day it was shown against. Carried to another day it
+    /// would be a button over rows it has nothing to do with.
+    func looking(at day: Date, calendar: Calendar = .current) {
+        let start = calendar.startOfDay(for: day)
+        guard start != self.day else { return }
+        self.day = start
+        lastLogged = nil
+    }
+
+    /// Takes what a line wrote, and offers the way back from it.
+    func show(logged: LoggedLine) {
+        banner = nil
+        lastLogged = logged
+    }
+
+    func dismissLogged() {
+        lastLogged = nil
     }
 
     /// Opens the sign-off screen on the rows the send could not place, which is the only

@@ -60,7 +60,7 @@ Omnomnom/            app target
   FoodDB/            SQLite wrapper, search, portions
   Health/            HealthKit actor, reconciliation
   Sync/              sync identifiers, reconciliation state
-  Features/          Today, Composer, Add, Quantity, Library, Settings, Trends
+  Features/          Today, Composer, Add, Quantity, Library, Settings, Shape, Run
   Modules/           Barcode, Estimation (opt-in)
   Support/           shared views, formatters, brand
   Resources/         foods.sqlite, sources.json

@@ -75,6 +75,29 @@ eight nutrients and a total built on one of them is a floor rather than a total.
   icons are `#8A8178` rather than the secondary text grey, which sits at 3.02:1
   against white and leaves a 23 pt stroke no margin at all.
 
+### Where the code differs from the boards
+
+Four places, all deliberate, all small.
+
+- **Today keeps its eight totals.** The boards show Today as the headline and
+  then the food, with the figures living on Shape. The screen keeps
+  `TotalsRow` and the coverage row under the headline instead: they work, they
+  are tested, and `HeadlineNutrients` — which three figures a person wants
+  large — is a choice they made and not ours to delete on a mock's say-so. So
+  "composition leads; energy trails" holds in the order of the screen rather
+  than by removing anything from it.
+- **The composition bar is on Today, not Shape.** The boards put "what today
+  was made of" on Shape. It sits on Today, directly under the headline, because
+  that is where the day's figures already are: the bar and the row beneath it
+  are drawn from exactly the same numbers, where Shape reads Health over a
+  range and would have had to disagree with itself about one day.
+- **Counts are digits.** "3 of 4 meals", not "Three of four meals". The boards
+  spell the numbers, which reads better and does not survive being translated
+  or read by a screen reader in another language.
+- **An unanswered meal is a faint segment, not a dotted one.** The ring's track
+  is the system's quaternary fill at full arc. A dotted stroke at 32 pt in a
+  month grid is four dots that read as noise rather than as an empty quarter.
+
 ### Not yet drawn
 
 iPad layout, dark mode, and the largest accessibility sizes — none of which

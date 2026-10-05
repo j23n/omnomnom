@@ -1,19 +1,15 @@
 import DeveloperToolsSupport
 import SwiftUI
 
-/// The bar above the tab bar: the unauthorized notice and the transient banner, when
-/// either is up, stacked over the composer.
+/// This screen's own notices: the once-per-launch word that Health is accepting nothing,
+/// and the transient banner for something that just happened on this day.
 ///
-/// The composer stands where the Add food button used to. Add has not gone — it is in
-/// the toolbar, where it was already — but it is the second way in now rather than the
-/// first, which is the whole point of the redesign: the common case is a line of text,
-/// and the search screen is for when you would rather point than type.
+/// The field used to be here and is not any more. It sits over the tab bar, so it is on
+/// every tab and is laid out above the keyboard by the one inset that holds it; what is
+/// left here is what belongs to Today in particular — a delete, a repeat, a day copied
+/// from yesterday.
 struct TodayBottomBar: View {
     let model: TodayViewModel
-    @Bindable var composer: ComposerModel
-    let onSubmit: () -> Void
-    /// Takes back what the last line wrote.
-    let onUndo: () -> Void
 
     var body: some View {
         VStack(spacing: 8) {
@@ -23,60 +19,44 @@ struct TodayBottomBar: View {
             if let banner = model.banner {
                 BannerView(message: banner) { model.dismissBanner() }
             }
-            // Above the question and both above the field, so the order down the screen is
-            // the order things happened in: what was written, what is still being asked,
-            // and the place the next line goes.
-            if let logged = model.lastLogged {
-                LoggedLineBar(logged: logged, onUndo: onUndo) { model.dismissLogged() }
-            }
-            if let note = composer.unplacedNote {
-                UnplacedRowsBar(
-                    note: note,
-                    onPick: { composer.askAboutUnplaced() },
-                    onLeave: { composer.clearUnplaced() }
-                )
-            }
-            ComposerView(model: composer, onSubmit: onSubmit)
         }
         .padding(.horizontal)
-        .padding(.vertical, 8)
+        .padding(.vertical, model.showsUnauthorizedNotice || model.banner != nil ? 8 : 0)
         .readableColumn()
         .animation(.default, value: model.banner)
         .animation(.default, value: model.showsUnauthorizedNotice)
-        .animation(.default, value: model.lastLogged)
-        .animation(.default, value: composer.unplacedNote)
     }
 }
 
 #if DEBUG
-#Preview("Composer only", traits: .sizeThatFitsLayout) {
-    TodayBottomBar(model: TodayViewModel(), composer: ComposerModel(), onSubmit: {}, onUndo: {})
+#Preview("Nothing to say", traits: .sizeThatFitsLayout) {
+    TodayBottomBar(model: TodayViewModel())
 }
 
-#Preview("Mid sentence", traits: .sizeThatFitsLayout) {
-    let composer = ComposerModel()
-    composer.line = "oats, banana, large coffee"
-    return TodayBottomBar(model: TodayViewModel(), composer: composer, onSubmit: {}, onUndo: {})
+#Preview("A banner", traits: .sizeThatFitsLayout) {
+    let model = TodayViewModel()
+    model.banner = "Logged here only. Health didn't accept it."
+    return TodayBottomBar(model: model)
 }
 
 #Preview("Banner and notice", traits: .sizeThatFitsLayout) {
     let model = TodayViewModel()
-    model.banner = "Logged here only. Health didn't accept it."
+    model.banner = "Copied 4 entries from yesterday."
     model.showsUnauthorizedNotice = true
-    return TodayBottomBar(model: model, composer: ComposerModel(), onSubmit: {}, onUndo: {})
+    return TodayBottomBar(model: model)
 }
 
-#Preview("iPad width", traits: .fixedLayout(width: 1024, height: 220)) {
+#Preview("iPad width", traits: .fixedLayout(width: 1024, height: 160)) {
     let model = TodayViewModel()
     model.banner = "Copied 4 entries from yesterday."
-    return TodayBottomBar(model: model, composer: ComposerModel(), onSubmit: {}, onUndo: {})
+    return TodayBottomBar(model: model)
 }
 
 #Preview("Accessibility 5", traits: .sizeThatFitsLayout) {
     let model = TodayViewModel()
     model.banner = "Copied 4 entries from yesterday."
     model.showsUnauthorizedNotice = true
-    return TodayBottomBar(model: model, composer: ComposerModel(), onSubmit: {}, onUndo: {})
+    return TodayBottomBar(model: model)
         .environment(\.dynamicTypeSize, .accessibility5)
 }
 #endif

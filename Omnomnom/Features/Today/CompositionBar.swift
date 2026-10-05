@@ -99,6 +99,9 @@ struct CompositionLegend: View {
     let composition: MacroComposition
     /// The amounts the shares were taken from, for the gram figures.
     let nutrition: Nutrition
+    /// Whether to show those gram figures. Off where the totals are already on the screen
+    /// underneath, which is Today: the same number twice reads as two different numbers.
+    var showsGrams: Bool = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
@@ -109,7 +112,7 @@ struct CompositionLegend: View {
                         .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                     Text(band.nutrient?.displayName ?? "No figure covers it")
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    if let nutrient = band.nutrient, let grams = nutrition[nutrient] {
+                    if showsGrams, let nutrient = band.nutrient, let grams = nutrition[nutrient] {
                         ValueText(grams, unit: nutrient.unit)
                             .fontWeight(.semibold)
                     }

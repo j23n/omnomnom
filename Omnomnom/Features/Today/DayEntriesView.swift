@@ -16,6 +16,8 @@ struct DayEntriesView: View {
     @Environment(\.health) private var health
     @Environment(\.healthObserving) private var observing
     @Environment(\.foodRepository) private var repository
+    /// The one field, for the offer to take back what accepting a usual meal just wrote.
+    @Environment(\.composer) private var composer
     @Query private var entries: [LogEntry]
     @Query private var previousDayEntries: [LogEntry]
     /// The record for this day, if anything has been said about it. A day nobody has
@@ -145,6 +147,26 @@ struct DayEntriesView: View {
         SnapshotMath.total(of: entries.map(\.snapshot))
     }
 
+    /// Which meals have an answer: the ones holding an entry, and the ones said to hold
+    /// nothing. What the mark's ring draws.
+    private var answers: DayAnswers {
+        DayAnswers(
+            entrySlots: entries.map(\.mealSlot),
+            skipped: dayRecords.first?.skippedSlots ?? []
+        )
+    }
+
+    /// The figures the mark and the bar are drawn from, which are the figures the totals
+    /// show: what other sources wrote to Health for this day is part of the day, and a
+    /// shape that left it out would disagree with the row underneath it.
+    private var headlineNutrition: Nutrition {
+        healthSummary.hasForeign ? totals + healthSummary.foreign : totals
+    }
+
+    private var composition: MacroComposition {
+        MacroComposition(of: headlineNutrition)
+    }
+
     /// The editor's presentation, driven by the model's entry rather than by
     /// `sheet(item:)`, which would ask a SwiftData model to be `Identifiable` across
     /// a delete. Clearing the entry closes the sheet and closing it clears the entry.
@@ -189,6 +211,25 @@ struct DayEntriesView: View {
 
     var body: some View {
         List {
+            Section {
+                DayHeadline(
+                    answers: answers,
+                    composition: composition,
+                    isAssumed: dayState == .assumed
+                )
+            }
+            if !composition.isEmpty {
+                Section("What today was made of") {
+                    CompositionBar(composition: composition)
+                    CompositionLegend(
+                        composition: composition,
+                        nutrition: headlineNutrition,
+                        // The grams are in the totals directly below. The same figure
+                        // twice on one screen reads as two different figures.
+                        showsGrams: false
+                    )
+                }
+            }
             Section {
                 TotalsRow(totals: totals, foreign: healthSummary.hasForeign ? healthSummary.foreign : nil)
                 DayCoverageRow(
@@ -510,7 +551,7 @@ extension DayEntriesView {
             resolution, mealSlot: slot, at: timestamp, origin: .baseline
         )
         phrase.noteRecalled()
-        model.show(logged: LoggedLine(resolution: resolution, outcome: outcome))
+        composer.show(logged: LoggedLine(resolution: resolution, outcome: outcome))
     }
 
     /// Turns a slot's proposal down. Permanent until the user asks for it again, because

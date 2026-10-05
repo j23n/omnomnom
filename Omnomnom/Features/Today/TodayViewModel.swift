@@ -12,10 +12,6 @@ final class TodayViewModel {
     var isDatePickerPresented = false
     /// The transient notice at the bottom; `show(banner:)` also takes it down again.
     var banner: String?
-    /// What the last send wrote, while the way back from it is still offered. Not a
-    /// notice: it is on no timer, because a line is logged without being signed off and
-    /// the undo is the other half of that.
-    var lastLogged: LoggedLine?
     /// Entry whose editor is up; `nil` when none.
     var editingEntry: LogEntry?
     /// Whether the once-per-launch notice that Health is refusing nutrition is on screen.
@@ -62,9 +58,6 @@ final class TodayViewModel {
 
     func select(day: Date) {
         selectedDay = calendar.startOfDay(for: day)
-        // The offer named entries on the day that was showing. Carrying it to another day
-        // would put an Undo over rows it has nothing to do with.
-        lastLogged = nil
     }
 
     /// Midnight rollover: when the scene comes back and the user was still looking at
@@ -102,30 +95,6 @@ final class TodayViewModel {
         show(banner: result.bannerMessage)
     }
 
-    /// Takes what a line wrote, and offers the way back from it.
-    ///
-    /// Replaces the banner rather than sitting beside it: both would be saying the same
-    /// sentence, and only one of them carries the Undo.
-    func show(logged: LoggedLine) {
-        show(banner: nil)
-        lastLogged = logged
-    }
-
-    func dismissLogged() {
-        lastLogged = nil
-    }
-
-    /// Takes back everything one line wrote.
-    ///
-    /// The offer goes whatever happened. Where something could not be removed the sentence
-    /// says so and the entry is still on the day, which is where it gets dealt with one at
-    /// a time; a second tap on Undo would only try the same delete again.
-    func undo(_ logged: LoggedLine, using logger: EntryLogger) async {
-        lastLogged = nil
-        let outcome = await logger.undo(logged)
-        show(banner: outcome.message)
-        healthRefresh += 1
-    }
 
     /// Raises the notice the first time a day with entries is shown while Health is
     /// there and currently accepts no nutrient at all.

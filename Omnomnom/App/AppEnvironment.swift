@@ -17,4 +17,8 @@ extension EnvironmentValues {
 
     /// Where to go when something outside the app asked; empty unless it did.
     @Entry var appRouter: AppRouter = AppRouter()
+
+    /// The one field, shared by every tab: what has been typed, what the last send wrote,
+    /// and what it could not place. One instance so a line survives a change of tab.
+    @Entry var composer: ComposerModel = ComposerModel()
 }

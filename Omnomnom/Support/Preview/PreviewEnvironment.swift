@@ -78,5 +78,16 @@ nonisolated enum PreviewDefaults {
     static var onboardingPending: UserDefaults {
         make(onboardingComplete: false)
     }
+
+    /// The three-day cadence, for the screens whose subject is which days are asked about.
+    /// Its own suite, so setting it cannot leak into every other preview.
+    static var threeDaysAWeek: UserDefaults {
+        guard let defaults = UserDefaults(suiteName: "com.j23n.omnomnom.preview.cadence.three") else {
+            return .standard
+        }
+        defaults.set(true, forKey: AppServices.onboardingKey)
+        defaults.set(SamplingCadence.threeDaysAWeek.rawValue, forKey: SamplingCadence.key)
+        return defaults
+    }
 }
 #endif

@@ -84,6 +84,34 @@ struct LineResolver {
         self.products = products
     }
 
+    /// The four rungs as the app wires them, from the two opt-ins that govern them.
+    ///
+    /// The estimator is whichever model the user chose, and `nil` when none will answer —
+    /// then only a line logged before comes back, and the field says as much.
+    ///
+    /// The validator is separate and present only when the estimation opt-in is on. It is
+    /// the second pass, the one that moves "oats" off an oat biscuit, and it is always the
+    /// device's own model: a shortlist of candidate rows is a cheap question, and sending
+    /// one somewhere would be a second disclosure for a smaller gain.
+    ///
+    /// The product rung is `nil` when the user has not turned product search on, which is
+    /// not the same as a rung that answers nothing: `nil` means nothing may be asked at
+    /// all, so an unmatched food goes straight to the user as it did before it existed.
+    static func app(
+        context: ModelContext,
+        repository: FoodRepository,
+        estimationEnabled: Bool,
+        productSearchEnabled: Bool
+    ) -> LineResolver {
+        LineResolver(
+            context: context,
+            repository: repository,
+            validator: estimationEnabled ? FoundationMatchValidator() : nil,
+            products: productSearchEnabled ? { await ProductRung.choices(for: $0, in: context) } : nil,
+            estimator: Estimators.current()
+        )
+    }
+
     /// A typed line, resolved.
     func resolve(_ line: String) async -> LineResolution {
         await resolve(.text(line), line: line)

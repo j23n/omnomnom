@@ -1034,3 +1034,57 @@ screen the user has left cannot put a food back into a meal they have moved on f
 Tests: eleven, over what the bar says with one food, several, and a food the tables hold no
 energy figure for, every row edit including the late callback, and that nothing gathered
 blocks or carries a mark.
+
+## The field over the tab bar, the mark on Today, and the run
+
+Three things that only make sense together.
+
+**The field belongs to the app, not to Today.** It is a `safeAreaInset` on the `TabView`
+now, so it is on all four tabs, and one `ComposerModel` in the environment backs it — a
+line half typed survives a change of tab, and an Undo stays reachable from wherever the
+user went next. Today is where you look at what you ate, which is a different activity from
+saying what you ate and was in the way of it.
+
+What that cost: `TodayBottomBar` is down to this screen's own notices, `TodayViewModel` lost
+the undo offer to `ComposerModel`, and the sign-off screen is presented rather than pushed,
+because three of the four tabs have no stack to push onto. The day a line goes into is held
+on the composer: Today sets it to whatever is on screen, since it holds the app's one day
+selector, and leaving Today sets it back to today, which is the only day the other three
+tabs could mean. `LineResolver.app(context:repository:estimationEnabled:productSearchEnabled:)`
+is the one place the four rungs are wired from, since both the field and the widget path
+need them.
+
+**The mark is Today's headline.** `DayHeadline` puts the ring-and-square beside one
+sentence — "3 of 4 meals", and under it what is still owed, named rather than counted,
+because "breakfast and dinner" is something to act on and "2 unanswered" is only a score.
+`DayAnswers.sentence` is that count and it is a count: no percentage of a day appears
+anywhere, for the reason in `DayState.note`. Under it, the composition bar and its legend,
+drawn from exactly the figures the totals row below shows — what other sources wrote to
+Health for the day included, or the shape would disagree with the row under it. The legend
+drops its gram figures there, since the totals are directly beneath and the same number
+twice on one screen reads as two different numbers.
+
+**Trends became Shape.** A trend is a line going somewhere, which is a thing to be pleased
+or displeased about; the shape of what someone eats is a description. Nothing about the
+charts changed. What was added is one row at the bottom leading to the run.
+
+**The run has a screen.** `RunModel` reads it locally and cheaply — the run counts days
+*this app* was told about, because that is what answering means, which is a deliberate
+difference from Shape, which reads Health and says so. Two figures, the current run and the
+best, the best never touched by a gap. One prompt, for a day still inside the grace window,
+and it says what closing the day claims about the food rather than what it does for the
+streak: a run is not a reason to assert something untrue about a Tuesday. Then the month as
+marks, seven across so a week is a row, with nothing drawn after today — a square for a day
+that has not happened looks exactly like a day someone missed.
+
+The window is two years, bounded so the fetch behind it cannot grow without limit, which
+makes "your best" a fact about the person rather than about the window.
+
+Four places where the code differs from the boards are now written down in `DESIGN.md`
+rather than left to be discovered: Today keeps its eight totals and the user's choice of
+which three are large, the composition bar is on Today rather than Shape, counts are digits,
+and an unanswered meal is a faint ring segment rather than a dotted one.
+
+Tests: twenty-two, over the headline's sentence and its note, the run row's wording with a
+broken run and with none at all, the month the grid draws at its edges, and what a cell says
+aloud including a day the cadence does not ask about.

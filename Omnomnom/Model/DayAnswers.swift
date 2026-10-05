@@ -39,4 +39,18 @@ nonisolated struct DayAnswers: Hashable, Sendable {
 
     /// Whether this slot has an answer, of either kind.
     func isAnswered(_ slot: MealSlot) -> Bool { answered.contains(slot) }
+
+    /// "3 of 4 meals", "All 4 meals", "No meals yet": the day in the words a screen shows.
+    ///
+    /// A count and never a fraction, for the reason in `DayState.note` — three meals
+    /// answered is a fact, 75 per cent of a day is a claim about how much a day should
+    /// hold. The mark's spoken label says the same thing in its own sentence rather than
+    /// reading this one, because what a screen reader needs after it is the composition
+    /// and what a headline needs after it is nothing.
+    var sentence: String {
+        let total = MealSlot.allCases.count
+        if answered.isEmpty { return "No meals yet" }
+        if isAnswered { return "All \(total) meals" }
+        return "\(answered.count) of \(total) meals"
+    }
 }

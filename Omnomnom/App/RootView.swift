@@ -23,27 +23,55 @@ struct RootView: View {
     }
 }
 
-/// Today, Trends, Library, Settings.
+/// Today, Shape, Library, Settings — and the field, over all four of them.
 ///
-/// Four now. The composer, the Add sheet, the resolution sheet and Quantity are all over
-/// Today rather than destinations of their own, so the input path stays one screen deep
-/// however many ways into it there are.
+/// The field is here rather than inside Today because logging a meal is not a place you go.
+/// It was Today's alone, and Today is where you look at what you ate, which is a different
+/// activity from saying what you ate and was in the way of it. One `ComposerModel` for the
+/// whole app, so a line half typed survives a change of tab and an Undo stays reachable
+/// from wherever the user went next.
+///
+/// Everything the field leads to — the sign-off sheet, the Add screen, Quantity — is still
+/// presented rather than pushed, so the input path stays one screen deep however many ways
+/// into it there are.
 struct MainTabView: View {
+    /// Which tab is up, kept only so that leaving Today points the field back at today:
+    /// Today is the one screen that can be showing another day, and a line typed anywhere
+    /// else can only mean now.
+    private enum Showing: Hashable {
+        case today, shape, library, settings
+    }
+
+    @State private var composer = ComposerModel()
+    @State private var showing: Showing = .today
+
     var body: some View {
-        TabView {
-            Tab("Today", systemImage: "calendar") {
+        TabView(selection: $showing) {
+            Tab("Today", systemImage: "calendar", value: Showing.today) {
                 TodayView()
             }
-            Tab("Trends", systemImage: "chart.xyaxis.line") {
-                TrendsView()
+            Tab("Shape", systemImage: "chart.xyaxis.line", value: Showing.shape) {
+                ShapeView()
             }
-            Tab("Library", systemImage: "books.vertical") {
+            Tab("Library", systemImage: "books.vertical", value: Showing.library) {
                 LibraryView()
             }
-            Tab("Settings", systemImage: "gear") {
+            Tab("Settings", systemImage: "gear", value: Showing.settings) {
                 SettingsView()
             }
         }
+        .onChange(of: showing) { _, tab in
+            guard tab != .today else { return }
+            composer.looking(at: .now)
+        }
+        // An inset and not a bar. A bar does not move for the keyboard, so the field it
+        // holds ends up underneath one, which undoes the whole point of the field being
+        // in reach of a thumb. An inset is laid out above the keyboard as any other
+        // content would be.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            ComposerBar()
+        }
+        .environment(\.composer, composer)
     }
 }
 
