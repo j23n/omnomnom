@@ -18,8 +18,14 @@ struct FoodQueryTests {
         #expect(FoodQuery.ftsMatchExpression(for: "   ") == nil)
     }
 
-    @Test func quotesAreDoubledSoTheyCannotCloseTheTerm() {
-        #expect(FoodQuery.ftsMatchExpression(for: "6\" sub") == "\"6\"\"\"* AND \"sub\"*")
+    @Test func punctuationNeverReachesATerm() {
+        // Quotes used to be doubled so a stray one could not close a term. They no longer
+        // can: an expression is built from `words(of:)`, which splits on everything that
+        // is not a letter or a number, so the quote is a separator and never a character
+        // inside a term. Escaping it was dead code and this is the property that replaced it.
+        #expect(FoodQuery.ftsMatchExpression(for: "6\" sub") == "\"6\"* AND \"sub\"*")
+        #expect(FoodQuery.ftsMatchExpression(for: "yogurt, plain") == "\"yogurt\"* AND \"plain\"*")
+        #expect(FoodQuery.ftsMatchExpression(for: "\"\"\"") == nil)
     }
 
     // MARK: - Plurals
