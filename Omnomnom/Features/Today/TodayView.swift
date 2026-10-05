@@ -145,9 +145,20 @@ struct TodayView: View {
             context: context,
             repository: repository,
             validator: estimationEnabled ? FoundationMatchValidator() : nil,
-            products: productSearchEnabled ? { await ProductRung.choices(for: $0, in: context) } : nil,
+            products: productLookup,
             estimator: Estimators.current()
         )
+    }
+
+    /// The fourth rung, and `nil` when the user has not turned product search on — which is
+    /// not the same as a rung that answers nothing: `nil` means nothing may be asked at all,
+    /// so an unmatched food goes straight to the user as it did before this existed.
+    ///
+    /// Its own property rather than a ternary inside the resolver, so the closure's type is
+    /// stated where it is written instead of inferred through a conditional.
+    private var productLookup: ((String) async -> [FoodChoice])? {
+        guard productSearchEnabled else { return nil }
+        return { await ProductRung.choices(for: $0, in: context) }
     }
 
     /// Logs every row, clears the field, and reports what happened in one banner.
