@@ -134,4 +134,21 @@ nonisolated enum FoodMatcher {
     static func best(_ candidates: [BundledFood], term: String) -> FoodMatch? {
         shortlist(candidates, term: term, limit: 1).first
     }
+
+    /// Whether `word` answers what `name` is, rather than appearing somewhere inside it.
+    ///
+    /// The row's own first word, whole. Two failures this exists for, both from the
+    /// fallback that looks a term up by part of itself. A word matched anywhere in a name
+    /// let "sauce" answer with *Asparagus boiled (without sauce)* — a row naming the
+    /// absence of the thing asked for. And a prefix match on the head let "water" answer
+    /// with *Watermelon raw*. Requiring the head, and requiring it whole, rules out both.
+    ///
+    /// The primary name only, unlike scoring, which reads alternative names too. A
+    /// fallback is already a weaker claim; letting it anchor to a synonym buried in a
+    /// row's alternative names would widen exactly the thing being narrowed.
+    static func answersHead(_ name: String, with word: String) -> Bool {
+        let folded = SearchRelevance.fold(name)
+        guard let head = FoodQuery.words(of: folded).first else { return false }
+        return FoodQuery.forms(of: word).contains { SearchRelevance.fold($0) == String(head) }
+    }
 }

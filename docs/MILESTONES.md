@@ -855,3 +855,62 @@ started building terms from `words(of:)`, which splits on everything that is not
 a number — a quote is a separator now and cannot reach a term at all. The test still
 expected the doubling, so it was asserting behaviour the code had already dropped. It now
 asserts the property that replaced it.
+
+## A hundred written lines, and the fallback that was inventing answers
+
+The ten lines the design was drawn against all resolved sensibly, so the set was widened to
+a hundred — bare lists, full sentences, shorthand, amounts in words, dishes, loanwords,
+vague gestures at a meal, typos, dictation, drinks and packaged things — and measured item
+by item against the real built database. A hundred and seventy-seven items. Forty-five of
+them went down the fallback that looks a term up by part of itself, and a dozen of those
+came back confidently wrong:
+
+| What was searched | What answered | Score |
+| --- | --- | --- |
+| `yogurt, natural` | Natural mineral water | 1.10 |
+| `baked beans in tomato sauce` | Tomato raw | 1.12 |
+| `croissant with chocolate` | Chocolate | 1.35 |
+| `tonic water` | Watermelon raw | 0.85 |
+| `beer, lager` | Beer ham | 0.88 |
+| `wholemeal pasta, cooked` | Wholemeal bread | 1.13 |
+| `potato crisps, salted` | Potatoe peeled, boiled | 1.06 |
+| `spaghetti with bolognese sauce` | Asparagus boiled (without sauce) | 0.89 |
+
+Every one of those scored above the line a row needs to be logged without being questioned,
+because a single word of a term scores perfectly against a row that is a different food —
+and the fallback was scoring against the surviving word rather than against what was said.
+The last row is the worst of them: a row naming the *absence* of the thing asked for.
+
+Three rules replaced trying every word.
+
+**The fallback sees only the head phrase**, which is the term up to its first comma or
+preposition, with preparation words dropped. Three shapes of wording and one rule covers
+all of them: a composition table inverts the compound, so the head is first and the comma
+separates it from its qualifiers; a plain compound puts the head last; and a prepositional
+phrase qualifies whatever preceded it. So "yogurt, natural" is about yogurt, "wholemeal
+pasta" is about pasta, and "croissant with chocolate" is a croissant.
+
+**Combinations of that phrase are tried largest first**, so "rye bread, toasted" asks for
+rye bread before it asks for bread. Searching the words alone answered it with *Bread,
+bagel*.
+
+**A candidate has to be what the word names**, which means the row's own first word, whole.
+Matching a word anywhere in a name is what let "sauce" answer with the asparagus row;
+prefix-matching the head is what let "water" answer with a melon.
+
+Measured again afterwards: eighteen of a hundred and twenty distinct terms changed, all but
+two of them repairs, and every one of the twenty-two bare nouns and all five of the terms
+recorded in the entry above answer exactly as they did. The cost is two rows that now block
+and ask instead of guessing — "lasagne with beef" and "spag bol", neither of which the
+bundled tables hold under a head the model offered. Blocking is the honest answer there and
+the sheet is built for it.
+
+One finding this leaves open rather than fixing: the table *does* hold spaghetti bolognese,
+as *Bolognese-style pasta (spaghetti, tagliatelle…)*, under the head "bolognese". The
+matcher cannot reach it from "spaghetti with bolognese sauce" and should not try to. What
+should change is the prompt, which asks for the wording a composition table uses and ought
+to ask for the dish's own name first.
+
+Tests: fourteen on the head phrase and the function words, five on whether a word answers a
+row's head — the asparagus row and the melon among them — and five on the resolver, one per
+fault above, each failing before the change.

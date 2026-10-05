@@ -56,6 +56,46 @@ nonisolated enum FoodQuery {
         preparationWords.contains(word.lowercased())
     }
 
+    /// Words that join a food to something qualifying it, and so cannot name one.
+    ///
+    /// Articles and prepositions. Everything after one of these is a garnish on whatever
+    /// came before it — "croissant with chocolate" is a croissant — which is what
+    /// `headPhrase(of:)` uses them for.
+    static let functionWords: Set<String> = [
+        "a", "an", "the", "and", "or", "with", "without", "of", "in", "on", "from", "plus",
+    ]
+
+    /// Whether a word joins two parts of a term rather than naming a food.
+    static func isFunctionWord(_ word: String) -> Bool {
+        functionWords.contains(word.lowercased())
+    }
+
+    /// The part of a term that says which food it is: up to the first comma or
+    /// preposition, with preparation words dropped.
+    ///
+    /// Three shapes of wording, one rule. A composition table inverts a compound, so the
+    /// head comes first and a comma separates it from its qualifiers — "pasta, cooked",
+    /// "milk, semi-skimmed". A plain compound puts the head last — "wholemeal pasta",
+    /// "rye bread". And a prepositional phrase qualifies whatever preceded it —
+    /// "croissant with chocolate", "baked beans in tomato sauce". Stopping at the comma
+    /// or the preposition keeps all three looking at the food rather than at its garnish,
+    /// which is the whole job: a fallback that searched the garnish logged *Chocolate* for
+    /// a pain au chocolat and *Tomato raw* for a tin of baked beans.
+    ///
+    /// Capped, because the fallback tries combinations of what comes back and a term long
+    /// enough to make that expensive is a term the model should have shortened.
+    static func headPhrase(of term: String, limit: Int = 4) -> [String] {
+        var phrase: [String] = []
+        for word in words(of: String(term.prefix { $0 != "," })) {
+            let lowered = word.lowercased()
+            if isFunctionWord(lowered) { break }
+            if isPreparationWord(lowered) { continue }
+            phrase.append(String(word))
+            if phrase.count == limit { break }
+        }
+        return phrase
+    }
+
     /// One token as an FTS5 clause: a single prefix term, or alternatives in a group.
     static func clause(for token: String) -> String {
         let terms = forms(of: token).map { "\"\($0)\"*" }

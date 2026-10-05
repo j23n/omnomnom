@@ -269,3 +269,35 @@ struct RealDatabaseMatchTests {
         #expect(winner("tomato", candidates) == "Tomato raw")
     }
 }
+
+/// Whether a word answers what a row is, which is what keeps the fallback honest.
+struct FoodMatcherHeadTests {
+    @Test func aWordInsideANameDoesNotAnswerForIt() {
+        // The row names the *absence* of the thing asked for, and answered "sauce" with it.
+        #expect(!FoodMatcher.answersHead("Asparagus boiled (without sauce)", with: "sauce"))
+        #expect(!FoodMatcher.answersHead("Fried egg with bacon", with: "bacon"))
+    }
+
+    @Test func theHeadHasToMatchWholeAndNotMerelyBeginWith() {
+        // A prefix match on the head is how "water" answered with a melon.
+        #expect(!FoodMatcher.answersHead("Watermelon raw", with: "water"))
+        #expect(FoodMatcher.answersHead("Water, municipal", with: "water"))
+    }
+
+    @Test func aPluralAnswersItsSingularHead() {
+        // The retriever searches both forms, so the head test has to accept both too.
+        #expect(FoodMatcher.answersHead("Oat flakes", with: "oats"))
+        #expect(FoodMatcher.answersHead("Tomato raw", with: "tomatoes"))
+    }
+
+    @Test func theHeadIsTheFirstWordHoweverTheNameIsPunctuated() {
+        #expect(FoodMatcher.answersHead("Sauce (average)", with: "sauce"))
+        #expect(FoodMatcher.answersHead("Milk, semi-skimmed (average)", with: "milk"))
+        #expect(!FoodMatcher.answersHead("", with: "milk"))
+    }
+
+    @Test func caseAndAccentsDoNotDecideIt() {
+        #expect(FoodMatcher.answersHead("Crème fraîche", with: "creme"))
+        #expect(FoodMatcher.answersHead("CHICKEN grilled", with: "chicken"))
+    }
+}

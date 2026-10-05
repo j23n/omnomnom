@@ -28,6 +28,51 @@ struct FoodQueryTests {
         #expect(FoodQuery.ftsMatchExpression(for: "\"\"\"") == nil)
     }
 
+    // MARK: - The head phrase
+
+    @Test func aCommaEndsTheHeadPhrase() {
+        // Table wording inverts the compound, so everything after the comma qualifies it.
+        #expect(FoodQuery.headPhrase(of: "pasta, cooked") == ["pasta"])
+        #expect(FoodQuery.headPhrase(of: "milk, semi-skimmed") == ["milk"])
+        #expect(FoodQuery.headPhrase(of: "yogurt, natural") == ["yogurt"])
+    }
+
+    @Test func aPlainCompoundKeepsAllOfItsWords() {
+        // Here the head is last, so neither word can be dropped and both are kept.
+        #expect(FoodQuery.headPhrase(of: "wholemeal pasta, cooked") == ["wholemeal", "pasta"])
+        #expect(FoodQuery.headPhrase(of: "rye bread") == ["rye", "bread"])
+    }
+
+    @Test func aPrepositionEndsTheHeadPhrase() {
+        // What follows is a garnish on what came before: the measured failures were
+        // *Chocolate* for a pain au chocolat and *Tomato raw* for a tin of baked beans.
+        #expect(FoodQuery.headPhrase(of: "croissant with chocolate") == ["croissant"])
+        #expect(FoodQuery.headPhrase(of: "baked beans in tomato sauce") == ["beans"])
+        #expect(FoodQuery.headPhrase(of: "spaghetti with bolognese sauce") == ["spaghetti"])
+    }
+
+    @Test func preparationWordsDropOutRatherThanEndingThePhrase() {
+        #expect(FoodQuery.headPhrase(of: "grilled chicken breast") == ["chicken", "breast"])
+        #expect(FoodQuery.headPhrase(of: "cooked") == [])
+    }
+
+    @Test func aHeadPhraseIsCapped() {
+        #expect(FoodQuery.headPhrase(of: "one two three four five") == ["one", "two", "three", "four"])
+        #expect(FoodQuery.headPhrase(of: "one two three", limit: 2) == ["one", "two"])
+    }
+
+    @Test func nothingToReadIsAnEmptyPhrase() {
+        #expect(FoodQuery.headPhrase(of: "") == [])
+        #expect(FoodQuery.headPhrase(of: ", cooked") == [])
+        #expect(FoodQuery.headPhrase(of: "with cheese") == [])
+    }
+
+    @Test func functionWordsAreRecognisedWhateverTheirCase() {
+        #expect(FoodQuery.isFunctionWord("With"))
+        #expect(FoodQuery.isFunctionWord("AND"))
+        #expect(!FoodQuery.isFunctionWord("cheese"))
+    }
+
     // MARK: - Plurals
 
     @Test func aPluralIsSearchedInBothForms() {

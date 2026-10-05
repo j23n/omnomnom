@@ -243,21 +243,49 @@ struct LineResolver {
             return Found(matches: whole, wasNarrowed: false)
         }
 
-        let words = FoodQuery.words(of: term).map(String.init)
-        let foods = words.filter { !FoodQuery.isPreparationWord($0) }
-        guard words.count > 1, !foods.isEmpty else {
+        // Only the head phrase, and only combinations of it. Trying every word of the
+        // term was measured against a hundred lines and was wrong far more often than it
+        // was right: a term's qualifiers score perfectly against rows that are a
+        // different food, so "yogurt, natural" answered with *Natural mineral water* and
+        // "baked beans in tomato sauce" with *Tomato raw*. Both scored above the settled
+        // line. The head phrase cannot do that, and when it finds nothing the row blocks
+        // and asks — which is the honest answer and the one the sheet is built for.
+        let words = FoodQuery.words(of: term)
+        let phrase = FoodQuery.headPhrase(of: term)
+        guard words.count > 1, !phrase.isEmpty else {
             return Found(matches: whole, wasNarrowed: false)
         }
+
         var best = whole
         var narrowed = false
-        for word in foods {
-            let candidates = await shortlist(for: word, scoredAgainst: word)
+        for indices in Self.subsets(of: phrase.count) {
+            // The phrase entire, where that is the whole term, is what was just tried.
+            if indices.count == phrase.count, phrase.count == words.count { continue }
+            let combination = indices.map { phrase[$0] }
+            let sub = combination.joined(separator: " ")
+            let candidates = await shortlist(for: sub, scoredAgainst: sub)
+                .filter { match in
+                    combination.contains { FoodMatcher.answersHead(match.food.name, with: $0) }
+                }
             if let top = candidates.first, top.score > (best.first?.score ?? 0) {
                 best = candidates
                 narrowed = true
             }
         }
         return Found(matches: best, wasNarrowed: narrowed)
+    }
+
+    /// Every non-empty subset of `0..<count`, the largest first and each in ascending
+    /// order, so which combination wins a tie is fixed rather than incidental.
+    private static func subsets(of count: Int) -> [[Int]] {
+        guard count > 0, count < 16 else { return [] }
+        var subsets: [[Int]] = []
+        for size in stride(from: count, through: 1, by: -1) {
+            for mask in 1..<(1 << count) where mask.nonzeroBitCount == size {
+                subsets.append((0..<count).filter { mask & (1 << $0) != 0 })
+            }
+        }
+        return subsets
     }
 
     /// One search, ranked. `scoredAgainst` is what the scorer compares a row to, which is

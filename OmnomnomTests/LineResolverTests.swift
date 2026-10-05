@@ -431,6 +431,89 @@ struct LineResolverTests {
         #expect(row.confidence == .settled)
     }
 
+    // MARK: - What the fallback is allowed to look at
+
+    /// Measured over a hundred written lines: the fallback used to try every word of a
+    /// term, and a qualifier scores perfectly against rows that are a different food. This
+    /// one answered with *Natural mineral water*, at 1.10, settled.
+    @Test func aQualifierAfterACommaCannotAnswerForTheFood() async throws {
+        let context = try makeContext()
+        let repository = FakeRepository(hits: [
+            "yogurt": [bundled(41, "Yogurt mild, min. 3.5 % fat", popularity: 80)],
+            // Reachable only by searching the qualifier, which is now never searched.
+            "natural": [bundled(42, "Natural mineral water", popularity: 60)],
+        ])
+        let estimator = FakeEstimator(
+            items: [EstimatedItem(name: "yogurt", lookupTerm: "yogurt, natural", grams: 150)]
+        )
+        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
+        let row = try #require(await resolver.resolve("yogurt").rows.first)
+        #expect(row.choice?.name == "Yogurt mild, min. 3.5 % fat")
+    }
+
+    /// The same fault through a preposition: a pain au chocolat was logged as *Chocolate*,
+    /// at 1.35, because the garnish outscored the pastry.
+    @Test func aGarnishAfterAPrepositionCannotAnswerForTheFood() async throws {
+        let context = try makeContext()
+        let repository = FakeRepository(hits: [
+            "croissant": [bundled(43, "Croissant (average)")],
+            "chocolate": [bundled(44, "Chocolate", popularity: 100)],
+        ])
+        let estimator = FakeEstimator(
+            items: [EstimatedItem(name: "pain au chocolat", lookupTerm: "croissant with chocolate", grams: 70)]
+        )
+        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
+        let row = try #require(await resolver.resolve("pain au chocolat").rows.first)
+        #expect(row.choice?.name == "Croissant (average)")
+    }
+
+    /// The head phrase entire is tried before any part of it, so the more specific answer
+    /// wins where there is one. Searching the words alone gave *Bread, bagel* for rye bread.
+    @Test func theHeadPhraseIsTriedWholeBeforeItsWords() async throws {
+        let context = try makeContext()
+        let repository = FakeRepository(hits: [
+            "rye bread": [bundled(45, "Rye bread", popularity: 87)],
+            "bread": [bundled(46, "Bread, bagel")],
+        ])
+        let estimator = FakeEstimator(
+            items: [EstimatedItem(name: "toast", lookupTerm: "rye bread, toasted", grams: 50)]
+        )
+        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
+        let row = try #require(await resolver.resolve("toast").rows.first)
+        #expect(row.choice?.name == "Rye bread")
+    }
+
+    /// A word has to answer what a row *is*. Prefix-matching the head is how "tonic water"
+    /// came back as *Watermelon raw*, and there is no tonic row, so the honest answer is
+    /// the one the sheet is built for: ask.
+    @Test func aRowWhoseHeadMerelyBeginsWithTheWordIsNotAnAnswer() async throws {
+        let context = try makeContext()
+        let repository = FakeRepository(hits: ["water": [bundled(47, "Watermelon raw", popularity: 40)]])
+        let estimator = FakeEstimator(
+            items: [EstimatedItem(name: "tonic water", lookupTerm: "tonic water", grams: 200)]
+        )
+        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
+        let row = try #require(await resolver.resolve("tonic water").rows.first)
+        #expect(row.choice == nil)
+        #expect(row.confidence == .unsure)
+        #expect(row.blocks)
+    }
+
+    /// And when the head phrase finds nothing, nothing is what is reported. The words after
+    /// the preposition are not consulted as a last resort, because that is where every one
+    /// of the wrong answers came from.
+    @Test func aHeadPhraseThatFindsNothingBlocksRatherThanGuessing() async throws {
+        let context = try makeContext()
+        let repository = FakeRepository(hits: ["beef": [bundled(48, "Beef boiled", popularity: 70)]])
+        let estimator = FakeEstimator(
+            items: [EstimatedItem(name: "lasagne", lookupTerm: "lasagne with beef", grams: 350)]
+        )
+        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
+        let row = try #require(await resolver.resolve("lasagne").rows.first)
+        #expect(row.choice == nil)
+        #expect(row.blocks)
+    }
+
     // MARK: - What a step measures from
 
     @Test func aFoodEatenBeforeBringsItsOwnReference() async throws {
