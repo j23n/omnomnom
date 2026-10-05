@@ -13,7 +13,7 @@ Status log for the build order in `PLAN.md`. Each milestone is planned, implemen
 | 7 | Internationalization | sources bundled, UI pending | |
 | 8 | The matcher: confidence, thresholds, popularity | done, awaiting first build | |
 | 9 | Phrase memory | done, awaiting first build | |
-| 10 | Composer and resolution sheet | done, awaiting first build | |
+| 10 | Composer and sign-off screen | rebuilt around a model, awaiting first build | |
 | 11 | Buckets and coverage | done, awaiting first build | |
 | 12 | Trends | done, awaiting first build | |
 | 13 | Baseline days | done, awaiting first build | |
@@ -22,6 +22,9 @@ Status log for the build order in `PLAN.md`. Each milestone is planned, implemen
 
 Milestones 8 to 15 come from `PLAN.md` revision 4, which rethinks logging around one line of
 natural language and puts trends back in scope. The shippable app is now 1 to 4 plus 8 to 12.
+
+Revision 5 rebuilt milestone 10 rather than adding a milestone: the line is read by a model
+and by nothing else. See "The model is the input" at the end of this log.
 
 ## Milestones 9 to 15: the one-line path
 
@@ -550,3 +553,108 @@ Every framework the app needs is on iPadOS and was checked rather than assumed: 
 Watch list for the first build: whether a capped `List` frame leaves the plain-style separators and scroll indicators where they belong; the full-screen search cover on an iPad, which is a lot of display for one column and may want to be a sheet in the regular size class; the barcode scanner in a centred iPad sheet, which is a small window for a camera; and `presentationDetents` on the Quantity sheet and the day picker, which an iPad ignores in favour of a centred card.
 
 Not done: a `NavigationSplitView` for the Library, and a second column on Today. Both are redesigns rather than an iPad pass, and the app should be looked at on a real iPad before either is decided.
+
+## The model is the input
+
+Revision 5. The composer's parser is deleted and a model reads the line instead. Written
+across several rounds with the app running on a device between them, which is new for this
+log: the earlier entries were reasoned, this one was partly driven by what the app actually
+did when used.
+
+### What the parser could not do
+
+It split on commas and read a quantity off the front of each fragment. That covers a list
+and nothing else. Two reports from the device settled it, and they point opposite ways:
+"yogurt with bananas, seeds, peanuts" searched for the whole phrase "yogurt with bananas"
+and found nothing, while "spaghetti bolognese" matched a prepacked ready meal instead of
+breaking into parts. Splitting on "with" fixes the first and breaks nothing about the
+second; keeping dishes whole fixes the second and breaks the first. There is no rule that
+answers both, because the difference between them is knowledge about food, not grammar.
+
+So: `LineParser` and its 188 lines of tests are gone, nothing is interpreted while typing
+— the chips that showed what the field had understood went with it — and `ResolvableItem`
+replaces `ParsedItem` as what a model names rather than what a scanner cut out.
+
+### Two providers behind one prompt
+
+`EstimationInput` is text, or a photo with whatever words came with it. `MealEstimate` is
+what comes back. Two things can answer:
+
+- **Apple Intelligence**, through the `LanguageModelSession` the photo module already used.
+- **An OpenAI-compatible endpoint** the user names: base URL, model, key. Chat completions
+  with a JSON schema, falling back to `json_object` where a server rejects the schema;
+  vision as a base64 data URL; photos behind a second switch, because plenty of such
+  servers cannot read an image and a picture of a kitchen is a larger disclosure than a
+  sentence about lunch. The key is in the keychain, device-only, never `UserDefaults`, and
+  nothing logs the key, the body or the user's text.
+
+The endpoint exists for a reason beyond availability: a larger model is simply better at
+breaking a named dish into the foods it is made of, which is the one job this prompt has.
+
+### The screen you sign off on
+
+It was a sheet and is now pushed. A sheet cannot present what its own presenter owns, so
+the food picker opened from it was being put up by Today *behind* it — which is why
+changing a food and choosing a weight had both been broken since the sheet existed. Pushed,
+the screen is topmost and its own controls work. The amount became its own control rather
+than text inside the button that changes the food, because one row answering two questions
+with one tap can only answer the wrong one.
+
+Three further things it now does. The model says which meal this is and the timestamp
+follows the slot rather than the hour of typing, so oats described at nine in the evening
+are a breakfast logged at eight and never a time in the future. A food the model missed can
+be added from search, which closes the one hole that made a whole line disposable: a model
+naming four of five things on a plate used to leave nothing to do about the fifth. And a
+food the user picked says "You chose this" instead of "Matched by name", which had been
+shown under every row whose food had been corrected.
+
+### What "spaghetti bolognese" needed
+
+The report was that it produced "spaghetti" and "bolognese" and matched neither. Three
+independent faults, each measured against the built database:
+
+- The prompt said "list each distinct food or drink as one item", which read as the words
+  of a dish's name. It now says a dish named rather than described is the foods it is made
+  of, with that meal as the worked example, and defines `lookupTerm` as the wording a
+  composition table uses: "Pasta, cooked", not "spaghetti".
+- `spaghetti` retrieves spaghetti *squash* at 32 kcal and the prepacked row, so declining
+  that shortlist was correct. There is no row called spaghetti.
+- A good decomposition would still have blocked. "Every word of the query is present" was
+  worth 0.3 against a 0.42 bar for showing a row at all, so `minced beef` scored 0.352 and
+  seven of twelve generic two-word terms blocked the log. At 0.44 three block, and no bare
+  noun's settled answer changed across twenty-two of them.
+- `rolled oats` retrieved nothing at all, because the index ands a term's words together
+  and the tables say "Oat flakes". A per-token fallback, used only when the whole term
+  finds nothing worth showing, settles it: Oat flakes at 1.088, Chicken grilled at 1.084,
+  Wholemeal bread at 1.132.
+
+### Two faults from use, fixed after
+
+**The keyboard came back by itself after a log, over the field, with no way out.** The field
+kept focus while the model answered, so it still held the keyboard when the sign-off screen
+pushed over it; UIKit hands the keyboard back to whatever held it when a pushed screen pops.
+SwiftUI, never told of a focus change, then laid the bottom bar out as though no keyboard
+existed — so the keyboard stood over the field and over the only control that dismisses it.
+Sending now resigns focus first, through one function every path uses, and the dismiss
+control sends a plain `resignFirstResponder` as well, for the case where the field holds the
+keyboard while SwiftUI believes nothing is focused.
+
+**The text field had been in a `.safeAreaBar`**, which does not move for the keyboard; it is
+a `.safeAreaInset` now, which does. That is the same fault as the one above seen from the
+layout side, and both are why the control whose point is being within a thumb's reach kept
+ending up underneath a keyboard.
+
+### Not verified
+
+No Swift compiler in this environment, so every Swift claim here is reasoned, not built.
+What was verified mechanically: the brace and paren balance of each changed file, every
+`Type.member` reference against the type's own declarations, and each retrieval figure above
+against the real 1.8 MB database through a Python mirror of the scorer.
+
+Watch list for the next build: the pushed sign-off screen presenting the food picker as a
+sheet while a `Menu` is open on a row; `.safeAreaInset` holding the composer above the
+keyboard with the suggestions card expanded; the keyboard not returning after a log, which
+is the fix above and the thing to check first; adding several foods in one visit to the
+picker, where the row count grows behind an open sheet; and the remote estimator against a
+real endpoint, which has never run.
+
