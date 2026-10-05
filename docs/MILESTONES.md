@@ -959,3 +959,43 @@ which is a schema decision and not a detail to slip in here.
 Tests: sixteen, over the split, the counts, the sentences and their singulars, that an
 implausible amount is still written, and that a second question about a line takes a fresh
 identity rather than looking to the navigation stack like the first one still being up.
+
+## The mark, and answering it
+
+Logging on send puts a row in the day that the user never approved. The mark is what keeps
+that honest: a row whose food the app chose rather than the person carries an underlined
+name — as a word a spellchecker is unsure of is underlined — and under it, what the line
+actually called it. "Matched from “oats”" beside *Oat flakes* is unarguable; the same mark
+beside *Oat drink* is obviously wrong, and only the person can tell which it is.
+
+Two new columns carry it. `LogEntry.wording` is what the line called the food, kept for
+every line-logged row whether or not the match was sure, because a settled match that is
+wrong is exactly the case where the app has to be able to show what it was answering.
+`LogEntry.guessed` is the mark itself, set from `ResolvedRow.isSettled` at log time. Both
+default, so every entry logged before today reads as what it was: nobody guessed it.
+
+The mark is a button and leads to one sheet with three answers. Yes, that's right — which
+takes the mark off and touches nothing else, since the mark was never part of what Health
+holds. Or one of the other foods the word could have meant, which is deliberately the same
+shortlist the guess came from (`LineResolver.candidates(for:)` runs the same search, head
+phrase and all) rather than a fresh one that might not even contain the row being corrected.
+Or none of them, and the search screen opens.
+
+Correcting a row is written as a delete and a fresh log rather than as an edit in place.
+Every kind of food — bundled, custom, product, recipe — already reaches an entry through
+one path, and a second path that rebuilt a snapshot from a choice would be that code again
+with its own way of being wrong. The delete goes to Health first, so a correction never
+leaves two versions of a meal there, and if Health will not release the old samples nothing
+is logged and the row stays as it was. What the line said is carried over, and so is how the
+entry came to exist: it was still typed, and a day's coverage must not change because one
+row was corrected.
+
+The amount is the one judgement in it. The number on the row is the number logged — 45 of
+whatever it turned out to be — because that figure is already in the food's own unit and is
+a fact about this meal, where what this person usually has of the new food is a fact about
+other meals. Servings are the exception in both directions: a serving of one recipe is not a
+serving of another and is certainly not 45 of anything, so a recipe at either end falls back
+to what was last had of it, or to one.
+
+Tests: thirteen, over what the mark says with and without words behind it, what the question
+asks, and every branch of the amount a correction logs.

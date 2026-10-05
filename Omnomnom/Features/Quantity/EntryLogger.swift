@@ -166,7 +166,19 @@ struct EntryLogger {
         return LogResult(entryID: entry.id, written: written, healthError: nil, storeError: nil)
     }
 
-    private func saveQuietly(_ what: String) {
+    /// One entry by identifier, or `nil` when it is no longer there.
+    ///
+    /// The logging paths hand back a `LogResult` and not an object, since a result crosses
+    /// an actor boundary and a stored object cannot; whatever wants to write something onto
+    /// the entry afterwards comes back through here.
+    func entry(id: UUID) -> LogEntry? {
+        let wanted: UUID = id
+        var descriptor = FetchDescriptor<LogEntry>(predicate: #Predicate<LogEntry> { $0.id == wanted })
+        descriptor.fetchLimit = 1
+        return try? context.fetch(descriptor).first
+    }
+
+    func saveQuietly(_ what: String) {
         do {
             try context.save()
         } catch {

@@ -32,6 +32,8 @@ struct DayEntriesView: View {
     }
     @State private var healthSummary = DayHealthSummary.empty
     @State private var isCopying = false
+    /// The marked entry being asked about, if any.
+    @State private var questioned: LogEntry?
 
     init(day: Date, model: TodayViewModel, calendar: Calendar = .current) {
         self.model = model
@@ -153,6 +155,15 @@ struct DayEntriesView: View {
         )
     }
 
+    /// The same arrangement for the mark's question, and for the same reason: the entry it
+    /// is about may be deleted by the answer.
+    private var isQuestionPresented: Binding<Bool> {
+        Binding(
+            get: { questioned != nil },
+            set: { if !$0 { questioned = nil } }
+        )
+    }
+
     /// The day's remaining proposals, placed twice in `body` rather than once.
     ///
     /// Once anything real is on the screen the proposal belongs under all of it, and the
@@ -208,7 +219,8 @@ struct DayEntriesView: View {
                             entries: slotEntries,
                             onDelete: delete,
                             onRepeat: repeatEntry,
-                            onEdit: { model.edit($0) }
+                            onEdit: { model.edit($0) },
+                            onQuestion: { questioned = $0 }
                         )
                         if isDisplaced(slot) {
                             // Directly under the meal that displaced it, with no card of
@@ -237,6 +249,16 @@ struct DayEntriesView: View {
                 EntryEditorView(entry: entry, onRestore: restore, onDelete: delete) { banner in
                     model.finishedEdit(banner: banner)
                 }
+            }
+        }
+        .sheet(isPresented: isQuestionPresented) {
+            if let entry = questioned {
+                GuessedMatchSheet(
+                    entry: entry,
+                    load: { await candidates(for: entry) },
+                    onSettle: { settle(entry) },
+                    onReplace: { choice in Task { await replace(entry, with: choice) } }
+                )
             }
         }
         .task(id: HealthReadKey(interval: interval, generation: model.healthRefresh)) {
@@ -443,6 +465,31 @@ extension DayEntriesView {
 }
 
 extension DayEntriesView {
+    /// The foods the entry's own words could have meant, for the mark's question.
+    ///
+    /// Asked again rather than kept: a shortlist stored on the entry would be the tables as
+    /// they were on the day it was logged, and the one thing someone opening this wants is
+    /// what the app would say now. Nothing is asked of a model — the user is reading the
+    /// list themselves, which is what the validator exists to spare them, not to compete
+    /// with.
+    func candidates(for entry: LogEntry) async -> [FoodChoice] {
+        guard let wording = entry.wording, !wording.isEmpty else { return [] }
+        return await LineResolver(context: context, repository: repository).candidates(for: wording)
+    }
+
+    /// The match was right. Nothing reaches Health: the mark was never part of what was
+    /// written there.
+    func settle(_ entry: LogEntry) {
+        EntryLogger(context: context, health: health).settle(entry)
+    }
+
+    /// The match was wrong, and this is the food that was meant.
+    func replace(_ entry: LogEntry, with choice: FoodChoice) async {
+        let logger = EntryLogger(context: context, health: health)
+        let message = await logger.replaceFood(of: entry, with: choice)
+        model.finishedEdit(banner: message)
+    }
+
     /// Logs a slot's usual line, marked as assumed.
     ///
     /// This is the only place an entry is written without anyone describing it, and it

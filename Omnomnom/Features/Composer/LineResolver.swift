@@ -89,6 +89,17 @@ struct LineResolver {
         await resolve(.text(line), line: line)
     }
 
+    /// The foods a word could have meant, best first.
+    ///
+    /// The same search a line goes through, head phrase and all, asked again about one
+    /// term — so what a row offers as the alternatives to a guess is the shortlist the
+    /// guess was made from rather than a different search that might not contain it.
+    /// Nothing is checked by a model here: the user is reading the list themselves, which
+    /// is what the second pass exists to spare them, not to compete with.
+    func candidates(for term: String) async -> [FoodChoice] {
+        await search(term).matches.map { remembered(FoodChoice(bundled: $0.food)) }
+    }
+
     /// What someone wrote or photographed, resolved. Never throws: a failure anywhere
     /// leaves rows unmatched for the user to settle, which is a worse outcome than a good
     /// match and a far better one than an error where a meal should be.

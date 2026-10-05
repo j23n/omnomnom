@@ -1,6 +1,5 @@
 import Foundation
 import os
-import SwiftData
 
 /// What one send wrote, kept so it can be taken back.
 ///
@@ -132,13 +131,5 @@ extension EntryLogger {
         }
         AppLog.store.info("undid \(removed) of \(logged.entryIDs.count) entries from one line")
         return UndoOutcome(removed: removed, kept: kept)
-    }
-
-    /// One entry by identifier, or `nil` when it is no longer there.
-    private func entry(id: UUID) -> LogEntry? {
-        let wanted: UUID = id
-        var descriptor = FetchDescriptor<LogEntry>(predicate: #Predicate<LogEntry> { $0.id == wanted })
-        descriptor.fetchLimit = 1
-        return try? context.fetch(descriptor).first
     }
 }

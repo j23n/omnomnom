@@ -39,6 +39,22 @@ final class LogEntry {
     var orphaned: Bool = false
     /// True for an entry the user confirmed from an on-device estimate rather than a food.
     var isEstimate: Bool = false
+    /// What the line called this food, when a line is what logged it; `nil` for an entry
+    /// picked, repeated or copied, where the user named the food themselves.
+    ///
+    /// Kept because the app cannot otherwise say what it was answering. A row reading
+    /// *Oat flakes* is unarguable next to the word "oats" and wrong next to "oat milk",
+    /// and only one of those two is a thing the person can see.
+    var wording: String?
+    /// Whether the food was matched for the user rather than named by them, and the match
+    /// was not a certainty.
+    ///
+    /// What the mark on the row is drawn from. It is about how the food was arrived at and
+    /// never about the food: an entry carrying this is as logged, as written to Health and
+    /// as real as any other, and the mark asks a question rather than withholding anything.
+    /// Cleared the moment the user says it is right, which is the one thing that makes the
+    /// mark finite.
+    var guessed: Bool = false
     /// Raw `EntryOrigin`: how this entry came to exist. Defaulted, so entries written
     /// before the app recorded it read as picked, which is what they were.
     var originRaw: String = EntryOrigin.picked.rawValue
@@ -68,6 +84,7 @@ final class LogEntry {
         self.presentNutrients = []
         self.orphaned = false
         self.isEstimate = false
+        self.guessed = false
         self.snapshot = snapshot
     }
 

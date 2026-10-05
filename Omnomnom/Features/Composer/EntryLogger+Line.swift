@@ -46,7 +46,7 @@ extension EntryLogger {
                     choice: choice, amount: row.amount, mealSlot: mealSlot, at: timestamp
                 )
                 results.append(result)
-                markOrigin(result.entryID, as: origin)
+                note(result.entryID, from: row, as: origin)
                 drafts.append(draft(for: row, choice: choice))
             } catch {
                 failed += 1
@@ -72,14 +72,18 @@ extension EntryLogger {
         return LineLogOutcome(results: results, failed: failed, remembered: remembered)
     }
 
-    /// Records how the entry came to exist. Saved with the phrase rather than on its own,
-    /// since nothing reads it until the day is looked at.
-    private func markOrigin(_ entryID: UUID, as origin: EntryOrigin) {
-        let wanted: UUID = entryID
-        var descriptor = FetchDescriptor<LogEntry>(predicate: #Predicate<LogEntry> { $0.id == wanted })
-        descriptor.fetchLimit = 1
-        guard let entry = try? context.fetch(descriptor).first else { return }
+    /// Records how the entry came to exist, what the line called it, and whether the food
+    /// was matched rather than named. Saved with the phrase rather than on its own, since
+    /// nothing reads any of it until the day is looked at.
+    ///
+    /// The wording is kept whether or not the match was sure. A row that settled still came
+    /// from a word someone typed, and if the matcher is ever wrong about one of those the
+    /// only way the person can tell is by seeing what the app was answering.
+    private func note(_ entryID: UUID, from row: ResolvedRow, as origin: EntryOrigin) {
+        guard let entry = entry(id: entryID) else { return }
         entry.origin = origin
+        entry.wording = row.name
+        entry.guessed = !row.isSettled
     }
 
     /// What a logged row leaves in the memory: the food, and the amount it came to.

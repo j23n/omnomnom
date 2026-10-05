@@ -12,11 +12,21 @@ import SwiftUI
 /// opens the photo, so the row's tap still works everywhere else. Without a photo the
 /// square is the placeholder, which is decorative and has no tap of its own, so the
 /// row opens the editor there like anywhere else.
+///
+/// A row whose food the app chose rather than the user carries the mark: the name is
+/// underlined, as a word a spellchecker is unsure of is underlined, and under it sits what
+/// the line called it. Both say the same thing — this is logged, and it is the app's reading
+/// of your words rather than your own. The mark is a button, and answering it is what takes
+/// it off. Nothing about it is red, bordered or badged: it asks a question, it does not
+/// report a fault, and there is nothing wrong with the entry.
 struct EntryRow: View {
     let entry: LogEntry
     /// Opens the entry, for VoiceOver. The list handles the sighted tap, which cannot be
     /// a `Button` here because a row with a photo already holds one around its thumbnail.
     var onOpen: () -> Void = {}
+    /// Asks about a match the app made rather than the user. Reached from the mark under
+    /// the name, which is a button of its own inside the row as the thumbnail is.
+    var onQuestion: () -> Void = {}
 
     @State private var isShowingPhoto = false
 
@@ -66,6 +76,10 @@ struct EntryRow: View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.foodName)
+                    .underline(entry.guessed, pattern: .dot)
+                if entry.guessed {
+                    mark
+                }
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) { caption }
                     VStack(alignment: .leading, spacing: 4) { caption }
@@ -84,6 +98,37 @@ struct EntryRow: View {
         .accessibilityAddTraits(.isButton)
         .accessibilityHint("Opens the entry")
         .accessibilityAction { onOpen() }
+        // The mark's own button is inside a combined element, so its words are read as
+        // part of the row and its tap has to come back as a named action.
+        .accessibilityActions {
+            if entry.guessed {
+                Button("Check the match") { onQuestion() }
+            }
+        }
+    }
+
+    /// The mark: what the line called this food, and a way to say whether the app read it
+    /// right. Secondary type, no colour of its own, and the chevron is what says it leads
+    /// somewhere.
+    private var mark: some View {
+        Button(action: onQuestion) {
+            HStack(spacing: 4) {
+                Text(Self.markText(for: entry))
+                Image(systemName: "chevron.forward")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .buttonStyle(.plain)
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+
+    /// "Matched from “oats”", or what it has to say when nothing was said: a line logged
+    /// from a widget tap or a photo carries no words of its own.
+    static func markText(for entry: LogEntry) -> String {
+        guard let wording = entry.wording, !wording.isEmpty else { return "Matched for you" }
+        return "Matched from “\(wording)”"
     }
 
     /// "Today, 08:10": the day as Today names it, then the time.
@@ -125,6 +170,42 @@ struct EntryRow: View {
     }
     .padding()
     .modelContainer(container)
+}
+
+#Preview("The mark", traits: .sizeThatFitsLayout) {
+    // Three rows in one: a word the app read, a line that carried no words of its own,
+    // and an unmarked row to see the first two against.
+    let container = PreviewStore.container(seed: .typicalDay)
+    let entries = PreviewStore.entries(in: container)
+    if let first = entries.first {
+        first.wording = "oats"
+        first.guessed = true
+    }
+    if entries.count > 1 {
+        entries[1].guessed = true
+    }
+    return VStack(alignment: .leading, spacing: 16) {
+        ForEach(entries.prefix(3)) { entry in
+            EntryRow(entry: entry)
+        }
+    }
+    .padding()
+    .modelContainer(container)
+}
+
+#Preview("The mark at accessibility 5", traits: .sizeThatFitsLayout) {
+    let container = PreviewStore.container(seed: .typicalDay)
+    let entry = PreviewStore.entries(in: container).first
+    entry?.wording = "a bowl of porridge with some honey"
+    entry?.guessed = true
+    return VStack(alignment: .leading, spacing: 16) {
+        if let entry {
+            EntryRow(entry: entry)
+        }
+    }
+    .padding()
+    .modelContainer(container)
+    .environment(\.dynamicTypeSize, .accessibility5)
 }
 
 #Preview("Accessibility 5", traits: .sizeThatFitsLayout) {
