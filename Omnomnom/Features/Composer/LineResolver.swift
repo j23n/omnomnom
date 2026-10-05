@@ -255,7 +255,7 @@ struct LineResolver {
     /// A row from the best match, falling back to a product when the tables held nothing.
     private func databaseRow(for item: ResolvableItem, shortlist: [FoodMatch]) async -> ResolvedRow {
         if let best = shortlist.first {
-            let choice = FoodChoice(bundled: best.food)
+            let choice = remembered(FoodChoice(bundled: best.food))
             return ResolvedRow(
                 id: item.id,
                 name: item.name,
@@ -283,6 +283,28 @@ struct LineResolver {
             id: item.id, name: item.name, choice: nil, amount: 0,
             origin: .database, confidence: .unsure
         )
+    }
+
+    /// The same choice, with what this person last had of that food filled in.
+    ///
+    /// A search hit knows nothing of past use: `FoodChoice(bundled:)` is built from the
+    /// table row alone, so its `lastAmount` is always nil. The history is in the stored
+    /// `Food`, which the Quantity sheet has always read and this path did not — so a food
+    /// logged ten times through search still arrived here with no reference, and the row
+    /// offered no Less or More. The steps are meant to arrive once a food has been eaten
+    /// once, not once it has been recalled as a phrase.
+    ///
+    /// The amount is untouched. The reference is what this person usually has; the amount
+    /// is what the model says was eaten today, and those are different questions.
+    private func remembered(_ choice: FoodChoice) -> FoodChoice {
+        guard let id = choice.bundledID else { return choice }
+        do {
+            guard let food = try Food.bundled(id: id, in: context) else { return choice }
+            return choice.with(lastAmount: food.lastGrams)
+        } catch {
+            AppLog.store.error("stored food lookup failed: \(error.localizedDescription, privacy: .public)")
+            return choice
+        }
     }
 
     // MARK: - Checking
@@ -365,7 +387,7 @@ struct LineResolver {
         }
         if chosen.food.id != row.choice?.bundledID {
             AppLog.estimation.info("validation moved a row to food \(chosen.food.id)")
-            let replacement = FoodChoice(bundled: chosen.food)
+            let replacement = remembered(FoodChoice(bundled: chosen.food))
             row.choice = replacement
             // The amount stands. It is what the model estimated was eaten, and being wrong
             // about which row holds the numbers for it does not change how much there was:

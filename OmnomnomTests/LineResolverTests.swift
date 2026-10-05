@@ -357,4 +357,84 @@ struct LineResolverTests {
         #expect(resolution.rows.count == 2)
         #expect(resolution.rows.allSatisfy { $0.choice == nil })
     }
+
+    // MARK: - What a step measures from
+
+    @Test func aFoodEatenBeforeBringsItsOwnReference() async throws {
+        // The stored row is where history lives. Without reading it, a food logged ten
+        // times through the search screen reached this screen with the model's estimate
+        // and no Less or More at all, because a search hit carries no past use of its own.
+        let context = try makeContext()
+        let stored = Food(name: "Rice, cooked", kind: .bundled, bundledID: 3, per100g: Nutrition(energy: 130))
+        stored.lastGrams = 180
+        context.insert(stored)
+        let repository = FakeRepository(hits: ["rice": [bundled(3, "Rice, cooked")]])
+        let estimator = FakeEstimator(items: [EstimatedItem(name: "rice", lookupTerm: "rice", grams: 250)])
+        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
+        let row = try #require(await resolver.resolve("a big plate of rice").rows.first)
+
+        // What was eaten today is the model's figure; what this person usually has is the
+        // reference. Stepping down from a big plate has to mean less than usual.
+        #expect(row.amount == 250)
+        #expect(row.baseAmount == 180)
+        #expect(row.canStep)
+        #expect(row.stepped(to: .less).amount == AmountBucket.less.amount(of: 180))
+    }
+
+    @Test func aFoodNeverEatenOffersNoSteps() async throws {
+        let context = try makeContext()
+        let repository = FakeRepository(hits: ["rice": [bundled(3, "Rice, cooked")]])
+        let resolver = LineResolver(context: context, repository: repository, estimator: FakeEstimator())
+        let row = try #require(await resolver.resolve("rice").rows.first)
+        #expect(row.baseAmount == nil)
+        #expect(!row.canStep)
+    }
+
+    // MARK: - Rung four: a product the tables do not hold
+
+    @Test func aProductAnswersForAFoodTheTablesDoNotHold() async throws {
+        let context = try makeContext()
+        let jar = FoodChoice(
+            source: .product(foodID: UUID()), name: "Calvé Peanut Butter",
+            perUnit: Nutrition(energy: 620), lastAmount: nil
+        )
+        let resolver = LineResolver(
+            context: context, repository: FakeRepository(),
+            products: { _ in [jar] }, estimator: FakeEstimator()
+        )
+        let row = try #require(await resolver.resolve("calvé peanut butter").rows.first)
+        #expect(row.origin == .product)
+        #expect(row.choice?.name == "Calvé Peanut Butter")
+        // Logged and marked for a glance, never settled: nothing has checked a stranger's
+        // entry, and the row says "Matched by name, Open Food Facts" whatever was true of
+        // the rest of the line.
+        #expect(row.confidence == .probable)
+        #expect(row.origin.detail(checked: true) == "Matched by name, Open Food Facts")
+    }
+
+    @Test func theTablesAreAlwaysTriedBeforeAProduct() async throws {
+        // Offline, licence-clean and measured first; a crowdsourced record only when there
+        // is nothing better. A products closure that fails the test if it is reached.
+        let context = try makeContext()
+        let repository = FakeRepository(hits: ["oats": [bundled(1, "Oat flakes")]])
+        let resolver = LineResolver(
+            context: context, repository: repository,
+            products: { _ in Issue.record("the product rung was asked"); return [] },
+            estimator: FakeEstimator()
+        )
+        let row = try #require(await resolver.resolve("oats").rows.first)
+        #expect(row.origin == .database)
+    }
+
+    @Test func withoutTheOptInNoProductIsAsked() async throws {
+        // `nil` rather than an empty answer: the opt-in is off, so nothing may be asked at
+        // all, and an unmatched food goes to the user exactly as it did before.
+        let context = try makeContext()
+        let resolver = LineResolver(
+            context: context, repository: FakeRepository(), products: nil, estimator: FakeEstimator()
+        )
+        let row = try #require(await resolver.resolve("calvé peanut butter").rows.first)
+        #expect(row.choice == nil)
+        #expect(row.blocks)
+    }
 }

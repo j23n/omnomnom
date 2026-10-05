@@ -696,3 +696,53 @@ One-time setup, and then it is `xcodegen generate` whenever `project.yml` change
 brew install xcodegen
 xcodegen generate
 ```
+
+## The fourth rung, and what a step measures from
+
+Two of the four loose ends written down with revision 5, closed. Both were the same kind of
+fault: a thing the plan described, implemented in one place and not reached from the other.
+
+**A product can answer for a food the tables do not hold.** `LineResolver` had taken a
+`products` closure for the fourth rung since it was written, and nothing ever passed one, so
+a line naming a particular jar dead-ended on a row with no food whatever the product opt-in
+said. `ProductRung` is that closure: the term goes to the search index the Add screen
+already uses, the hits are ranked by `SearchRelevance` exactly as that screen ranks them,
+and the best one is fetched by barcode through the flow a scan uses, so it is cached and
+attributed identically. Today passes it only when the product-search opt-in is on, which is
+the switch that already governs sending a typed query abroad.
+
+Three deliberate limits, because this rung sends what the user typed to a service abroad and
+answers with a stranger's entry:
+
+- **The tables are always tried first**, and the rung is reached only when they answer
+  nothing at all. Offline, licence-clean and analytically measured beats crowdsourced, and a
+  test fails if the rung is asked for a food the tables answered.
+- **One fetch, not several.** The row reads the best hit, so every further candidate would
+  be a second request abroad for something nothing looks at.
+- **A hit whose name and brand do not hold every word of the term is not a candidate.** The
+  index matches more than this app asks it to — categories and labels among them — so it
+  answers a narrow term with a wide list. The bar is `SearchRelevance.everyToken` less the
+  penalty a crowdsourced row carries, which is the rule the bundled index applies by
+  construction, since its query ands a term's words together.
+
+A product row is also `probable` at best, never settled, and it no longer claims to have
+been checked. The validator chooses among rows the *tables* returned, so a product has never
+been through it — and `RowOrigin.product` had a "Checked, Open Food Facts" wording that only
+became reachable once the rung was wired, at which point it would have been a sentence about
+something that did not happen.
+
+**A step now has something to measure from.** `FoodChoice(bundled:)` is built from the table
+row alone, so its `lastAmount` is always nil, and the resolver never read the stored `Food`
+the way the Quantity sheet always has. A food logged ten times through search therefore
+reached the sign-off screen with the model's estimate and no Less or More at all: the
+buckets were arriving once a food had been *recalled* as a phrase, not once it had been
+eaten. One read of `Food.lastGrams` fixes it, in the two places a row's food is decided — the
+best match, and a food the validator moved the row to.
+
+The amount is untouched by that read, which is the distinction the whole thing rests on: the
+model's weight is what was eaten today, the stored amount is what this person usually has,
+and stepping down from "a big plate" has to mean less than usual rather than less than big.
+
+Tests: six on the bar a product has to clear, which is pure and needs no network; five on
+the rungs, including one that fails if the product rung is asked for a food the tables
+answered, and one that proves a food never eaten still offers no steps.

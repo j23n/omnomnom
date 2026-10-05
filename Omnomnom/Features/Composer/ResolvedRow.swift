@@ -29,7 +29,11 @@ nonisolated enum RowOrigin: Hashable, Sendable {
         case .phrase: "From a line you logged before"
         case .item: "From what you logged before"
         case .database: checked ? "Checked" : "Matched by name"
-        case .product: checked ? "Checked, Open Food Facts" : "Matched by name, Open Food Facts"
+        // No `checked` branch, unlike the row above. The validator chooses among rows the
+        // bundled tables returned, so a product has never been through it whatever was true
+        // of the rest of the line, and "Checked, Open Food Facts" would be a sentence about
+        // something that did not happen.
+        case .product: "Matched by name, Open Food Facts"
         case .chosen: "You chose this"
         }
     }

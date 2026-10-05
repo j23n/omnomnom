@@ -13,6 +13,9 @@ struct TodayView: View {
     /// The validator runs on the same model the estimate module uses, behind the same
     /// opt-in, so a user who has not turned that on is not quietly handed a model call.
     @AppStorage(EstimationModule.enabledKey) private var estimationEnabled = false
+    /// The opt-in that already governs searching Open Food Facts by name, read here because
+    /// the fourth rung is that same search asked by the resolver rather than by the user.
+    @AppStorage(BarcodeModule.productSearchKey) private var productSearchEnabled = false
     @State private var model: TodayViewModel
     @State private var composer = ComposerModel()
 
@@ -142,6 +145,7 @@ struct TodayView: View {
             context: context,
             repository: repository,
             validator: estimationEnabled ? FoundationMatchValidator() : nil,
+            products: productSearchEnabled ? { await ProductRung.choices(for: $0, in: context) } : nil,
             estimator: Estimators.current()
         )
     }
