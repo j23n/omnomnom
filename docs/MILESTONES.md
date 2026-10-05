@@ -658,3 +658,41 @@ is the fix above and the thing to check first; adding several foods in one visit
 picker, where the row count grows behind an open sheet; and the remote estimator against a
 real endpoint, which has never run.
 
+## A generated project
+
+`Omnomnom.xcodeproj` is generated from `project.yml` by XcodeGen and is no longer in git.
+A `.pbxproj` is a graph of random identifiers, and both project-level mistakes this build
+has made were hand edits to one: a widget whose `NSExtension` dictionary could not be
+expressed by the `INFOPLIST_KEY_` settings that were meant to generate it, and the plist
+that replaced it having to live outside every target folder so a synchronised folder would
+not copy it in as a resource. Neither is visible in a diff of the project file. Both are one
+readable line in the spec.
+
+- **The folders stay synchronised folders.** `type: syncedFolder` keeps the Xcode 16
+  behaviour the project already had, so the spec lists no source files and adding one needs
+  no regeneration. It also keeps `Resources/foods.sqlite` working: the pipeline builds it,
+  git does not carry it, and a project that enumerated files would either miss it or have to
+  be generated after every pipeline run. XcodeGen 2.46 is the floor, because a folder shared
+  by two targets — `OmnomnomShared`, in the app and the widget — became one folder rather
+  than two in 2.45.4.
+- **Nothing is inherited from the tool.** `settingPresets: none`, so every warning flag and
+  every concurrency setting is written in the spec rather than supplied by whichever version
+  of XcodeGen ran. A build that changes behaviour when a tool is updated is not worth a
+  shorter file.
+- **Verified by comparison, not by running it.** XcodeGen needs a Swift toolchain, which
+  this environment has no way to install, so the spec was checked by computing the effective
+  build settings for all six target configurations from the YAML and diffing them against
+  the ones in the checked-in project: 0 differences. What that does not check is the parts
+  XcodeGen assembles itself — the embed phase, the synchronised groups, the scheme — which
+  were read out of its source instead.
+- **Two cosmetic things are not reproduced** and are listed so they are not mistaken for
+  faults later: `CreatedOnToolsVersion` per target, and `TestTargetID` in the project's
+  target attributes. The test host is set by `TEST_HOST` and `BUNDLE_LOADER`, which is what
+  the build actually reads; `TestTargetID` is template metadata for Xcode's own UI.
+
+One-time setup, and then it is `xcodegen generate` whenever `project.yml` changes:
+
+```sh
+brew install xcodegen
+xcodegen generate
+```

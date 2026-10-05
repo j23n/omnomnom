@@ -1,0 +1,242 @@
+# The Xcode project is generated from this file: `xcodegen generate`.
+#
+# Why: a .pbxproj is a graph of random identifiers, and every change to it — adding a
+# target, moving a plist, setting one flag — is a hand edit to a file nobody can read a
+# diff of. The two project-level mistakes this app has made were both of that kind. This
+# file is the whole project in a form a person can review.
+#
+# The folders stay Xcode 16 synchronized folders (`syncedFolder`), as they already were,
+# so nothing here lists source files. That matters beyond tidiness: `Resources/foods.sqlite`
+# is built by `Tools/fooddb` and is not in git, so a project that enumerated files would
+# either miss it or have to be regenerated after building it. A synchronized folder picks
+# up whatever is on disk when Xcode builds.
+#
+# So this file is edited only when the shape of the project changes, not when code is
+# added. Requires XcodeGen 2.46 or newer, where a synchronized folder shared by two
+# targets is one folder rather than two.
+name: Omnomnom
+
+options:
+  minimumXcodeGenVersion: "2.46.0"
+  # Both of these mirror what Xcode itself wrote: Release is the configuration a command
+  # line build takes, and the project format is the one at objectVersion 77.
+  defaultConfig: Release
+  projectFormat: xcode16_0
+  defaultSourceDirectoryType: syncedFolder
+  developmentLanguage: en
+  # Nothing is added that is not written here. XcodeGen can supply Xcode's own template
+  # settings itself, but then the project's warning flags would depend on which version of
+  # XcodeGen generated it, and a build that changes behaviour when a tool is updated is
+  # not worth the shorter file.
+  settingPresets: none
+
+attributes:
+  BuildIndependentTargetsInParallel: 1
+  LastSwiftUpdateCheck: 2600
+  LastUpgradeCheck: 2600
+
+configs:
+  Debug: debug
+  Release: release
+
+# The widget's Info.plist and this file, so both are reachable in Xcode's navigator. The
+# plist sits outside every target folder on purpose: a synchronized folder would copy it
+# into the bundle as a resource, and an extension whose Info.plist is a resource rather
+# than its Info.plist does not install.
+fileGroups:
+  - Config
+  - project.yml
+
+settings:
+  base:
+    ALWAYS_SEARCH_USER_PATHS: "NO"
+    ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: "YES"
+    CLANG_ANALYZER_NONNULL: "YES"
+    CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION: YES_AGGRESSIVE
+    CLANG_CXX_LANGUAGE_STANDARD: "gnu++20"
+    CLANG_ENABLE_MODULES: "YES"
+    CLANG_ENABLE_OBJC_ARC: "YES"
+    CLANG_ENABLE_OBJC_WEAK: "YES"
+    CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING: "YES"
+    CLANG_WARN_BOOL_CONVERSION: "YES"
+    CLANG_WARN_COMMA: "YES"
+    CLANG_WARN_CONSTANT_CONVERSION: "YES"
+    CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS: "YES"
+    CLANG_WARN_DIRECT_OBJC_ISA_USAGE: YES_ERROR
+    CLANG_WARN_DOCUMENTATION_COMMENTS: "YES"
+    CLANG_WARN_EMPTY_BODY: "YES"
+    CLANG_WARN_ENUM_CONVERSION: "YES"
+    CLANG_WARN_INFINITE_RECURSION: "YES"
+    CLANG_WARN_INT_CONVERSION: "YES"
+    CLANG_WARN_NON_LITERAL_NULL_CONVERSION: "YES"
+    CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF: "YES"
+    CLANG_WARN_OBJC_LITERAL_CONVERSION: "YES"
+    CLANG_WARN_OBJC_ROOT_CLASS: YES_ERROR
+    CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER: "YES"
+    CLANG_WARN_RANGE_LOOP_ANALYSIS: "YES"
+    CLANG_WARN_STRICT_PROTOTYPES: "YES"
+    CLANG_WARN_SUSPICIOUS_MOVE: "YES"
+    CLANG_WARN_UNGUARDED_AVAILABILITY: YES_AGGRESSIVE
+    CLANG_WARN_UNREACHABLE_CODE: "YES"
+    CLANG_WARN__DUPLICATE_METHOD_MATCH: "YES"
+    COPY_PHASE_STRIP: "NO"
+    ENABLE_STRICT_OBJC_MSGSEND: "YES"
+    ENABLE_USER_SCRIPT_SANDBOXING: "YES"
+    GCC_C_LANGUAGE_STANDARD: gnu17
+    GCC_NO_COMMON_BLOCKS: "YES"
+    GCC_WARN_64_TO_32_BIT_CONVERSION: "YES"
+    GCC_WARN_ABOUT_RETURN_TYPE: YES_ERROR
+    GCC_WARN_UNDECLARED_SELECTOR: "YES"
+    GCC_WARN_UNINITIALIZED_AUTOS: YES_AGGRESSIVE
+    GCC_WARN_UNUSED_FUNCTION: "YES"
+    GCC_WARN_UNUSED_VARIABLE: "YES"
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+    LOCALIZATION_PREFERS_STRING_CATALOGS: "YES"
+    MTL_FAST_MATH: "YES"
+    SDKROOT: iphoneos
+    # The four that decide what this codebase is: Swift 6 language mode, strict
+    # concurrency, and MainActor by default so that isolation is stated where it is not
+    # the default rather than everywhere. Member import visibility makes a file's own
+    # imports the ones it can use, which is why `import os` appears beside every logger.
+    SWIFT_APPROACHABLE_CONCURRENCY: "YES"
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: "YES"
+    SWIFT_VERSION: "6.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    # One version for the whole app, where Xcode had written the same pair into each
+    # target. The widget cannot be at a different version from the app that contains it.
+    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.1"
+  configs:
+    Debug:
+      DEBUG_INFORMATION_FORMAT: dwarf
+      ENABLE_TESTABILITY: "YES"
+      GCC_DYNAMIC_NO_PIC: "NO"
+      GCC_OPTIMIZATION_LEVEL: "0"
+      GCC_PREPROCESSOR_DEFINITIONS:
+        - "DEBUG=1"
+        - "$(inherited)"
+      MTL_ENABLE_DEBUG_INFO: INCLUDE_SOURCE
+      ONLY_ACTIVE_ARCH: "YES"
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG $(inherited)"
+      SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+    Release:
+      DEBUG_INFORMATION_FORMAT: "dwarf-with-dsym"
+      ENABLE_NS_ASSERTIONS: "NO"
+      MTL_ENABLE_DEBUG_INFO: "NO"
+      SWIFT_COMPILATION_MODE: wholemodule
+      SWIFT_OPTIMIZATION_LEVEL: "-O"
+      VALIDATE_PRODUCT: "YES"
+
+targets:
+  Omnomnom:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    # The app and the code it shares with the widget. `OmnomnomShared` is one folder in
+    # two targets, not a framework: a framework would be a third binary to sign and embed
+    # for the sake of a handful of types that have to agree.
+    sources:
+      - Omnomnom
+      - OmnomnomShared
+    dependencies:
+      - target: OmnomnomWidget
+        embed: true
+        # Already signed by its own build, and copied as Xcode copies it.
+        codeSign: false
+    settings:
+      base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_ENTITLEMENTS: Omnomnom/Omnomnom.entitlements
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_PREVIEWS: "YES"
+        GENERATE_INFOPLIST_FILE: "YES"
+        INFOPLIST_KEY_NSCameraUsageDescription: "The camera reads barcodes on packaged food and photographs meals, recipes and foods. Photos you keep stay on this device."
+        INFOPLIST_KEY_NSHealthShareUsageDescription: "Omnomnom reads the nutrition samples it wrote so it can show your daily totals."
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: "Omnomnom writes the eight dietary nutrients you log (energy, protein, carbohydrates, total fat, saturated fat, fiber, sugar and sodium) to Health."
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
+        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        # Portrait on a phone, every orientation on an iPad, which multitasking requires.
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown"
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
+        PRODUCT_BUNDLE_IDENTIFIER: com.j23n.omnomnom
+        PRODUCT_NAME: "$(TARGET_NAME)"
+        SWIFT_EMIT_LOC_STRINGS: "YES"
+
+  OmnomnomWidget:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - OmnomnomWidget
+      - OmnomnomShared
+    settings:
+      base:
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_ENTITLEMENTS: OmnomnomWidget/OmnomnomWidget.entitlements
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_PREVIEWS: "YES"
+        # Written by hand, not generated. An extension's Info.plist has to carry an
+        # NSExtension dictionary, and the INFOPLIST_KEY_ settings that generate a plist
+        # can only write top-level keys, so a generated one left the widget uninstallable.
+        GENERATE_INFOPLIST_FILE: "NO"
+        INFOPLIST_FILE: Config/OmnomnomWidget-Info.plist
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
+          - "@executable_path/../../Frameworks"
+        PRODUCT_BUNDLE_IDENTIFIER: com.j23n.omnomnom.widget
+        PRODUCT_NAME: "$(TARGET_NAME)"
+        SKIP_INSTALL: "YES"
+        SWIFT_EMIT_LOC_STRINGS: "YES"
+
+  OmnomnomTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - OmnomnomTests
+    dependencies:
+      - target: Omnomnom
+    settings:
+      base:
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        CODE_SIGN_STYLE: Automatic
+        GENERATE_INFOPLIST_FILE: "YES"
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
+          - "@loader_path/Frameworks"
+        PRODUCT_BUNDLE_IDENTIFIER: com.j23n.omnomnom.tests
+        PRODUCT_NAME: "$(TARGET_NAME)"
+        SWIFT_EMIT_LOC_STRINGS: "NO"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Omnomnom.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Omnomnom"
+
+# The one shared scheme, as it already was: the app runs, the tests build for testing and
+# run in parallel, Debug for everything but profiling and archiving.
+schemes:
+  Omnomnom:
+    build:
+      parallelizeBuild: true
+      buildImplicitDependencies: true
+      targets:
+        Omnomnom: all
+        OmnomnomTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - name: OmnomnomTests
+          parallelizable: true
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
