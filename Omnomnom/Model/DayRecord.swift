@@ -21,11 +21,26 @@ final class DayRecord {
     var day: Date = Date.now
     /// The user said this is everything they ate that day.
     var isComplete: Bool = false
+    /// Raw values of the meal slots the user said held nothing.
+    ///
+    /// "Nothing tonight" is an answer, and it is the one that lets a day close without
+    /// inventing food — so it has to be stored, because the absence of an entry cannot
+    /// tell a meal nobody ate from a meal nobody recorded. Strings rather than `MealSlot`
+    /// so the attribute stays an array of a primitive, which is what the schema rules
+    /// above allow; `skippedSlots` is the typed way in.
+    var skippedSlotNames: [String] = []
 
     init(day: Date) {
         self.id = UUID()
         self.day = day
         self.isComplete = false
+        self.skippedSlotNames = []
+    }
+
+    /// The skipped slots, typed. Sorted on the way in so the stored order is stable.
+    var skippedSlots: Set<MealSlot> {
+        get { Set(skippedSlotNames.compactMap(MealSlot.init(rawValue:))) }
+        set { skippedSlotNames = newValue.map(\.rawValue).sorted() }
     }
 
     /// The record for a day, or `nil` when nothing has been said about it.
@@ -69,5 +84,27 @@ final class DayRecord {
     ) throws {
         if !complete, try record(for: day, in: context, calendar: calendar) == nil { return }
         try ensure(for: day, in: context, calendar: calendar).isComplete = complete
+    }
+
+    /// Records that a meal held nothing, or takes that back.
+    ///
+    /// Mirrors `setComplete`, including its one subtlety: unsaying something about a day
+    /// the store has never heard of creates nothing, because there is nothing to unsay.
+    static func setSkipped(
+        _ skipped: Bool,
+        slot: MealSlot,
+        for day: Date,
+        in context: ModelContext,
+        calendar: Calendar = .current
+    ) throws {
+        if !skipped, try record(for: day, in: context, calendar: calendar) == nil { return }
+        let record = try ensure(for: day, in: context, calendar: calendar)
+        var slots = record.skippedSlots
+        if skipped {
+            slots.insert(slot)
+        } else {
+            slots.remove(slot)
+        }
+        record.skippedSlots = slots
     }
 }

@@ -802,3 +802,56 @@ Tests: six on what a word is and which words are preparation words, two on a com
 a tier rather than a match, and four on the resolver — the pizza term itself, the fish case
 with the curated prior that made it win, the cap on a narrowed match, and a whole-term match
 still settling so the cap is about narrowing rather than about distrusting the tables.
+
+## Six drawings, one language, and the three things it asked for
+
+The design was settled by drawing it six ways rather than by arguing: a stream that logs on
+send, a board of tiles that never needs the keyboard, a page you write the day onto, then
+the chosen combination of the three, then the same flow with charts, then three
+typographic branches of that. The boards for the one that won are in `design/mocks/`, six
+files covering every screen the app has — thirty-three of them, from first run to the
+widget.
+
+What it changed, in one line each: grey cards became warm row groups, the system rounded
+face took every title and figure, composition took the headline from the calorie total,
+and the tab bar kept its icons while the composer appeared on all four tabs. `DESIGN.md`
+holds the decisions and the two contrast corrections that came out of measuring them.
+
+Three things the drawing needed that the app did not have.
+
+**What a day was made of.** `MacroComposition` reads protein, carbohydrate and fat out of
+a `Nutrition` at 4, 4 and 9 kcal per gram and carries whatever they do not account for as
+its own band. On the typical day drawn on the boards that is 252 + 672 + 369 against a
+stated 1,320, so 27 kcal belongs to nothing — and it is drawn rather than divided into the
+three that are known. Where the macronutrients claim *more* energy than the row's own
+figure, which rounding alone causes, the energy figure gives way instead: shrinking a
+measured gram to fit it would be inventing a correction. Either direction, the shares sum
+to one.
+
+**What counts as answering a meal.** `DayAnswers` unions the slots holding an entry with
+the slots the user said held nothing, and that second set is the only new storage in any of
+this: `DayRecord.skippedSlotNames`, strings so the attribute stays an array of a primitive.
+It is needed because the absence of an entry cannot tell a meal nobody ate from a meal
+nobody recorded — and without it the ring in the mark could never close on a day someone
+genuinely skipped dinner.
+
+**The run.** `DayRun` counts consecutive answered days and needs no storage at all:
+`SamplingCadence.asks(about:)` already decides which days are asked about, and `DayState`
+already says whether a day was answered. Three rules keep it from punishing a normal week.
+Days the cadence does not ask about are stepped over rather than failed, which is what
+makes three days a week usable. A day still open neither extends the run nor breaks it, so
+today is never a loss and yesterday has until tomorrow. And a gap ends the run in hand
+without touching the best one, which stays on screen beside it. `complete` and `assumed`
+both answer a day; `partial` does not, because entries existing is not the user saying that
+was all of it.
+
+Tests: thirteen on the composition, including both directions of the energy disagreement
+and the difference between a nutrient that is zero and one that has no figure; fourteen on
+the run, covering today, the grace day, a gap, the cadence stepping over four days at a
+time, and a window reaching into the future; seven on the answers.
+
+One stale test went with it. `FoodQuery.ftsMatchExpression` stopped escaping quotes when it
+started building terms from `words(of:)`, which splits on everything that is not a letter or
+a number — a quote is a separator now and cannot reach a term at all. The test still
+expected the doubling, so it was asserting behaviour the code had already dropped. It now
+asserts the property that replaced it.

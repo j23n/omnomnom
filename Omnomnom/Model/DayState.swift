@@ -22,6 +22,14 @@ nonisolated enum DayState: String, Hashable, Sendable, CaseIterable {
     /// Whether a mean may be computed over this day.
     var countsTowardMean: Bool { self == .complete }
 
+    /// Whether the user has said everything they are going to about this day.
+    ///
+    /// Wider than `countsTowardMean` on purpose, and the distinction is the point: a day
+    /// accepted in one tap is answered but is not evidence, so it holds the run together
+    /// without being averaged. A partial day is not answered — entries exist and the user
+    /// never said that was all of it.
+    var isAnswered: Bool { self == .complete || self == .assumed }
+
     /// What a day says about itself on Today, always as a sentence and never as a share.
     ///
     /// "19 of 30 days" and "63 per cent" are the same fact, and the second grades the
