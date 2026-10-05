@@ -746,3 +746,59 @@ and stepping down from "a big plate" has to mean less than usual rather than les
 Tests: six on the bar a product has to clear, which is pure and needs no network; five on
 the rungs, including one that fails if the product rung is asked for a food the tables
 answered, and one that proves a food never eaten still offers no steps.
+
+## A comma was the difference between a match and a blocked row
+
+From a report that "a slice of Margherita pizza" showed as "pizza" with nothing behind it.
+The tables hold two good rows for it — *Pizza margherita (with tomato sauce, mozzarella)* at
+238 kcal and *Pizza, cheese and tomato (Margherita), prepacked* at 224 — so nothing was
+missing from the data. Three faults, measured against the real 10,440-row database.
+
+**A query was split on spaces while a name was split on punctuation.** So a query word
+arrived carrying a comma, no name word could begin with it, and the bottom tier of the
+scorer — every word of the query present — never fired. The prompt asks the model for the
+wording a composition table uses, which is full of commas, so this was the common case
+rather than an edge:
+
+| Term | Against | Before | After |
+| --- | --- | --- | --- |
+| `Pizza, Margherita` | Pizza margherita (with tomato sauce, mozzarella) | **0.000** | 0.493 |
+| `Pizza Margherita` | the same row | 0.850 | 0.850 |
+| `Oats, rolled` | Oat flakes | **0.000** | 1.088 |
+| `Banana, raw` | Banana raw | 0.532, and it chose *Plantain banana* | 0.825, settled |
+
+`FoodQuery.words(of:)` is the one definition now, used by the scorer for both sides and by
+the FTS expression. The expression had the same fault with a second consequence: the plural
+heuristic cannot tell that `"Oats,"` ends in an "s", so the singular form that reaches "Oat
+flakes" was never searched, and `"Oats,"* AND "rolled"*` retrieved nothing at all.
+
+**The fallback was answering with whatever the table had cooked.** This is the worse half,
+and it was mine: when the whole term finds nothing worth showing, each word is tried alone
+and the best answer kept. "Cooked" names 390 rows, and the curated prior lifted the best of
+them above everything:
+
+| Term | What it logged, settled and unasked |
+| --- | --- |
+| `Pasta, cooked` | Fish, cooked (average) — 0.887 |
+| `Rice, cooked` | Fish, cooked (average) — 0.887 |
+| `Oats, rolled` | Rolled pork roast with sauce — 0.832 |
+| `Pizza, margherita, prepacked` | Hummus, prepacked — 0.920 |
+| `spaghetti bolognese, cooked` | Fish, cooked (average) — 0.887 |
+
+Two rules bound it. A word saying how a food was prepared or packed never carries the
+fallback, and the list of fifteen such words is the app's own vocabulary rather than a guess
+about language — the prompt asks the model to say "cooked or raw where it matters", so these
+are the words it asked to be given. And a narrowed match is never settled: the app threw
+part of what was said away to get an answer, so the row is marked for a glance however well
+the one word scored. The validator can still settle it afterwards, which is the right order.
+
+After both: `Pasta, cooked` → *Spinach-filled pasta squares cooked*; `Rice, cooked` → *Rice,
+red, cooked, no added salt*; `Oats, rolled` → *Oat flakes*; `Pizza, margherita, prepacked` →
+*Pizza, cheese and tomato (Margherita), prepacked*; `spaghetti bolognese, cooked` →
+*Bolognese sauce with beef mince*. Every one of twenty-two bare nouns answers exactly as it
+did before, which is the check that matters most: the fix must not move what already worked.
+
+Tests: six on what a word is and which words are preparation words, two on a comma costing
+a tier rather than a match, and four on the resolver — the pizza term itself, the fish case
+with the curated prior that made it win, the cap on a narrowed match, and a whole-term match
+still settling so the cap is about narrowing rather than about distrusting the tables.

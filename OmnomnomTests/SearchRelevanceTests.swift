@@ -213,6 +213,35 @@ struct SearchSectionsTests {
         ).isEmpty == false)
     }
 
+    // MARK: - Punctuation in a term
+
+    /// Measured against the real tables before the fix: "Pizza, Margherita" scored 0.000
+    /// against the row of that name while "Pizza Margherita" scored 0.850. The bottom tier
+    /// compared query words split on spaces against name words split on punctuation, so a
+    /// word arriving with a comma could not begin any name word — and the prompt asks the
+    /// model for exactly that wording.
+    @Test func aCommaInATermNoLongerMeansNoMatch() {
+        let name = "Pizza margherita (with tomato sauce, mozzarella)"
+        // 0.000 before the fix: the comma rode into the comparison and no name word could
+        // begin with "pizza,". It reaches the bottom tier now, which is what it is for.
+        #expect(
+            SearchRelevance.score(name: name, query: "Pizza, Margherita")
+                >= SearchRelevance.everyToken
+        )
+        // Still below the same term without the comma, which reaches the prefix tier. The
+        // fix is that the bottom tier fires at all, not that punctuation becomes free.
+        #expect(
+            SearchRelevance.score(name: name, query: "Pizza, Margherita")
+                < SearchRelevance.score(name: name, query: "Pizza Margherita")
+        )
+    }
+
+    @Test func everyWordPresentStillMeansEveryWord() {
+        // The tier fires on all the words, and nothing less.
+        #expect(SearchRelevance.score(name: "Rice, red, cooked, no added salt", query: "rice, cooked") > 0)
+        #expect(SearchRelevance.score(name: "Rice boiled", query: "rice, cooked") == 0)
+    }
+
     @Test func pillsNameTheSource() {
         #expect(SearchResult.Provenance.recipe.pill == "Recipe")
         #expect(SearchResult.Provenance.yours.pill == "Yours")

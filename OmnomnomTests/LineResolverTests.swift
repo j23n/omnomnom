@@ -55,11 +55,13 @@ struct LineResolverTests {
         return ModelContext(try ModelContainer(for: schema, configurations: [configuration]))
     }
 
-    private func bundled(_ id: Int, _ name: String, ingredient: Bool = false) -> BundledFood {
+    private func bundled(
+        _ id: Int, _ name: String, ingredient: Bool = false, popularity: Int = 0
+    ) -> BundledFood {
         BundledFood(
             id: id, name: name, category: nil,
             per100g: Nutrition(energy: 370, protein: 13, carbohydrates: 60, fatTotal: 7),
-            popularity: 0, altNames: [], isIngredient: ingredient
+            popularity: popularity, altNames: [], isIngredient: ingredient
         )
     }
 
@@ -356,6 +358,77 @@ struct LineResolverTests {
         let resolution = await resolver.resolve("oats, banana")
         #expect(resolution.rows.count == 2)
         #expect(resolution.rows.allSatisfy { $0.choice == nil })
+    }
+
+    // MARK: - A term in the wording a table uses
+
+    /// The report this came from: "a slice of Margherita pizza" showed as "pizza" with no
+    /// food behind it. Measured against the real tables, a term written the way the prompt
+    /// asks for it — with the commas a composition table uses — scored zero against the row
+    /// of that very name, so the whole term was discarded and one of its words answered
+    /// instead.
+    @Test func aTermWrittenTheWayATableWritesOneStillMatches() async throws {
+        let context = try makeContext()
+        let margherita = bundled(11, "Pizza margherita (with tomato sauce, mozzarella)")
+        let repository = FakeRepository(hits: ["Pizza, Margherita": [margherita]])
+        let estimator = FakeEstimator(
+            items: [EstimatedItem(name: "pizza", lookupTerm: "Pizza, Margherita", grams: 125)]
+        )
+        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
+        let row = try #require(await resolver.resolve("a slice of Margherita pizza").rows.first)
+        #expect(row.choice?.name == "Pizza margherita (with tomato sauce, mozzarella)")
+        #expect(!row.blocks)
+    }
+
+    /// The worse half of the same fault. "Cooked" names 390 rows in the real tables, and the
+    /// cooked thing that ranked highest was fish — so "Pasta, cooked" and "Rice, cooked"
+    /// were answered with *Fish, cooked (average)*, settled, with nothing asked of the user.
+    /// A word saying how a food was prepared is not a food, and cannot answer for one.
+    @Test func aPreparationWordNeverAnswersForAFood() async throws {
+        let context = try makeContext()
+        let repository = FakeRepository(hits: [
+            // Nothing holds both words, which is what sends this down the fallback.
+            "pasta": [bundled(21, "Pasta, cooked")],
+            // Curated, as it is in the real tables, which is what let it win: the prior
+            // took it from 0.691 to 0.887 against the word "cooked", above the 0.858 the
+            // pasta row scores against "pasta".
+            "cooked": [bundled(22, "Fish, cooked (average)", popularity: 23)],
+        ])
+        let estimator = FakeEstimator(
+            items: [EstimatedItem(name: "pasta", lookupTerm: "pasta, cooked", grams: 180)]
+        )
+        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
+        let row = try #require(await resolver.resolve("pasta").rows.first)
+        #expect(row.choice?.name == "Pasta, cooked")
+    }
+
+    /// A narrowed match is the app answering a question nobody asked, so it is shown rather
+    /// than assumed, however well the one word scored.
+    @Test func aMatchFoundByNarrowingIsNeverSettled() async throws {
+        let context = try makeContext()
+        let repository = FakeRepository(hits: ["oats": [bundled(31, "Oat flakes")]])
+        let estimator = FakeEstimator(
+            items: [EstimatedItem(name: "oats", lookupTerm: "oats, rolled", grams: 50)]
+        )
+        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
+        let row = try #require(await resolver.resolve("oats").rows.first)
+        #expect(row.choice?.name == "Oat flakes")
+        #expect(row.confidence == .probable)
+        // Logged, not blocked: marked for a glance is the point of the middle tier.
+        #expect(!row.blocks)
+    }
+
+    /// And a match on everything that was said still settles, so the cap above is about
+    /// narrowing rather than about the tables being distrusted.
+    @Test func aMatchOnTheWholeTermStillSettles() async throws {
+        let context = try makeContext()
+        let repository = FakeRepository(hits: ["oat flakes": [bundled(31, "Oat flakes")]])
+        let estimator = FakeEstimator(
+            items: [EstimatedItem(name: "oats", lookupTerm: "oat flakes", grams: 50)]
+        )
+        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
+        let row = try #require(await resolver.resolve("oats").rows.first)
+        #expect(row.confidence == .settled)
     }
 
     // MARK: - What a step measures from

@@ -70,4 +70,49 @@ struct FoodQueryTests {
     @Test func caseDoesNotDecideWhetherSomethingIsAPlural() {
         #expect(FoodQuery.forms(of: "OATS") == ["OATS", "OAT"])
     }
+
+    // MARK: - What a word is
+
+    @Test func aWordIsLettersAndDigitsAndNothingElse() {
+        #expect(FoodQuery.words(of: "Pizza, Margherita") == ["Pizza", "Margherita"])
+        #expect(FoodQuery.words(of: "Milk, whole, 3.25% milkfat")
+            == ["Milk", "whole", "3", "25", "milkfat"])
+        #expect(FoodQuery.words(of: "  ") == [])
+    }
+
+    /// The fault this fixed. The term the prompt asks for carries commas, and they used to
+    /// ride into the expression, where they defeated the plural forms: `"Oats,"` does not
+    /// end in an "s" as far as `forms` can tell, so the singular that reaches "Oat flakes"
+    /// was never searched.
+    @Test func punctuationDoesNotChangeWhatIsSearchedFor() {
+        #expect(
+            FoodQuery.ftsMatchExpression(for: "Oats, rolled")
+                == FoodQuery.ftsMatchExpression(for: "Oats rolled")
+        )
+        #expect(
+            FoodQuery.ftsMatchExpression(for: "Pizza, Margherita")
+                == "\"Pizza\"* AND \"Margherita\"*"
+        )
+    }
+
+    @Test func bracketsAndPercentagesAreSeparatorsToo() {
+        #expect(
+            FoodQuery.ftsMatchExpression(for: "Pizza (cheese and tomato)")
+                == "\"Pizza\"* AND \"cheese\"* AND \"and\"* AND \"tomato\"*"
+        )
+    }
+
+    // MARK: - Preparation words
+
+    @Test func preparationWordsAreRecognisedWhateverTheirCase() {
+        #expect(FoodQuery.isPreparationWord("cooked"))
+        #expect(FoodQuery.isPreparationWord("Raw"))
+        #expect(FoodQuery.isPreparationWord("PREPACKED"))
+    }
+
+    @Test func aFoodIsNotAPreparationWord() {
+        for food in ["pizza", "oats", "pasta", "rice", "chicken", "margherita"] {
+            #expect(!FoodQuery.isPreparationWord(food))
+        }
+    }
 }

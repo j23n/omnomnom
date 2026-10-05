@@ -115,9 +115,9 @@ struct LineResolver {
                 rows.append(row)
                 continue
             }
-            let shortlist = await search(item.lookupTerm)
-            shortlists[item.id] = shortlist
-            rows.append(await databaseRow(for: item, shortlist: shortlist))
+            let found = await search(item.lookupTerm)
+            shortlists[item.id] = found.matches
+            rows.append(await databaseRow(for: item, found: found))
         }
 
         // One request for the whole line, and only for the rows a retriever chose.
@@ -208,6 +208,15 @@ struct LineResolver {
 
     // MARK: - Rung three and four: what the database says
 
+    /// A shortlist, and whether it answers the whole term or only one word of it.
+    private struct Found {
+        var matches: [FoodMatch]
+        /// True when the whole term found nothing worth showing and one of its words
+        /// answered instead. A weaker claim, because the app threw part of what was said
+        /// away in order to get an answer at all.
+        var wasNarrowed: Bool
+    }
+
     /// The shortlist for one named food, with one fallback.
     ///
     /// The index ands a term's words together, so a term naming a food precisely can reach
@@ -220,21 +229,35 @@ struct LineResolver {
     /// reaching minced steak is better than "beef" reaching plain boiled beef, even though
     /// the plainer row scores higher for being shorter and more popular. Specificity wins
     /// where it works; breadth only rescues a dead end.
-    private func search(_ term: String) async -> [FoodMatch] {
-        guard !term.isEmpty else { return [] }
+    ///
+    /// **A preparation word never carries the fallback.** Measured against the real tables,
+    /// the version without this rule answered "Pasta, cooked" and "Rice, cooked" with *Fish,
+    /// cooked (average)*, settled, unasked — the word "cooked" names 390 rows and the
+    /// cooked thing it ranked highest happened to be fish. "Oats, rolled" reached a rolled
+    /// pork roast the same way. A word saying how a food was prepared is not a food, and
+    /// there is no honest way to answer a term from one.
+    private func search(_ term: String) async -> Found {
+        guard !term.isEmpty else { return Found(matches: [], wasNarrowed: false) }
         let whole = await shortlist(for: term, scoredAgainst: term)
-        if let best = whole.first, best.score >= FoodMatcher.probableAt { return whole }
+        if let best = whole.first, best.score >= FoodMatcher.probableAt {
+            return Found(matches: whole, wasNarrowed: false)
+        }
 
-        let tokens = term.split(whereSeparator: \.isWhitespace).map(String.init)
-        guard tokens.count > 1 else { return whole }
+        let words = FoodQuery.words(of: term).map(String.init)
+        let foods = words.filter { !FoodQuery.isPreparationWord($0) }
+        guard words.count > 1, !foods.isEmpty else {
+            return Found(matches: whole, wasNarrowed: false)
+        }
         var best = whole
-        for token in tokens {
-            let candidates = await shortlist(for: token, scoredAgainst: token)
+        var narrowed = false
+        for word in foods {
+            let candidates = await shortlist(for: word, scoredAgainst: word)
             if let top = candidates.first, top.score > (best.first?.score ?? 0) {
                 best = candidates
+                narrowed = true
             }
         }
-        return best
+        return Found(matches: best, wasNarrowed: narrowed)
     }
 
     /// One search, ranked. `scoredAgainst` is what the scorer compares a row to, which is
@@ -253,9 +276,18 @@ struct LineResolver {
     }
 
     /// A row from the best match, falling back to a product when the tables held nothing.
-    private func databaseRow(for item: ResolvableItem, shortlist: [FoodMatch]) async -> ResolvedRow {
-        if let best = shortlist.first {
+    ///
+    /// A match found by narrowing the term never settles on its own. The retriever answered
+    /// a question nobody asked — one word of the term rather than the term — so the row is
+    /// marked for a glance however well it scored, and the user sees what the app chose. The
+    /// validator can still settle it afterwards, which is the right order: a model that saw
+    /// the line and the candidates may know the narrowed answer is the right one, and the
+    /// retriever's own confidence cannot.
+    private func databaseRow(for item: ResolvableItem, found: Found) async -> ResolvedRow {
+        if let best = found.matches.first {
             let choice = remembered(FoodChoice(bundled: best.food))
+            let confidence: MatchConfidence =
+                found.wasNarrowed && best.confidence == .settled ? .probable : best.confidence
             return ResolvedRow(
                 id: item.id,
                 name: item.name,
@@ -264,7 +296,7 @@ struct LineResolver {
                 bucket: nil,
                 baseAmount: choice.lastAmount,
                 origin: .database,
-                confidence: best.confidence
+                confidence: confidence
             )
         }
         if let products, let product = await products(item.lookupTerm).first {

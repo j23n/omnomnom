@@ -97,23 +97,25 @@ nonisolated enum SearchRelevance {
     }
 
     /// Which tier a folded name sits in for a folded query, or `nil` for no match.
+    ///
+    /// Both sides are split by `FoodQuery.words(of:)`, and it has to be the same function
+    /// on both. It was not: the name was split on punctuation and the query on spaces, so
+    /// a query word arrived carrying a comma, no name word could begin with it, and the
+    /// bottom tier never fired. That is the tier every term in composition-table wording
+    /// depends on — "Pizza, Margherita" scored 0.000 against the row of that name while
+    /// "Pizza Margherita" scored 0.850 — and the prompt asks the model for exactly that
+    /// wording. A comma was the difference between a settled match and a blocked row.
     private static func tier(name: String, query: String) -> Double? {
         if name == query { return exact }
         if name.hasPrefix(query) { return prefix }
-        let words = words(of: name)
+        let words = FoodQuery.words(of: name)
         if words.contains(where: { $0.hasPrefix(query) }) { return wordPrefix }
         if name.contains(query) { return substring }
-        let tokens = query.split(separator: " ")
+        let tokens = FoodQuery.words(of: query)
         if tokens.count > 1,
            tokens.allSatisfy({ token in words.contains { $0.hasPrefix(token) } }) {
             return everyToken
         }
         return nil
-    }
-
-    /// Words of a name, split on everything that is not a letter or a digit, so
-    /// "Milk, whole, 3.25% milkfat" offers "milk", "whole", "3", "25" and "milkfat".
-    private static func words(of folded: String) -> [Substring] {
-        folded.split(whereSeparator: { !$0.isLetter && !$0.isNumber })
     }
 }
