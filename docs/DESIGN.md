@@ -8,6 +8,79 @@ Stock iOS done well. The app stays inside the iOS 26 system look: system type ro
 
 Room is left for light branding: an app icon and, later, a mascot in a few fixed places such as onboarding, first-run empty states and the Sources screen. The mascot never carries information the interface does not also show in text, and never comments on what was eaten.
 
+## The rounded language
+
+Decided by drawing six alternatives and comparing them; the boards are in
+`design/mocks/`, indexed by their README, and they cover every screen the app
+has. What was settled:
+
+**The ground is warm, not grey.** `#FBFAF8` behind `#FFFFFF` row groups with a
+20 pt radius, and hairlines inside a group rather than between them. Hard rules
+and grey cards both went: the food list is the page, and a figure sitting in a
+box above it reads as a dashboard rather than a log.
+
+**The system rounded face, everywhere it is a title or a figure.** Body text,
+captions and anything inside a table keep the default face with tabular
+figures, so the data never pays for the voice. This widens the brand kit's
+"rounded bold, twice" rule deliberately rather than by accident: the wordmark
+and the energy figure were the first two places, and titles, the run and the
+eight nutrient figures are now the rest of them. Nothing is downloaded and
+nothing is licensed, which is why this won over two branches built on a
+bundled face.
+
+**The mark: a ring around a square.** The ring is the record — four meal
+segments, drawn where that meal has an answer. The square is the composition —
+three bands whose heights are each macronutrient's share of the day's energy,
+plus a hatched band for the part no figure covers. Five states: none, some,
+answered, taken from your usual day (half strength, grey ring), and nothing.
+
+A square and not a disc because a band inside a circle is wider in the middle,
+so its area would not match its number. That is the one place on these boards
+where the arithmetic beat the shape, and it is worth remembering as the reason
+the mark looks the way it does.
+
+**Composition leads; energy trails.** The headline is what the day was made of,
+with your own month as grey ticks beside it, and the kilocalorie figure is one
+number in a row of eight. The old decision — four large figures, the user picks
+which — survives only as which four small ones appear on Shape.
+
+**The underline.** A dotted tint underline under the words that produced a
+match the matcher would defend but not insist on. It is an affordance, not a
+warning, and tint still means only "you can act on this". The three row states
+are `MatchConfidence`'s three cases and nothing else: `settled` unmarked,
+`probable` underlined and logged, `unsure` underlined and not logged at all.
+
+**Hatching means "no figure", everywhere.** On a bar, in the mark's square, and
+beside a nutrient total. It is the only pattern in the app and it is never a
+colour, because 666 of the 10,440 bundled rows are short of at least one of the
+eight nutrients and a total built on one of them is a floor rather than a total.
+
+### What this amends
+
+- **Gamification is permitted on the record and still forbidden on the food.**
+  A run counts days answered, where "nothing tonight" is an answer, so what it
+  rewards is closing the day rather than eating in a particular way. There is
+  deliberately no streak that resets to zero: an unlogged day is normal here,
+  and a counter that treats it as a loss would argue the opposite. `best` sits
+  beside `current` so a gap costs the run in hand and never the record.
+- **Charts are their own colour namespace.** Inside a chart mark or its legend
+  swatch, hue is nutrient identity — protein `#2E5FA3`, carbohydrate `#E8641C`,
+  fat `#B03060`. Outside one, tint means actionable, as before. The series were
+  chosen by measurement rather than taste: a warm triad put tangerine and gold
+  at ΔE 1.3 under deuteranopia, and blue against violet at 1.7, both
+  indistinguishable. Nothing in the set encodes good or bad.
+- **Two contrast corrections.** Tangerine `#E8641C` carrying white text at body
+  size measures 3.35:1, so anything text-bearing uses `#A8450E` (5.96:1) and
+  `#E8641C` is kept for the mark, chart fills and untinted chrome. Inactive tab
+  icons are `#8A8178` rather than the secondary text grey, which sits at 3.02:1
+  against white and leaves a 23 pt stroke no margin at all.
+
+### Not yet drawn
+
+iPad layout, dark mode, and the largest accessibility sizes — none of which
+fits in a 390-wide frame, and all three of which the mark's 46 pt core and
+four-segment ring are most likely to break.
+
 ## Brand
 
 A small kit, applied in a few fixed places, on top of the stock look.

@@ -591,7 +591,7 @@ A day that was not fully logged is the normal case, not a failure, and the app h
 | `partial` | Entries exist, not marked done |
 | `empty` | No entries |
 
-Marking a day complete is one tap on Today. That is the entire mechanism, and it is what makes an average defensible: every figure on Trends says what it rests on, as "mean of 19 complete days", never as a bare number over a range.
+Marking a day complete is one tap on Today, and a meal can also be answered with nothing: `DayRecord.skippedSlotNames` records a slot the user said held nothing, because the absence of an entry cannot tell a meal nobody ate from a meal nobody recorded. `DayAnswers` derives which of the four have an answer of either kind, and `DayRun` derives the run over them — both pure, neither stored. That is the entire mechanism, and it is what makes an average defensible: every figure on Trends says what it rests on, as "mean of 19 complete days", never as a bare number over a range.
 
 Averages are computed over complete days only. Partial days are drawn as what they are and left out of the mean. Empty days are a gap, drawn as a gap, and never as a zero — a zero-kilocalorie Tuesday is the one answer a nutrition chart must never give.
 
@@ -692,13 +692,13 @@ The second principle, new in revision 4 and the one that constrains the first: *
 | Today | Default. Date, headline totals, entries by meal slot, baseline proposals, the composer |
 | Composer | One line of text or speech, and a camera button that attaches a photo to it. The primary input, pinned to the bottom of Today |
 | Sign-off | What the model made of the line, as rows: the food behind each, its amount, where it came from, the meal and the time. Change any of it, add a food it missed, then log |
-| Trends | Energy, protein and fiber over time, with the coverage strip |
+| Shape | All eight nutrients over time, the week as composition bars, and the coverage strip. Called Trends until the design pass renamed it for what it answers |
 | Add | Search over foods, phrases and recipes; still the way to pick a specific row |
 | Quantity | Portion buckets, the gram field behind them, live nutrition preview |
 | Library | Foods, phrases and recipes; custom food creation, recipe builder |
 | Settings | Health status, opt-in toggles, sampling cadence, sources and attribution |
 
-Four tabs now: Today, Trends, Library, Settings. The composer is part of Today rather than a destination; Add and Quantity are sheets over it, and sign-off is **pushed** rather than presented. That last one is not a preference. Signing off a meal means changing a food and choosing a weight, and both want a screen on top of the sign-off screen — which a sheet cannot give them, because whatever presented a sheet owns the next presentation, so the food picker was being put up by Today while the sheet sat in front of it. Pushing makes sign-off the topmost thing, which is the only arrangement in which its own controls work.
+Four tabs now: Today, Shape, Library, Settings, and the composer is on every one of them — it is the app's one verb and does not belong to a single tab. The composer is part of Today rather than a destination; Add and Quantity are sheets over it, and sign-off is **pushed** rather than presented. That last one is not a preference. Signing off a meal means changing a food and choosing a weight, and both want a screen on top of the sign-off screen — which a sheet cannot give them, because whatever presented a sheet owns the next presentation, so the food picker was being put up by Today while the sheet sat in front of it. Pushing makes sign-off the topmost thing, which is the only arrangement in which its own controls work.
 
 ### The fast path
 

@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="mocks.css">
+<title>G2 · States and surfaces</title>
+</head>
+<body>
+<style>
+body { margin: 0; font-family: -apple-system, system-ui, "Helvetica Neue", sans-serif; color: #2A2724; -webkit-font-smoothing: antialiased; }
+a { color: #A8450E; } a:hover { color: #7C3309; }
+.rnd { font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; }
+.ph { width: 390px; height: 844px; box-sizing: border-box; border: 1px solid #E4DFD8; border-radius: 46px; background: #FBFAF8; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+.nav { padding: 26px 20px 0; }
+.ttl { font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; font-size: 30px; font-weight: 700; line-height: 1.05; margin: 0; letter-spacing: -0.6px; }
+.sub { font-size: 13px; color: #6B645C; margin: 4px 0 0; font-weight: 500; }
+.body { flex: 1 1 auto; padding: 0 16px; overflow: hidden; display: flex; flex-direction: column; gap: 12px; }
+.group { background: #FFFFFF; border-radius: 20px; padding: 6px 16px; }
+.hair { height: 1px; background: #F0ECE6; }
+.head { font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 14px; font-weight: 700; color: #6B645C; padding: 2px 6px 6px; }
+.row { display: flex; align-items: baseline; gap: 12px; padding: 11px 0; }
+.rname { font-size: 16px; font-weight: 500; }
+.rmeta { font-size: 13px; color: #6B645C; margin-top: 2px; line-height: 1.4; }
+.fig { font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.big { font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-weight: 800; letter-spacing: -1.5px; }
+.unsure { border-bottom: 2.5px dotted #A8450E; padding-bottom: 1px; }
+.bar { display: flex; gap: 2px; height: 18px; border-radius: 9px; overflow: hidden; }
+.hatch { background: repeating-linear-gradient(45deg, #9C9389 0 2px, #FFFFFF 2px 5px); }
+.cta { background: #A8450E; color: #FFFFFF; border: 0; border-radius: 14px; padding: 11px 15px; font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; }
+.ghost { background: #FFFFFF; color: #2A2724; border: 1.5px solid #E4DFD8; border-radius: 14px; padding: 10px 14px; font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; }
+.badge { font-size: 11px; font-weight: 700; color: #6B645C; background: #F0ECE6; border-radius: 7px; padding: 3px 7px; }
+.seg { display: flex; background: #F0ECE6; border-radius: 13px; padding: 3px; }
+.segOn { font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 13px; font-weight: 700; background: #FFFFFF; border-radius: 10px; padding: 7px 11px; }
+.segOff { font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 13px; font-weight: 600; color: #6B645C; padding: 7px 11px; }
+.cell { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.comp { margin: 10px 16px 8px; background: #FFFFFF; border: 1.5px solid #E4DFD8; border-radius: 26px; padding: 11px 11px 11px 18px; display: flex; align-items: center; gap: 10px; }
+.dim { width: 34px; height: 34px; border-radius: 17px; border: 0; background: #EDE8E1; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.tabs { display: flex; justify-content: space-around; align-items: center; background: #FFFFFF; border-top: 1px solid #F0ECE6; padding: 9px 14px 16px; }
+.tabIcon { display: flex; align-items: center; justify-content: center; padding: 8px 16px; border-radius: 15px; }
+.tabIconOn { display: flex; align-items: center; justify-content: center; padding: 8px 16px; border-radius: 15px; background: #FDEFE6; }
+.capn { width: 22px; height: 22px; border-radius: 11px; background: #2A2724; color: #FFFFFF; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.cap { width: 390px; display: flex; flex-direction: column; gap: 7px; }
+.capt { font-size: 18px; font-weight: 600; }
+.capd { font-size: 15px; line-height: 1.45; color: #5A5A5A; }
+.wdg { background: #FFFFFF; border-radius: 26px; padding: 16px; box-shadow: 0 3px 14px rgba(42, 39, 36, 0.1); }
+</style>
+<div style="width: 2760px; height: 1300px; box-sizing: border-box; background: #FFFFFF; padding: 44px 56px; display: flex; flex-direction: column; gap: 24px">
+
+  <svg width="0" height="0" aria-hidden="true" style="position: absolute"><defs>
+    <clipPath id="coreS"><rect x="27" y="27" width="46" height="46" rx="14"></rect></clipPath>
+    <pattern id="hS" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)"><rect width="5" height="5" fill="#FFFFFF"></rect><line x1="0" y1="0" x2="0" y2="5" stroke="#9C9389" stroke-width="2"></line></pattern>
+  </defs></svg>
+
+  <div style="border-bottom: 1px solid #E5E5EA; padding-bottom: 16px; display: flex; align-items: flex-end; gap: 28px">
+    <div>
+      <div class="rnd" style="font-size: 13px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #6B645C">G2 · five of five</div>
+      <h1 class="rnd" style="margin: 4px 0 0; font-size: 36px; font-weight: 700; letter-spacing: -0.8px">States and surfaces</h1>
+    </div>
+    <p style="margin: 0 0 4px; font-size: 16px; line-height: 1.45; color: #5A5A5A; max-width: 940px">The screens that only exist when something is incomplete, plus the two places the app appears outside itself. A degraded path is described here, never apologised for — the wording is the whole difference between honest and broken.</p>
+  </div>
+
+  <div style="display: flex; gap: 59px">
+
+    <!-- 1 loose ends -->
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">1</div><div class="capt">Loose ends</div></div>
+      <div class="capd">Every gap in one queue, each with its fix on the card. The second button is always the one that costs nothing, because “nothing tonight” is a real answer and it is what closes a day without inventing food.</div>
+      <div class="ph">
+        <div class="nav">
+          <div style="display: flex; align-items: flex-start; gap: 14px">
+            <div style="flex: 1 1 auto"><h2 class="ttl" style="font-size: 27px">Three loose ends</h2><p class="sub">Clear these and Tuesday is answered</p></div>
+            <svg width="54" height="54" viewBox="0 0 100 100" aria-label="Three of four meals answered">
+              <g clip-path="url(#coreS)"><rect x="27" y="27" width="46" height="8.8" fill="#2E5FA3"></rect><rect x="27" y="35.8" width="46" height="23.4" fill="#E8641C"></rect><rect x="27" y="59.2" width="46" height="12.9" fill="#B03060"></rect><rect x="27" y="72.1" width="46" height="0.9" fill="url(#hS)"></rect></g>
+              <rect x="27" y="27" width="46" height="46" rx="14" fill="none" stroke="#FBFAF8" stroke-width="2.5"></rect>
+              <g transform="rotate(-90 50 50)"><circle cx="50" cy="50" r="44" fill="none" stroke="#EDE8E1" stroke-width="6" stroke-dasharray="63.1 13.1" stroke-linecap="round"></circle><circle cx="50" cy="50" r="44" fill="none" stroke="#2A2724" stroke-width="6" stroke-dasharray="205.3 71.2" stroke-linecap="round"></circle></g>
+            </svg>
+          </div>
+        </div>
+        <div class="body" style="padding-top: 16px">
+          <div class="group" style="padding: 15px 16px">
+            <div class="rnd" style="font-size: 13px; font-weight: 700; color: #6B645C">Dinner is unanswered</div>
+            <div style="font-size: 16px; margin-top: 7px; line-height: 1.4">You usually have pasta with tomato sauce on a Tuesday.</div>
+            <div style="display: flex; gap: 8px; margin-top: 12px"><button class="cta">Log the usual</button><button class="ghost">Nothing tonight</button></div>
+            <div style="font-size: 12px; color: #6B645C; margin-top: 9px">Either closes the quarter. Only one writes to Health.</div>
+          </div>
+          <div class="group" style="padding: 15px 16px">
+            <div class="rnd" style="font-size: 13px; font-weight: 700; color: #6B645C">A row is marked</div>
+            <div style="font-size: 16px; margin-top: 7px">Greek salad, from <span class="unsure">a side salad</span></div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: 11px">
+              <div class="bar" style="flex: 1 1 auto; height: 10px; border-radius: 5px"><span style="width: 19%; background: #2E5FA3"></span><span style="width: 51%; background: #E8641C"></span><span style="width: 28%; background: #B03060"></span><span class="hatch" style="width: 2%"></span></div>
+              <span style="font-size: 12px; color: #6B645C">3 points of fat</span>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 12px"><button class="cta">Choose the food</button><button class="ghost">It is right</button></div>
+          </div>
+          <div class="group" style="padding: 15px 16px">
+            <div class="rnd" style="font-size: 13px; font-weight: 700; color: #6B645C">One food has no fibre figure</div>
+            <div style="font-size: 16px; margin-top: 7px; line-height: 1.4">Feta min. 45 % fat. Today's fibre is a floor, not a total.</div>
+            <div style="display: flex; gap: 8px; margin-top: 12px"><button class="cta">Pick a fuller row</button><button class="ghost">Leave it</button></div>
+          </div>
+          <div class="group" style="padding: 14px 16px">
+            <div style="font-size: 13px; line-height: 1.5; color: #6B645C">Nothing here is a percentage and nothing fills a bar. The count goes down, the ring closes, and the run holds.</div>
+          </div>
+        </div>
+        <div class="tabs">
+          <span class="tabIconOn"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#A8450E" stroke-width="2" stroke-linecap="round" aria-label="Today"><rect x="3" y="4.5" width="14" height="12.5" rx="3"></rect><path d="M3 8.2h14M7 2.8v2.6M13 2.8v2.6"></path></svg></span>
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Shape"><path d="M4.5 16V9M10 16V4.5M15.5 16v-4.5"></path></svg></span>
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Library"><rect x="4" y="3" width="12" height="14" rx="2.5"></rect><path d="M4 7.2h12"></path></svg></span>
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Settings"><path d="M3.5 7h13M3.5 13h13"></path><circle cx="7.5" cy="7" r="2"></circle><circle cx="12.5" cy="13" r="2"></circle></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 trends -->
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">2</div><div class="capt">All eight, over time</div></div>
+      <div class="capd">A scrolling screen has no width constraint, so all eight are charted rather than four. Every chart names what it measures and what its mean rests on; the sugar one says total sugars including those naturally present.</div>
+      <div class="ph">
+        <div class="nav">
+          <div style="font-size: 15px; color: #A8450E; margin-bottom: 8px; font-weight: 600">‹ Shape</div>
+          <h2 class="ttl" style="font-size: 27px">Over time</h2>
+        </div>
+        <div style="padding: 12px 16px 10px"><div class="seg"><span class="segOff">7 days</span><span class="segOn">30 days</span><span class="segOff">3 months</span><span class="segOff">A year</span></div></div>
+        <div class="body">
+          <div class="group" style="padding: 14px 16px">
+            <div style="font-size: 12px; color: #6B645C; font-weight: 700">COVERAGE</div>
+            <div style="display: flex; gap: 3px; align-items: flex-end; height: 22px; margin-top: 9px">
+              <span style="flex: 1 1 0; height: 22px; background: #2A2724; border-radius: 2px"></span><span style="flex: 1 1 0; height: 22px; background: #2A2724; border-radius: 2px"></span><span style="flex: 1 1 0; height: 12px; background: #C9BFB2; border-radius: 2px"></span><span style="flex: 1 1 0; height: 22px; background: #2A2724; border-radius: 2px"></span><span style="flex: 1 1 0; height: 17px; background: #9C9389; border-radius: 2px"></span><span style="flex: 1 1 0; height: 22px; background: #2A2724; border-radius: 2px"></span><span style="flex: 1 1 0; height: 4px; background: #F0ECE6; border-radius: 2px"></span><span style="flex: 1 1 0; height: 22px; background: #2A2724; border-radius: 2px"></span><span style="flex: 1 1 0; height: 12px; background: #C9BFB2; border-radius: 2px"></span><span style="flex: 1 1 0; height: 22px; background: #2A2724; border-radius: 2px"></span><span style="flex: 1 1 0; height: 22px; background: #2A2724; border-radius: 2px"></span><span style="flex: 1 1 0; height: 17px; background: #9C9389; border-radius: 2px"></span><span style="flex: 1 1 0; height: 4px; background: #F0ECE6; border-radius: 2px"></span><span style="flex: 1 1 0; height: 22px; background: #2A2724; border-radius: 2px"></span><span style="flex: 1 1 0; height: 22px; background: #2A2724; border-radius: 2px"></span><span style="flex: 1 1 0; height: 12px; background: #C9BFB2; border-radius: 2px"></span><span style="flex: 1 1 0; height: 22px; background: #2A2724; border-radius: 2px"></span><span style="flex: 1 1 0; height: 22px; background: #2A2724; border-radius: 2px"></span><span style="flex: 1 1 0; height: 17px; background: #9C9389; border-radius: 2px"></span><span style="flex: 1 1 0; height: 22px; background: #2A2724; border-radius: 2px"></span><span style="flex: 1 1 0; height: 4px; background: #F0ECE6; border-radius: 2px"></span><span style="flex: 1 1 0; height: 22px; background: #2A2724; border-radius: 2px"></span><span style="flex: 1 1 0; height: 12px; background: #C9BFB2; border-radius: 2px"></span><span style="flex: 1 1 0; height: 22px; background: #2A2724; border-radius: 2px"></span><span style="flex: 1 1 0; height: 22px; background: #2A2724; border-radius: 2px"></span><span style="flex: 1 1 0; height: 17px; background: #9C9389; border-radius: 2px"></span><span style="flex: 1 1 0; height: 22px; background: #2A2724; border-radius: 2px"></span><span style="flex: 1 1 0; height: 4px; background: #F0ECE6; border-radius: 2px"></span><span style="flex: 1 1 0; height: 12px; background: #C9BFB2; border-radius: 2px"></span><span style="flex: 1 1 0; height: 17px; background: #9C9389; border-radius: 2px"></span>
+            </div>
+            <div style="font-size: 12px; color: #6B645C; margin-top: 9px; line-height: 1.5">19 complete days, 4 assumed, 7 partial. Every mean below is over the 19; the partial days are drawn and left out, and the empty ones are a gap rather than a nought.</div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+            <div class="group" style="padding: 12px 14px">
+              <div style="font-size: 11px; color: #6B645C; font-weight: 700">ENERGY</div>
+              <div class="fig" style="font-size: 19px; margin-top: 2px">2,120 <span style="font-size: 11px; color: #6B645C; font-weight: 600">kcal</span></div>
+              <svg width="124" height="34" viewBox="0 0 124 34" fill="none" aria-label="Energy, 30-day mean 2,120 kilocalories" style="margin-top: 5px"><path d="M2 24L19 20L36 26L53 14L70 18L87 11L104 15L122 10" stroke="#2A2724" stroke-width="2" stroke-linecap="round"></path></svg>
+            </div>
+            <div class="group" style="padding: 12px 14px">
+              <div style="font-size: 11px; color: #6B645C; font-weight: 700">PROTEIN</div>
+              <div class="fig" style="font-size: 19px; margin-top: 2px">88 <span style="font-size: 11px; color: #6B645C; font-weight: 600">g</span></div>
+              <svg width="124" height="34" viewBox="0 0 124 34" fill="none" aria-label="Protein, 30-day mean 88 grams" style="margin-top: 5px"><path d="M2 20L19 22L36 16L53 18L70 12L87 14L104 9L122 11" stroke="#2A2724" stroke-width="2" stroke-linecap="round"></path></svg>
+            </div>
+            <div class="group" style="padding: 12px 14px">
+              <div style="font-size: 11px; color: #6B645C; font-weight: 700">CARBOHYDRATE</div>
+              <div class="fig" style="font-size: 19px; margin-top: 2px">241 <span style="font-size: 11px; color: #6B645C; font-weight: 600">g</span></div>
+              <svg width="124" height="34" viewBox="0 0 124 34" fill="none" aria-label="Carbohydrate, 30-day mean 241 grams" style="margin-top: 5px"><path d="M2 14L19 18L36 12L53 20L70 16L87 22L104 18L122 20" stroke="#2A2724" stroke-width="2" stroke-linecap="round"></path></svg>
+            </div>
+            <div class="group" style="padding: 12px 14px">
+              <div style="font-size: 11px; color: #6B645C; font-weight: 700">FAT</div>
+              <div class="fig" style="font-size: 19px; margin-top: 2px">76 <span style="font-size: 11px; color: #6B645C; font-weight: 600">g</span></div>
+              <svg width="124" height="34" viewBox="0 0 124 34" fill="none" aria-label="Fat, 30-day mean 76 grams" style="margin-top: 5px"><path d="M2 16L19 14L36 20L53 15L70 21L87 17L104 23L122 19" stroke="#2A2724" stroke-width="2" stroke-linecap="round"></path></svg>
+            </div>
+            <div class="group" style="padding: 12px 14px">
+              <div style="font-size: 11px; color: #6B645C; font-weight: 700">SATURATED FAT</div>
+              <div class="fig" style="font-size: 19px; margin-top: 2px">27 <span style="font-size: 11px; color: #6B645C; font-weight: 600">g</span></div>
+              <svg width="124" height="34" viewBox="0 0 124 34" fill="none" aria-label="Saturated fat, 30-day mean 27 grams" style="margin-top: 5px"><path d="M2 18L19 16L36 19L53 13L70 17L87 15L104 19L122 16" stroke="#2A2724" stroke-width="2" stroke-linecap="round"></path></svg>
+            </div>
+            <div class="group" style="padding: 12px 14px">
+              <div style="font-size: 11px; color: #6B645C; font-weight: 700">FIBER</div>
+              <div class="fig" style="font-size: 19px; margin-top: 2px">29 <span style="font-size: 11px; color: #6B645C; font-weight: 600">g</span></div>
+              <svg width="124" height="34" viewBox="0 0 124 34" fill="none" aria-label="Fiber, 30-day mean 29 grams" style="margin-top: 5px"><path d="M2 22L19 19L36 21L53 16L70 18L87 13L104 16L122 12" stroke="#2A2724" stroke-width="2" stroke-linecap="round"></path></svg>
+            </div>
+            <div class="group" style="padding: 12px 14px">
+              <div style="font-size: 11px; color: #6B645C; font-weight: 700">SUGAR</div>
+              <div class="fig" style="font-size: 19px; margin-top: 2px">61 <span style="font-size: 11px; color: #6B645C; font-weight: 600">g</span></div>
+              <svg width="124" height="34" viewBox="0 0 124 34" fill="none" aria-label="Total sugars, 30-day mean 61 grams" style="margin-top: 5px"><path d="M2 15L19 20L36 14L53 19L70 15L87 20L104 14L122 17" stroke="#2A2724" stroke-width="2" stroke-linecap="round"></path></svg>
+              <div style="font-size: 10px; color: #6B645C; margin-top: 4px; line-height: 1.3">Total, including those naturally present</div>
+            </div>
+            <div class="group" style="padding: 12px 14px">
+              <div style="font-size: 11px; color: #6B645C; font-weight: 700">SODIUM</div>
+              <div class="fig" style="font-size: 19px; margin-top: 2px">2,240 <span style="font-size: 11px; color: #6B645C; font-weight: 600">mg</span></div>
+              <svg width="124" height="34" viewBox="0 0 124 34" fill="none" aria-label="Sodium, 30-day mean 2,240 milligrams" style="margin-top: 5px"><path d="M2 17L19 13L36 18L53 12L70 19L87 14L104 20L122 15" stroke="#2A2724" stroke-width="2" stroke-linecap="round"></path></svg>
+              <div style="font-size: 10px; color: #6B645C; margin-top: 4px; line-height: 1.3">8 days hold a food with no figure</div>
+            </div>
+          </div>
+        </div>
+        <div class="tabs">
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Today"><rect x="3" y="4.5" width="14" height="12.5" rx="3"></rect><path d="M3 8.2h14M7 2.8v2.6M13 2.8v2.6"></path></svg></span>
+          <span class="tabIconOn"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#A8450E" stroke-width="2" stroke-linecap="round" aria-label="Shape"><path d="M4.5 16V9M10 16V4.5M15.5 16v-4.5"></path></svg></span>
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Library"><rect x="4" y="3" width="12" height="14" rx="2.5"></rect><path d="M4 7.2h12"></path></svg></span>
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Settings"><path d="M3.5 7h13M3.5 13h13"></path><circle cx="7.5" cy="7" r="2"></circle><circle cx="12.5" cy="13" r="2"></circle></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 past day -->
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">3</div><div class="capt">A day you missed</div></div>
+      <div class="capd">Yesterday, unanswered. The proposal is what you usually eat, offered rather than assumed — no entry exists and nothing has reached Health until the tap. An accepted day keeps its own state afterwards.</div>
+      <div class="ph">
+        <div class="nav">
+          <div style="display: flex; align-items: flex-start; gap: 14px">
+            <div style="flex: 1 1 auto"><h2 class="ttl" style="font-size: 27px">Monday</h2><p class="sub">4 October · one of four meals</p></div>
+            <svg width="54" height="54" viewBox="0 0 100 100" aria-label="One of four meals answered">
+              <g clip-path="url(#coreS)"><rect x="27" y="27" width="46" height="9" fill="#2E5FA3"></rect><rect x="27" y="36" width="46" height="25" fill="#E8641C"></rect><rect x="27" y="61" width="46" height="12" fill="#B03060"></rect></g>
+              <rect x="27" y="27" width="46" height="46" rx="14" fill="none" stroke="#FBFAF8" stroke-width="2.5"></rect>
+              <g transform="rotate(-90 50 50)"><circle cx="50" cy="50" r="44" fill="none" stroke="#EDE8E1" stroke-width="6" stroke-dasharray="63.1 13.1" stroke-linecap="round"></circle><circle cx="50" cy="50" r="44" fill="none" stroke="#2A2724" stroke-width="6" stroke-dasharray="63.1 213.4" stroke-linecap="round"></circle></g>
+            </svg>
+          </div>
+          <div style="display: flex; align-items: center; gap: 14px; margin-top: 12px">
+            <span class="rnd" style="font-size: 15px; color: #A8450E; font-weight: 600">‹ Sunday</span>
+            <span class="rnd" style="font-size: 15px; color: #A8450E; font-weight: 600">Tuesday ›</span>
+            <span class="rnd" style="margin-left: auto; font-size: 15px; color: #A8450E; font-weight: 600">Pick a day</span>
+          </div>
+        </div>
+        <div class="body" style="padding-top: 16px">
+          <div>
+            <div class="head">Breakfast · 08:00</div>
+            <div class="group">
+              <div class="row"><div style="flex: 1 1 auto"><div class="rname">Oat flakes</div><div class="rmeta">80 g</div></div><div class="fig">295</div></div>
+              <div class="hair"></div>
+              <div class="row"><div style="flex: 1 1 auto"><div class="rname">Banana raw</div><div class="rmeta">120 g</div></div><div class="fig">95</div></div>
+            </div>
+          </div>
+          <div>
+            <div class="head">Lunch</div>
+            <div class="group" style="padding: 15px 16px; border: 1.5px dashed #D8D1C7">
+              <div style="font-size: 13px; color: #6B645C; font-weight: 600">You usually have this for lunch</div>
+              <div style="font-size: 16px; margin-top: 7px">chicken salad</div>
+              <div class="rmeta">4 foods · 418 kcal · logged 40 times</div>
+              <div style="display: flex; gap: 8px; margin-top: 12px"><button class="cta">Yes, that</button><button class="ghost">Something else</button></div>
+            </div>
+          </div>
+          <div>
+            <div class="head">Dinner</div>
+            <div class="group" style="padding: 15px 16px; border: 1.5px dashed #D8D1C7">
+              <div style="font-size: 15px; color: #6B645C">Nothing logged, and nothing often enough to offer.</div>
+            </div>
+          </div>
+          <div class="group" style="padding: 14px 16px">
+            <div style="font-size: 13px; line-height: 1.5; color: #6B645C">A day accepted from your usual one counts as <span style="font-weight: 700; color: #2A2724">assumed</span> rather than complete: real enough for Health, not asserted carefully enough for the app to be silent about it. Means say how many of each they rest on.</div>
+          </div>
+        </div>
+        <div class="comp">
+          <span style="flex: 1 1 auto; font-size: 16px; color: #9C9389; font-weight: 500">What did you eat on Monday?</span>
+          <button class="dim" aria-label="Log this line"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9C9389" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 20V5M12 5l-6 6M12 5l6 6"></path></svg></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 day picker -->
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">4</div><div class="capt">Pick a day</div></div>
+      <div class="capd">The month as the mark repeated, so choosing a day and seeing how much of it was answered are the same glance. Future days are not offered, because an amount cannot be recorded before it is eaten.</div>
+      <div class="ph">
+        <div style="flex: 1 1 auto; background: rgba(42, 39, 36, 0.28)"></div>
+        <div style="background: #FBFAF8; border-radius: 28px 28px 0 0; padding: 22px 20px 26px">
+          <div style="display: flex; align-items: baseline; gap: 12px">
+            <h2 class="ttl" style="font-size: 25px; flex: 1 1 auto">October</h2>
+            <span class="rnd" style="font-size: 16px; color: #A8450E; font-weight: 600">Today</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-top: 16px">
+            <div style="font-size: 11px; color: #9C9389; text-align: center; font-weight: 700">M</div>
+            <div style="font-size: 11px; color: #9C9389; text-align: center; font-weight: 700">T</div>
+            <div style="font-size: 11px; color: #9C9389; text-align: center; font-weight: 700">W</div>
+            <div style="font-size: 11px; color: #9C9389; text-align: center; font-weight: 700">T</div>
+            <div style="font-size: 11px; color: #9C9389; text-align: center; font-weight: 700">F</div>
+            <div style="font-size: 11px; color: #9C9389; text-align: center; font-weight: 700">S</div>
+            <div style="font-size: 11px; color: #9C9389; text-align: center; font-weight: 700">S</div>
+            <div></div><div></div>
+            <div class="cell" style="background: #2A2724; color: #FFFFFF">1</div>
+            <div class="cell" style="background: #2A2724; color: #FFFFFF">2</div>
+            <div class="cell" style="background: #C9BFB2">3</div>
+            <div class="cell" style="background: #9C9389; color: #FFFFFF">4</div>
+            <div class="cell" style="background: #F0ECE6; color: #9C9389">5</div>
+            <div class="cell" style="background: #2A2724; color: #FFFFFF">6</div>
+            <div class="cell" style="background: #2A2724; color: #FFFFFF">7</div>
+            <div class="cell" style="background: #C9BFB2">8</div>
+            <div class="cell" style="background: #2A2724; color: #FFFFFF">9</div>
+            <div class="cell" style="background: #2A2724; color: #FFFFFF">10</div>
+            <div class="cell" style="background: #9C9389; color: #FFFFFF">11</div>
+            <div class="cell" style="background: #2A2724; color: #FFFFFF">12</div>
+            <div class="cell" style="background: #F0ECE6; color: #9C9389">13</div>
+            <div class="cell" style="background: #2A2724; color: #FFFFFF">14</div>
+            <div class="cell" style="background: #C9BFB2">15</div>
+            <div class="cell" style="background: #2A2724; color: #FFFFFF">16</div>
+            <div class="cell" style="background: #2A2724; color: #FFFFFF">17</div>
+            <div class="cell" style="background: #9C9389; color: #FFFFFF">18</div>
+            <div class="cell" style="background: #2A2724; color: #FFFFFF">19</div>
+            <div class="cell" style="border: 2px solid #A8450E; color: #2A2724">20</div>
+            <div class="cell" style="color: #D8D1C7">21</div>
+            <div class="cell" style="color: #D8D1C7">22</div>
+            <div class="cell" style="color: #D8D1C7">23</div>
+            <div class="cell" style="color: #D8D1C7">24</div>
+            <div class="cell" style="color: #D8D1C7">25</div>
+            <div class="cell" style="color: #D8D1C7">26</div>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 14px; margin-top: 18px; font-size: 12px; color: #6B645C; font-weight: 500">
+            <span style="display: flex; align-items: center; gap: 6px"><span style="width: 12px; height: 12px; border-radius: 4px; background: #2A2724"></span>Answered</span>
+            <span style="display: flex; align-items: center; gap: 6px"><span style="width: 12px; height: 12px; border-radius: 4px; background: #9C9389"></span>Your usual day</span>
+            <span style="display: flex; align-items: center; gap: 6px"><span style="width: 12px; height: 12px; border-radius: 4px; background: #C9BFB2"></span>Part of it</span>
+            <span style="display: flex; align-items: center; gap: 6px"><span style="width: 12px; height: 12px; border-radius: 4px; background: #F0ECE6"></span>Nothing</span>
+          </div>
+          <div style="font-size: 13px; line-height: 1.5; color: #6B645C; margin-top: 14px">Three days a week is what your cadence asks about: Mondays, Wednesdays and Saturdays. The quiet days are not misses and are not drawn as any.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 degraded -->
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">5</div><div class="capt">When something is missing</div></div>
+      <div class="capd">No model, a declined nutrient, and another app's samples, all on one day. Each is described in the same tone as a working path — a row reads as abnormal only when the honest description of it is phrased as a defect.</div>
+      <div class="ph">
+        <div class="nav">
+          <div style="display: flex; align-items: flex-start; gap: 14px">
+            <div style="flex: 1 1 auto"><h2 class="ttl" style="font-size: 27px">Tuesday</h2><p class="sub">Two of four meals · 882 kcal</p></div>
+            <svg width="54" height="54" viewBox="0 0 100 100" aria-label="Two of four meals answered">
+              <g clip-path="url(#coreS)"><rect x="27" y="27" width="46" height="10" fill="#2E5FA3"></rect><rect x="27" y="37" width="46" height="22" fill="#E8641C"></rect><rect x="27" y="59" width="46" height="11" fill="#B03060"></rect><rect x="27" y="70" width="46" height="3" fill="url(#hS)"></rect></g>
+              <rect x="27" y="27" width="46" height="46" rx="14" fill="none" stroke="#FBFAF8" stroke-width="2.5"></rect>
+              <g transform="rotate(-90 50 50)"><circle cx="50" cy="50" r="44" fill="none" stroke="#EDE8E1" stroke-width="6" stroke-dasharray="63.1 13.1" stroke-linecap="round"></circle><circle cx="50" cy="50" r="44" fill="none" stroke="#2A2724" stroke-width="6" stroke-dasharray="136.2 140.3" stroke-linecap="round"></circle></g>
+            </svg>
+          </div>
+        </div>
+        <div class="body" style="padding-top: 16px">
+          <div class="group" style="padding: 14px 16px">
+            <div style="display: flex; align-items: flex-start; gap: 11px">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#6B645C" stroke-width="1.8" aria-hidden="true" style="margin-top: 2px"><circle cx="10" cy="10" r="7.5"></circle><path d="M10 6.5v.2M10 9.2v4.3"></path></svg>
+              <div style="flex: 1 1 auto"><div style="font-size: 15px; line-height: 1.45">Health is not taking sodium. The other seven are written as usual.</div><div class="rnd" style="font-size: 14px; color: #A8450E; font-weight: 700; margin-top: 7px">What this means</div></div>
+            </div>
+          </div>
+          <div>
+            <div class="head">Lunch · 12:40</div>
+            <div class="group">
+              <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Lentil soup with vegetables</div><div class="rmeta">350 g · Health has seven of eight</div></div><div class="fig">287</div></div>
+              <div class="hair"></div>
+              <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Rye bread</div><div class="rmeta">50 g</div></div><div class="fig">110</div></div>
+            </div>
+          </div>
+          <div>
+            <div class="head">From other apps</div>
+            <div class="group">
+              <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname" style="color: #6B645C">Coffee, oat milk</div><div class="rmeta">Written by another app · 13:40</div></div><div class="fig" style="color: #6B645C">64</div></div>
+            </div>
+            <div style="font-size: 13px; line-height: 1.45; color: #6B645C; padding: 8px 6px 0">Counted in the day's figures and shown separately, because Health will not let this app edit what it did not write.</div>
+          </div>
+          <div class="group" style="padding: 14px 16px">
+            <div style="font-size: 13px; line-height: 1.5; color: #6B645C">Apple Intelligence is off on this phone and no endpoint is set, so a line it has not seen before cannot be read. A line you have logged before still resolves, and search is how new foods get in.</div>
+          </div>
+        </div>
+        <div class="comp" style="border-style: dashed">
+          <span style="flex: 1 1 auto; font-size: 15px; color: #9C9389; line-height: 1.3">Type a line you have logged before, or search</span>
+          <div style="width: 34px; height: 34px; border-radius: 17px; background: #F6F3EE; display: flex; align-items: center; justify-content: center; flex: 0 0 auto"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#A8450E" stroke-width="2" stroke-linecap="round" aria-label="Search"><circle cx="9" cy="9" r="5.6"></circle><path d="M13.2 13.2L17 17"></path></svg></div>
+        </div>
+        <div class="tabs">
+          <span class="tabIconOn"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#A8450E" stroke-width="2" stroke-linecap="round" aria-label="Today"><rect x="3" y="4.5" width="14" height="12.5" rx="3"></rect><path d="M3 8.2h14M7 2.8v2.6M13 2.8v2.6"></path></svg></span>
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Shape"><path d="M4.5 16V9M10 16V4.5M15.5 16v-4.5"></path></svg></span>
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Library"><rect x="4" y="3" width="12" height="14" rx="2.5"></rect><path d="M4 7.2h12"></path></svg></span>
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Settings"><path d="M3.5 7h13M3.5 13h13"></path><circle cx="7.5" cy="7" r="2"></circle><circle cx="12.5" cy="13" r="2"></circle></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6 widget and siri -->
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">6</div><div class="capt">Outside the app</div></div>
+      <div class="capd">A tap on the widget is the tap — nothing reaches Health without one, and the rule was never that you must act twice. The day opens underneath it so what was written is visible rather than only reported.</div>
+      <div class="ph" style="background: #EFE7DC">
+        <div style="padding: 56px 24px 0; display: flex; flex-direction: column; gap: 18px">
+          <div style="display: flex; gap: 16px">
+            <div class="wdg" style="width: 150px; height: 150px; box-sizing: border-box; display: flex; flex-direction: column">
+              <svg width="48" height="48" viewBox="0 0 100 100" aria-label="Two of four meals answered">
+                <g clip-path="url(#coreS)"><rect x="27" y="27" width="46" height="10" fill="#2E5FA3"></rect><rect x="27" y="37" width="46" height="22" fill="#E8641C"></rect><rect x="27" y="59" width="46" height="14" fill="#B03060"></rect></g>
+                <rect x="27" y="27" width="46" height="46" rx="14" fill="none" stroke="#FFFFFF" stroke-width="2.5"></rect>
+                <g transform="rotate(-90 50 50)"><circle cx="50" cy="50" r="44" fill="none" stroke="#EDE8E1" stroke-width="7" stroke-dasharray="63.1 13.1" stroke-linecap="round"></circle><circle cx="50" cy="50" r="44" fill="none" stroke="#2A2724" stroke-width="7" stroke-dasharray="136.2 140.3" stroke-linecap="round"></circle></g>
+              </svg>
+              <div class="big" style="font-size: 26px; margin-top: auto">882 <span style="font-size: 12px; font-weight: 700; color: #6B645C">kcal</span></div>
+              <div style="font-size: 11px; color: #6B645C; font-weight: 600; margin-top: 2px">Two meals in · 17 days</div>
+            </div>
+            <div class="wdg" style="flex: 1 1 auto; height: 150px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; gap: 9px">
+              <div style="font-size: 11px; color: #6B645C; font-weight: 700">LOG IN ONE TAP</div>
+              <div style="background: #F6F3EE; border-radius: 12px; padding: 9px 11px; font-size: 13px; font-weight: 600">oats, banana, milk, coffee</div>
+              <div style="background: #F6F3EE; border-radius: 12px; padding: 9px 11px; font-size: 13px; font-weight: 600">chicken salad</div>
+            </div>
+          </div>
+          <div class="wdg" style="padding: 18px">
+            <div style="display: flex; align-items: center; gap: 12px">
+              <div style="width: 34px; height: 34px; border-radius: 17px; background: #F6F3EE; display: flex; align-items: center; justify-content: center; flex: 0 0 auto"><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="#A8450E" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="7.4" y="2.5" width="5.2" height="9" rx="2.6"></rect><path d="M4.6 9.6a5.4 5.4 0 0010.8 0M10 15v2.5"></path></svg></div>
+              <div style="flex: 1 1 auto; font-size: 15px; line-height: 1.35">“Log oats, banana and coffee in Omnomnom”</div>
+            </div>
+            <div class="hair" style="margin: 14px 0"></div>
+            <div class="rnd" style="font-size: 16px; font-weight: 700">Logged 4 items to breakfast</div>
+            <div style="font-size: 13px; color: #6B645C; margin-top: 4px">465 kcal · from a line you have logged 29 times</div>
+          </div>
+          <div class="wdg" style="padding: 18px">
+            <div class="rnd" style="font-size: 16px; font-weight: 700">“Log a slice of cake”</div>
+            <div class="hair" style="margin: 13px 0"></div>
+            <div style="font-size: 14px; line-height: 1.45; color: #6B645C">That one is new, so it needs a look. Opening Omnomnom with it in the field.</div>
+          </div>
+          <div style="font-size: 13px; line-height: 1.5; color: #6B645C; padding: 0 4px">A line Siri has not seen before is never guessed at and logged out of sight. It lands in the field, on the question, with nothing written yet.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="mocks.css">
+<title>G2 — Rounded</title>
+</head>
+<body>
+<style>
+body { margin: 0; font-family: -apple-system, system-ui, "Helvetica Neue", sans-serif; color: #2A2724; -webkit-font-smoothing: antialiased; }
+a { color: #A8450E; } a:hover { color: #7C3309; }
+.rnd { font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; }
+.ph { width: 390px; height: 844px; box-sizing: border-box; border: 1px solid #E4DFD8; border-radius: 46px; background: #FBFAF8; overflow: hidden; display: flex; flex-direction: column; }
+.nav { padding: 28px 20px 0; }
+.ttl { font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; font-size: 31px; font-weight: 700; line-height: 1.05; margin: 0; letter-spacing: -0.6px; }
+.sub { font-size: 13px; color: #6B645C; margin: 4px 0 0; font-weight: 500; }
+.body { flex: 1 1 auto; padding: 0 16px; overflow: hidden; display: flex; flex-direction: column; gap: 12px; }
+.group { background: #FFFFFF; border-radius: 20px; padding: 6px 16px; }
+.hair { height: 1px; background: #F0ECE6; }
+.head { font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; font-size: 14px; font-weight: 700; color: #6B645C; padding: 2px 6px 6px; }
+.row { display: flex; align-items: baseline; gap: 12px; padding: 11px 0; }
+.rname { font-size: 16px; font-weight: 500; }
+.rmeta { font-size: 13px; color: #6B645C; margin-top: 2px; }
+.said { font-size: 13px; color: #6B645C; margin-top: 5px; }
+.unsure { border-bottom: 2.5px dotted #A8450E; padding-bottom: 1px; }
+.fig { font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.big { font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; font-weight: 800; letter-spacing: -1.5px; }
+.comp { margin: 10px 16px 8px; background: #FFFFFF; border: 1.5px solid #E4DFD8; border-radius: 26px; padding: 11px 11px 11px 18px; display: flex; align-items: center; gap: 10px; }
+.send { width: 34px; height: 34px; border-radius: 17px; border: 0; background: #E8641C; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; padding: 0; cursor: pointer; }
+.bar { display: flex; gap: 2px; height: 22px; border-radius: 11px; overflow: hidden; }
+.barS { display: flex; gap: 2px; height: 11px; border-radius: 6px; overflow: hidden; }
+.leg { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.sw { width: 12px; height: 12px; border-radius: 4px; flex: 0 0 auto; }
+.hatch { background: repeating-linear-gradient(45deg, #9C9389 0 2px, #FFFFFF 2px 5px); }
+.btn { background: #2A2724; color: #FFFFFF; border: 0; border-radius: 14px; padding: 11px 15px; font: inherit; font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; }
+.tabs { display: flex; justify-content: space-around; align-items: center; background: #FFFFFF; border-top: 1px solid #F0ECE6; padding: 9px 14px 16px; }
+.tabIcon { display: flex; align-items: center; justify-content: center; padding: 8px 16px; border-radius: 15px; }
+.tabIconOn { display: flex; align-items: center; justify-content: center; padding: 8px 16px; border-radius: 15px; background: #FDEFE6; }
+.capn { width: 22px; height: 22px; border-radius: 11px; background: #2A2724; color: #FFFFFF; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.cap { width: 390px; display: flex; flex-direction: column; gap: 7px; }
+.capt { font-size: 18px; font-weight: 600; }
+.capd { font-size: 15px; line-height: 1.45; color: #5A5A5A; }
+.lbl { font-size: 13px; font-weight: 700; color: #6B645C; }
+</style>
+<div style="width: 1400px; height: 1340px; box-sizing: border-box; background: #FFFFFF; padding: 44px 56px; display: flex; flex-direction: column; gap: 22px">
+
+  <svg width="0" height="0" aria-hidden="true" style="position: absolute"><defs>
+    <clipPath id="coreG2"><rect x="27" y="27" width="46" height="46" rx="14"></rect></clipPath>
+    <pattern id="hG2" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)"><rect width="5" height="5" fill="#FFFFFF"></rect><line x1="0" y1="0" x2="0" y2="5" stroke="#9C9389" stroke-width="2"></line></pattern>
+  </defs></svg>
+
+  <div style="border-bottom: 1px solid #E5E5EA; padding-bottom: 16px">
+    <div style="display: flex; align-items: baseline; gap: 14px">
+      <span class="big" style="font-size: 42px; line-height: 1; color: #E8641C">G2</span>
+      <h1 class="rnd" style="margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.8px">Rounded</h1>
+    </div>
+    <p style="margin: 8px 0 0; font-size: 16px; line-height: 1.45; color: #5A5A5A">No download at all: the system rounded face, which the brand kit already uses for the wordmark and the energy figure, extended to every title and figure. Soft groups on a warm near-white instead of rules. Friendly, and the only branch with nothing to bundle and nothing to licence.</p>
+  </div>
+
+  <div style="display: flex; gap: 59px">
+
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">1</div><div class="capt">Today</div></div>
+      <div class="capd">Rounded groups rather than hard rules, and sentence-case labels. The warmth comes from the shapes and the ground; the food list itself is as plain as ever.</div>
+      <div class="ph">
+        <div class="nav">
+          <div style="display: flex; align-items: flex-start; gap: 14px">
+            <div style="flex: 1 1 auto"><h2 class="ttl">Tuesday</h2><p class="sub">Three of four meals · 1,320 kcal</p></div>
+            <svg width="62" height="62" viewBox="0 0 100 100" aria-label="Three of four meals answered. Carbohydrate 51 per cent, fat 28, protein 19, 2 with no figure.">
+              <g clip-path="url(#coreG2)"><rect x="27" y="27" width="46" height="8.8" fill="#2E5FA3"></rect><rect x="27" y="35.8" width="46" height="23.4" fill="#E8641C"></rect><rect x="27" y="59.2" width="46" height="12.9" fill="#B03060"></rect><rect x="27" y="72.1" width="46" height="0.9" fill="url(#hG2)"></rect></g>
+              <rect x="27" y="27" width="46" height="46" rx="14" fill="none" stroke="#FBFAF8" stroke-width="2.5"></rect>
+              <g transform="rotate(-90 50 50)"><circle cx="50" cy="50" r="44" fill="none" stroke="#EDE8E1" stroke-width="6" stroke-dasharray="63.1 13.1" stroke-linecap="round"></circle><circle cx="50" cy="50" r="44" fill="none" stroke="#2A2724" stroke-width="6" stroke-dasharray="63.1 213.4" stroke-linecap="round"></circle><circle cx="50" cy="50" r="44" fill="none" stroke="#2A2724" stroke-width="6" stroke-dasharray="63.1 213.4" stroke-dashoffset="-69.1" stroke-linecap="round"></circle><circle cx="50" cy="50" r="44" fill="none" stroke="#2A2724" stroke-width="6" stroke-dasharray="63.1 213.4" stroke-dashoffset="-207.3" stroke-linecap="round"></circle></g>
+            </svg>
+          </div>
+        </div>
+        <div class="body" style="padding-top: 16px">
+          <div>
+            <div class="head">Breakfast · 08:10</div>
+            <div class="group">
+              <div class="row"><div style="flex: 1 1 auto"><div class="rname">Oat flakes</div><div class="rmeta">80 g</div></div><div class="fig">295</div></div>
+              <div class="hair"></div>
+              <div class="row"><div style="flex: 1 1 auto"><div class="rname">Banana raw</div><div class="rmeta">120 g</div></div><div class="fig">95</div></div>
+              <div class="hair"></div>
+              <div class="row"><div style="flex: 1 1 auto"><div class="rname">Milk, semi-skimmed</div><div class="rmeta">150 g</div></div><div class="fig">72</div></div>
+              <div class="hair"></div>
+              <div class="row"><div style="flex: 1 1 auto"><div class="rname">Coffee (infusion)</div><div class="rmeta">250 g</div></div><div class="fig">3</div></div>
+            </div>
+          </div>
+          <div>
+            <div class="head">Lunch · 12:40</div>
+            <div class="group">
+              <div class="row"><div style="flex: 1 1 auto"><div class="rname">Lentil soup with vegetables</div><div class="rmeta">350 g</div></div><div class="fig">287</div></div>
+              <div class="hair"></div>
+              <div class="row"><div style="flex: 1 1 auto"><div class="rname">Rye bread</div><div class="rmeta">50 g</div></div><div class="fig">110</div></div>
+            </div>
+          </div>
+          <div>
+            <div class="head">Dinner · 19:15</div>
+            <div class="group">
+              <div class="row" style="align-items: flex-start"><div style="flex: 1 1 auto"><div class="rname">Pizza margherita</div><div class="rmeta">125 g</div><div class="said">a slice of margherita pizza</div></div><div class="fig">298</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="comp">
+          <span style="flex: 1 1 auto; font-size: 16px; color: #9C9389; font-weight: 500">What did you eat?</span>
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#6B645C" stroke-width="1.7" aria-hidden="true"><path d="M3 8.5A1.5 1.5 0 014.5 7h2L8 5h8l1.5 2h2A1.5 1.5 0 0121 8.5v9A1.5 1.5 0 0119.5 19h-15A1.5 1.5 0 013 17.5z"></path><circle cx="12" cy="13" r="3.4"></circle></svg>
+          <button class="send" aria-label="Log this line"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 20V5M12 5l-6 6M12 5l6 6"></path></svg></button>
+        </div>
+        <div class="tabs">
+          <span class="tabIconOn"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#A8450E" stroke-width="2" stroke-linecap="round" aria-label="Today"><rect x="3" y="4.5" width="14" height="12.5" rx="3"></rect><path d="M3 8.2h14M7 2.8v2.6M13 2.8v2.6"></path></svg></span>
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Shape"><path d="M4.5 16V9M10 16V4.5M15.5 16v-4.5"></path></svg></span>
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Library"><rect x="4" y="3" width="12" height="14" rx="2.5"></rect><path d="M4 7.2h12"></path></svg></span>
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Settings"><path d="M3.5 7h13M3.5 13h13"></path><circle cx="7.5" cy="7" r="2"></circle><circle cx="12.5" cy="13" r="2"></circle></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">2</div><div class="capt">Shape</div></div>
+      <div class="capd">The field is on this tab too — that is the structural change. Rounded bar ends and softer swatches, but the bands and the ticks are the same measurements as everywhere else.</div>
+      <div class="ph">
+        <div class="nav"><h2 class="ttl">Shape</h2><p class="sub">Tuesday 5 October</p></div>
+        <div class="body" style="padding-top: 16px">
+          <div>
+            <div class="head">What today was made of</div>
+            <div class="group" style="padding: 14px 16px 16px">
+              <div style="height: 8px; position: relative">
+                <span style="position: absolute; left: 16%; top: 0; width: 2px; height: 8px; border-radius: 1px; background: #9C9389"></span>
+                <span style="position: absolute; left: 63%; top: 0; width: 2px; height: 8px; border-radius: 1px; background: #9C9389"></span>
+                <span style="position: absolute; left: 96%; top: 0; width: 2px; height: 8px; border-radius: 1px; background: #9C9389"></span>
+              </div>
+              <div class="bar" style="margin-top: 4px"><span style="width: 19.1%; background: #2E5FA3"></span><span style="width: 50.9%; background: #E8641C"></span><span style="width: 28.0%; background: #B03060"></span><span class="hatch" style="width: 2.0%"></span></div>
+              <div style="font-size: 13px; color: #6B645C; margin-top: 8px">Ticks are your usual month. More protein and less fat today.</div>
+              <div class="hair" style="margin: 13px 0"></div>
+              <div style="display: flex; flex-direction: column; gap: 8px">
+                <div class="leg"><span class="sw" style="background: #2E5FA3"></span><span style="flex: 1 1 auto">Protein</span><span class="fig" style="font-size: 15px">63 g</span><span class="fig" style="font-size: 15px; color: #6B645C; width: 40px; text-align: right">19 %</span></div>
+                <div class="leg"><span class="sw" style="background: #E8641C"></span><span style="flex: 1 1 auto">Carbohydrate</span><span class="fig" style="font-size: 15px">168 g</span><span class="fig" style="font-size: 15px; color: #6B645C; width: 40px; text-align: right">51 %</span></div>
+                <div class="leg"><span class="sw" style="background: #B03060"></span><span style="flex: 1 1 auto">Fat</span><span class="fig" style="font-size: 15px">41 g</span><span class="fig" style="font-size: 15px; color: #6B645C; width: 40px; text-align: right">28 %</span></div>
+                <div class="leg" style="color: #6B645C"><span class="sw hatch" style="border: 1px solid #E4DFD8"></span><span style="flex: 1 1 auto">No figure covers it</span><span class="fig" style="font-size: 15px">27 kcal</span></div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="head">The last seven days</div>
+            <div class="group" style="padding: 14px 16px">
+              <div style="display: flex; flex-direction: column; gap: 8px">
+                <div style="display: flex; align-items: center; gap: 9px"><span style="font-size: 12px; color: #6B645C; width: 28px; font-weight: 600">Wed</span><div class="barS" style="flex: 1 1 auto"><span style="width: 14%; background: #2E5FA3"></span><span style="width: 48%; background: #E8641C"></span><span style="width: 33%; background: #B03060"></span><span class="hatch" style="width: 5%"></span></div><span class="fig" style="font-size: 12px; color: #6B645C; width: 36px; text-align: right">2,180</span></div>
+                <div style="display: flex; align-items: center; gap: 9px"><span style="font-size: 12px; color: #6B645C; width: 28px; font-weight: 600">Thu</span><div class="barS" style="flex: 1 1 auto"><span style="width: 12%; background: #2E5FA3"></span><span style="width: 54%; background: #E8641C"></span><span style="width: 29%; background: #B03060"></span><span class="hatch" style="width: 5%"></span></div><span class="fig" style="font-size: 12px; color: #6B645C; width: 36px; text-align: right">1,940</span></div>
+                <div style="display: flex; align-items: center; gap: 9px"><span style="font-size: 12px; color: #6B645C; width: 28px; font-weight: 600">Fri</span><div class="barS" style="flex: 1 1 auto"><span style="width: 11%; background: #2E5FA3"></span><span style="width: 52%; background: #E8641C"></span><span style="width: 33%; background: #B03060"></span><span class="hatch" style="width: 4%"></span></div><span class="fig" style="font-size: 12px; color: #6B645C; width: 36px; text-align: right">2,460</span></div>
+                <div style="display: flex; align-items: center; gap: 9px"><span style="font-size: 12px; color: #6B645C; width: 28px; font-weight: 600">Sat</span><div class="barS" style="flex: 1 1 auto"><span style="width: 15%; background: #2E5FA3"></span><span style="width: 43%; background: #E8641C"></span><span style="width: 38%; background: #B03060"></span><span class="hatch" style="width: 4%"></span></div><span class="fig" style="font-size: 12px; color: #6B645C; width: 36px; text-align: right">2,050</span></div>
+                <div style="display: flex; align-items: center; gap: 9px"><span style="font-size: 12px; color: #6B645C; width: 28px; font-weight: 600">Sun</span><div style="flex: 1 1 auto; border-top: 2px dotted #D8D1C7"></div><span class="fig" style="font-size: 12px; color: #6B645C; width: 36px; text-align: right">—</span></div>
+                <div style="display: flex; align-items: center; gap: 9px"><span style="font-size: 12px; color: #6B645C; width: 28px; font-weight: 600">Mon</span><div class="barS" style="flex: 1 1 auto"><span style="width: 16%; background: #2E5FA3"></span><span style="width: 45%; background: #E8641C"></span><span style="width: 34%; background: #B03060"></span><span class="hatch" style="width: 5%"></span></div><span class="fig" style="font-size: 12px; color: #6B645C; width: 36px; text-align: right">2,310</span></div>
+                <div style="display: flex; align-items: center; gap: 9px"><span style="font-size: 12px; width: 28px; font-weight: 800">Tue</span><div class="barS" style="flex: 1 1 auto"><span style="width: 19%; background: #2E5FA3"></span><span style="width: 51%; background: #E8641C"></span><span style="width: 28%; background: #B03060"></span><span class="hatch" style="width: 2%"></span></div><span class="fig" style="font-size: 12px; width: 36px; text-align: right">1,320</span></div>
+              </div>
+              <div style="font-size: 12px; color: #6B645C; margin-top: 9px">Sunday is a gap, drawn as a gap.</div>
+            </div>
+          </div>
+          <div class="group" style="padding: 4px 16px">
+            <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">The run</div><div class="rmeta">17 days answered · best 34</div></div><span style="color: #A8450E; font-size: 18px">›</span></div>
+          </div>
+        </div>
+        <div class="comp">
+          <span style="flex: 1 1 auto; font-size: 16px; color: #9C9389; font-weight: 500">What did you eat?</span>
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#6B645C" stroke-width="1.7" aria-hidden="true"><path d="M3 8.5A1.5 1.5 0 014.5 7h2L8 5h8l1.5 2h2A1.5 1.5 0 0121 8.5v9A1.5 1.5 0 0119.5 19h-15A1.5 1.5 0 013 17.5z"></path><circle cx="12" cy="13" r="3.4"></circle></svg>
+          <button class="send" aria-label="Log this line"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 20V5M12 5l-6 6M12 5l6 6"></path></svg></button>
+        </div>
+        <div class="tabs">
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Today"><rect x="3" y="4.5" width="14" height="12.5" rx="3"></rect><path d="M3 8.2h14M7 2.8v2.6M13 2.8v2.6"></path></svg></span>
+          <span class="tabIconOn"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#A8450E" stroke-width="2" stroke-linecap="round" aria-label="Shape"><path d="M4.5 16V9M10 16V4.5M15.5 16v-4.5"></path></svg></span>
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Library"><rect x="4" y="3" width="12" height="14" rx="2.5"></rect><path d="M4 7.2h12"></path></svg></span>
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Settings"><path d="M3.5 7h13M3.5 13h13"></path><circle cx="7.5" cy="7" r="2"></circle><circle cx="12.5" cy="13" r="2"></circle></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">3</div><div class="capt">The run</div></div>
+      <div class="capd">The rounded face at 64 px is the brand's own voice, and it is the one place a big friendly number is the right answer. Round-capped ring segments to match.</div>
+      <div class="ph">
+        <div class="nav">
+          <div style="font-size: 15px; color: #A8450E; margin-bottom: 8px; font-weight: 600">‹ Shape</div>
+          <h2 class="ttl">The run</h2><p class="sub">Days answered, not days eaten well</p>
+        </div>
+        <div class="body" style="padding-top: 16px">
+          <div class="group" style="padding: 18px 18px 16px; display: flex; align-items: flex-end; gap: 22px">
+            <div><div class="big" style="font-size: 62px; line-height: 0.88">17</div><div style="font-size: 13px; color: #6B645C; margin-top: 6px; font-weight: 500">days running</div></div>
+            <div style="padding-bottom: 5px"><div class="big" style="font-size: 30px; line-height: 1; color: #9C9389">34</div><div style="font-size: 13px; color: #6B645C; margin-top: 5px; font-weight: 500">your best</div></div>
+          </div>
+          <div class="group" style="padding: 4px 16px">
+            <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Monday is still open</div><div class="rmeta">Close it and the run holds at 18</div></div><button class="btn">Close it</button></div>
+          </div>
+          <div>
+            <div class="head">October, meal by meal</div>
+            <div class="group" style="padding: 14px 16px">
+              <div style="display: flex; flex-wrap: wrap; gap: 9px">
+                <svg width="30" height="30" viewBox="0 0 100 100" aria-label="1 October, answered"><g clip-path="url(#coreG2)"><rect x="27" y="27" width="46" height="8" fill="#2E5FA3"></rect><rect x="27" y="35" width="46" height="24" fill="#E8641C"></rect><rect x="27" y="59" width="46" height="14" fill="#B03060"></rect></g><rect x="27" y="27" width="46" height="46" rx="14" fill="none" stroke="#FFFFFF" stroke-width="2.5"></rect><circle cx="50" cy="50" r="44" fill="none" stroke="#2A2724" stroke-width="7" stroke-dasharray="63.1 13.1" stroke-linecap="round"></circle></svg>
+                <svg width="30" height="30" viewBox="0 0 100 100" aria-label="2 October, answered"><g clip-path="url(#coreG2)"><rect x="27" y="27" width="46" height="7" fill="#2E5FA3"></rect><rect x="27" y="34" width="46" height="26" fill="#E8641C"></rect><rect x="27" y="60" width="46" height="13" fill="#B03060"></rect></g><rect x="27" y="27" width="46" height="46" rx="14" fill="none" stroke="#FFFFFF" stroke-width="2.5"></rect><circle cx="50" cy="50" r="44" fill="none" stroke="#2A2724" stroke-width="7" stroke-dasharray="63.1 13.1" stroke-linecap="round"></circle></svg>
+                <svg width="30" height="30" viewBox="0 0 100 100" aria-label="3 October, from your usual day"><g clip-path="url(#coreG2)"><rect x="27" y="27" width="46" height="8" fill="#2E5FA3" opacity="0.45"></rect><rect x="27" y="35" width="46" height="24" fill="#E8641C" opacity="0.45"></rect><rect x="27" y="59" width="46" height="14" fill="#B03060" opacity="0.45"></rect></g><rect x="27" y="27" width="46" height="46" rx="14" fill="none" stroke="#FFFFFF" stroke-width="2.5"></rect><circle cx="50" cy="50" r="44" fill="none" stroke="#9C9389" stroke-width="7" stroke-dasharray="63.1 13.1" stroke-linecap="round"></circle></svg>
+                <svg width="30" height="30" viewBox="0 0 100 100" aria-label="4 October, nothing"><rect x="27" y="27" width="46" height="46" rx="14" fill="none" stroke="#EDE8E1" stroke-width="3"></rect><circle cx="50" cy="50" r="44" fill="none" stroke="#EDE8E1" stroke-width="7" stroke-dasharray="4 6" stroke-linecap="round"></circle></svg>
+                <svg width="30" height="30" viewBox="0 0 100 100" aria-label="5 October, three of four meals"><g clip-path="url(#coreG2)"><rect x="27" y="27" width="46" height="8.8" fill="#2E5FA3"></rect><rect x="27" y="35.8" width="46" height="23.4" fill="#E8641C"></rect><rect x="27" y="59.2" width="46" height="12.9" fill="#B03060"></rect><rect x="27" y="72.1" width="46" height="0.9" fill="url(#hG2)"></rect></g><rect x="27" y="27" width="46" height="46" rx="14" fill="none" stroke="#FFFFFF" stroke-width="2.5"></rect><g transform="rotate(-90 50 50)"><circle cx="50" cy="50" r="44" fill="none" stroke="#EDE8E1" stroke-width="7" stroke-dasharray="63.1 13.1" stroke-linecap="round"></circle><circle cx="50" cy="50" r="44" fill="none" stroke="#2A2724" stroke-width="7" stroke-dasharray="205.3 71.2" stroke-linecap="round"></circle></g></svg>
+                <svg width="30" height="30" viewBox="0 0 100 100" aria-label="6 October, two of four meals"><g clip-path="url(#coreG2)"><rect x="27" y="27" width="46" height="10" fill="#2E5FA3"></rect><rect x="27" y="37" width="46" height="22" fill="#E8641C"></rect><rect x="27" y="59" width="46" height="14" fill="#B03060"></rect></g><rect x="27" y="27" width="46" height="46" rx="14" fill="none" stroke="#FFFFFF" stroke-width="2.5"></rect><g transform="rotate(-90 50 50)"><circle cx="50" cy="50" r="44" fill="none" stroke="#EDE8E1" stroke-width="7" stroke-dasharray="63.1 13.1" stroke-linecap="round"></circle><circle cx="50" cy="50" r="44" fill="none" stroke="#2A2724" stroke-width="7" stroke-dasharray="136.2 140.3" stroke-linecap="round"></circle></g></svg>
+                <svg width="30" height="30" viewBox="0 0 100 100" aria-label="7 October, answered"><g clip-path="url(#coreG2)"><rect x="27" y="27" width="46" height="9" fill="#2E5FA3"></rect><rect x="27" y="36" width="46" height="23" fill="#E8641C"></rect><rect x="27" y="59" width="46" height="14" fill="#B03060"></rect></g><rect x="27" y="27" width="46" height="46" rx="14" fill="none" stroke="#FFFFFF" stroke-width="2.5"></rect><circle cx="50" cy="50" r="44" fill="none" stroke="#2A2724" stroke-width="7" stroke-dasharray="63.1 13.1" stroke-linecap="round"></circle></svg>
+                <svg width="30" height="30" viewBox="0 0 100 100" aria-label="8 October, answered"><g clip-path="url(#coreG2)"><rect x="27" y="27" width="46" height="8" fill="#2E5FA3"></rect><rect x="27" y="35" width="46" height="25" fill="#E8641C"></rect><rect x="27" y="60" width="46" height="13" fill="#B03060"></rect></g><rect x="27" y="27" width="46" height="46" rx="14" fill="none" stroke="#FFFFFF" stroke-width="2.5"></rect><circle cx="50" cy="50" r="44" fill="none" stroke="#2A2724" stroke-width="7" stroke-dasharray="63.1 13.1" stroke-linecap="round"></circle></svg>
+                <svg width="30" height="30" viewBox="0 0 100 100" aria-label="9 October, three of four meals"><g clip-path="url(#coreG2)"><rect x="27" y="27" width="46" height="7" fill="#2E5FA3"></rect><rect x="27" y="34" width="46" height="25" fill="#E8641C"></rect><rect x="27" y="59" width="46" height="14" fill="#B03060"></rect></g><rect x="27" y="27" width="46" height="46" rx="14" fill="none" stroke="#FFFFFF" stroke-width="2.5"></rect><g transform="rotate(-90 50 50)"><circle cx="50" cy="50" r="44" fill="none" stroke="#EDE8E1" stroke-width="7" stroke-dasharray="63.1 13.1" stroke-linecap="round"></circle><circle cx="50" cy="50" r="44" fill="none" stroke="#2A2724" stroke-width="7" stroke-dasharray="205.3 71.2" stroke-linecap="round"></circle></g></svg>
+                <svg width="30" height="30" viewBox="0 0 100 100" aria-label="10 October, answered"><g clip-path="url(#coreG2)"><rect x="27" y="27" width="46" height="9" fill="#2E5FA3"></rect><rect x="27" y="36" width="46" height="24" fill="#E8641C"></rect><rect x="27" y="60" width="46" height="13" fill="#B03060"></rect></g><rect x="27" y="27" width="46" height="46" rx="14" fill="none" stroke="#FFFFFF" stroke-width="2.5"></rect><circle cx="50" cy="50" r="44" fill="none" stroke="#2A2724" stroke-width="7" stroke-dasharray="63.1 13.1" stroke-linecap="round"></circle></svg>
+                <svg width="30" height="30" viewBox="0 0 100 100" aria-label="11 October, nothing"><rect x="27" y="27" width="46" height="46" rx="14" fill="none" stroke="#EDE8E1" stroke-width="3"></rect><circle cx="50" cy="50" r="44" fill="none" stroke="#EDE8E1" stroke-width="7" stroke-dasharray="4 6" stroke-linecap="round"></circle></svg>
+                <svg width="30" height="30" viewBox="0 0 100 100" aria-label="12 October, answered"><g clip-path="url(#coreG2)"><rect x="27" y="27" width="46" height="10" fill="#2E5FA3"></rect><rect x="27" y="37" width="46" height="23" fill="#E8641C"></rect><rect x="27" y="60" width="46" height="13" fill="#B03060"></rect></g><rect x="27" y="27" width="46" height="46" rx="14" fill="none" stroke="#FFFFFF" stroke-width="2.5"></rect><circle cx="50" cy="50" r="44" fill="none" stroke="#2A2724" stroke-width="7" stroke-dasharray="63.1 13.1" stroke-linecap="round"></circle></svg>
+              </div>
+              <div style="font-size: 12px; color: #6B645C; margin-top: 12px; line-height: 1.5">Closed ring, answered. Grey ring, your usual day. Dotted, nothing. How much of the ring is drawn is how many meals were answered.</div>
+            </div>
+          </div>
+          <div style="font-size: 13px; line-height: 1.5; color: #6B645C; padding: 0 6px">Your cadence asks about Mondays, Wednesdays and Saturdays. Only those count; the rest are not misses.</div>
+        </div>
+        <div class="comp">
+          <span style="flex: 1 1 auto; font-size: 16px; color: #9C9389; font-weight: 500">What did you eat?</span>
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#6B645C" stroke-width="1.7" aria-hidden="true"><path d="M3 8.5A1.5 1.5 0 014.5 7h2L8 5h8l1.5 2h2A1.5 1.5 0 0121 8.5v9A1.5 1.5 0 0119.5 19h-15A1.5 1.5 0 013 17.5z"></path><circle cx="12" cy="13" r="3.4"></circle></svg>
+          <button class="send" aria-label="Log this line"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 20V5M12 5l-6 6M12 5l6 6"></path></svg></button>
+        </div>
+        <div class="tabs">
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Today"><rect x="3" y="4.5" width="14" height="12.5" rx="3"></rect><path d="M3 8.2h14M7 2.8v2.6M13 2.8v2.6"></path></svg></span>
+          <span class="tabIconOn"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#A8450E" stroke-width="2" stroke-linecap="round" aria-label="Shape"><path d="M4.5 16V9M10 16V4.5M15.5 16v-4.5"></path></svg></span>
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Library"><rect x="4" y="3" width="12" height="14" rx="2.5"></rect><path d="M4 7.2h12"></path></svg></span>
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Settings"><path d="M3.5 7h13M3.5 13h13"></path><circle cx="7.5" cy="7" r="2"></circle><circle cx="12.5" cy="13" r="2"></circle></svg></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="display: flex; gap: 40px; border-top: 1px solid #E5E5EA; padding-top: 16px; margin-top: auto">
+    <div style="flex: 1 1 0"><div class="lbl">The faces</div><div style="font-size: 15px; line-height: 1.5; margin-top: 5px">System rounded for titles, figures and heads; system sans for body and captions. Nothing downloaded, nothing licensed, and it scales with Dynamic Type for free. The tab bar is icons, each carrying its name for VoiceOver.</div></div>
+    <div style="flex: 1 1 0"><div class="lbl">What it buys</div><div style="font-size: 15px; line-height: 1.5; margin-top: 5px">The brand kit already reserved this face for the wordmark and the energy figure. This branch is that decision taken seriously rather than widened by accident, and it is warm without a single decorative element.</div></div>
+    <div style="flex: 1 1 0"><div class="lbl">What it costs</div><div style="font-size: 15px; line-height: 1.5; margin-top: 5px">It looks like a very good iOS app rather than a thing of its own, and it is only itself on Apple hardware — the fallback elsewhere is an ordinary sans.</div></div>
+  </div>
+
+</div>
+</body>
+</html>

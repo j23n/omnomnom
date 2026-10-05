@@ -1,0 +1,21 @@
+/* Shared page chrome for the exported design boards.
+
+   Each file here is one board from the design canvas, exported to stand on its
+   own: the board is a fixed-width element, so a narrow window scrolls sideways
+   rather than reflowing. That is deliberate — the phone frames inside are
+   390 x 844 because that is an iPhone, and letting them squash would make the
+   layout decisions unreadable. */
+
+html {
+  background: #ffffff;
+}
+
+body {
+  overflow-x: auto;
+}
+
+@media print {
+  body {
+    overflow: visible;
+  }
+}

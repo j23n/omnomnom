@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="mocks.css">
+<title>G2 · Finding food</title>
+</head>
+<body>
+<style>
+body { margin: 0; font-family: -apple-system, system-ui, "Helvetica Neue", sans-serif; color: #2A2724; -webkit-font-smoothing: antialiased; }
+a { color: #A8450E; } a:hover { color: #7C3309; }
+.rnd { font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; }
+.ph { width: 390px; height: 844px; box-sizing: border-box; border: 1px solid #E4DFD8; border-radius: 46px; background: #FBFAF8; overflow: hidden; display: flex; flex-direction: column; }
+.nav { padding: 26px 20px 0; }
+.ttl { font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; font-size: 26px; font-weight: 700; line-height: 1.05; margin: 0; letter-spacing: -0.5px; }
+.sub { font-size: 13px; color: #6B645C; margin: 4px 0 0; font-weight: 500; }
+.body { flex: 1 1 auto; padding: 0 16px; overflow: hidden; display: flex; flex-direction: column; gap: 12px; }
+.group { background: #FFFFFF; border-radius: 20px; padding: 6px 16px; }
+.hair { height: 1px; background: #F0ECE6; }
+.head { font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 14px; font-weight: 700; color: #6B645C; padding: 2px 6px 6px; }
+.row { display: flex; align-items: baseline; gap: 12px; padding: 11px 0; }
+.rname { font-size: 16px; font-weight: 500; }
+.rmeta { font-size: 13px; color: #6B645C; margin-top: 2px; }
+.fig { font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.big { font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-weight: 800; letter-spacing: -1.5px; }
+.field { background: #FFFFFF; border: 1.5px solid #E4DFD8; border-radius: 16px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
+.mod { font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 13px; font-weight: 600; background: #FFFFFF; border: 1.5px solid #E4DFD8; border-radius: 14px; padding: 9px 12px; display: inline-flex; align-items: center; gap: 7px; }
+.bar { display: flex; gap: 2px; height: 18px; border-radius: 9px; overflow: hidden; }
+.barS { display: flex; gap: 2px; height: 8px; border-radius: 4px; overflow: hidden; }
+.hatch { background: repeating-linear-gradient(45deg, #9C9389 0 2px, #FFFFFF 2px 5px); }
+.chip { font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 13px; font-weight: 600; background: #F6F3EE; border-radius: 13px; padding: 9px 12px; display: inline-flex; align-items: center; gap: 8px; }
+.cta { background: #A8450E; color: #FFFFFF; border: 0; border-radius: 16px; padding: 15px 0; width: 100%; font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; }
+.ghost { background: #FFFFFF; color: #2A2724; border: 1.5px solid #E4DFD8; border-radius: 16px; padding: 14px 16px; font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; }
+.badge { font-size: 11px; font-weight: 700; color: #6B645C; background: #F0ECE6; border-radius: 7px; padding: 3px 7px; }
+.blob { width: 40px; height: 40px; border-radius: 13px; background: #F0ECE6; flex: 0 0 auto; }
+.comp { margin: 10px 16px 8px; background: #FFFFFF; border: 1.5px solid #E4DFD8; border-radius: 26px; padding: 11px 11px 11px 18px; display: flex; align-items: center; gap: 10px; }
+.send { width: 34px; height: 34px; border-radius: 17px; border: 0; background: #E8641C; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; padding: 0; cursor: pointer; }
+.krow { display: flex; gap: 5px; justify-content: center; }
+.k { background: #FFFFFF; border-radius: 7px; width: 32px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 19px; }
+.kb { background: #E3DDD4; padding: 8px 4px 10px; display: flex; flex-direction: column; gap: 9px; }
+.capn { width: 22px; height: 22px; border-radius: 11px; background: #2A2724; color: #FFFFFF; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.cap { width: 390px; display: flex; flex-direction: column; gap: 7px; }
+.capt { font-size: 18px; font-weight: 600; }
+.capd { font-size: 15px; line-height: 1.45; color: #5A5A5A; }
+</style>
+<div style="width: 2760px; height: 1300px; box-sizing: border-box; background: #FFFFFF; padding: 44px 56px; display: flex; flex-direction: column; gap: 24px">
+
+  <div style="border-bottom: 1px solid #E5E5EA; padding-bottom: 16px; display: flex; align-items: flex-end; gap: 28px">
+    <div>
+      <div class="rnd" style="font-size: 13px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #6B645C">G2 · two of five</div>
+      <h1 class="rnd" style="margin: 4px 0 0; font-size: 36px; font-weight: 700; letter-spacing: -0.8px">Finding food</h1>
+    </div>
+    <p style="margin: 0 0 4px; font-size: 16px; line-height: 1.45; color: #5A5A5A; max-width: 980px">The second way in, for when you would rather point than type, and the two opt-in modules that hang off it. Both are off until you turn them on, and both say what leaves the device at the moment it leaves.</p>
+  </div>
+
+  <div style="display: flex; gap: 59px">
+
+    <!-- 1 search before typing -->
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">1</div><div class="capt">Before you type</div></div>
+      <div class="capd">The keyboard is up and what you logged recently is already listed, at the weights you had it. For most additions nothing needs typing at all.</div>
+      <div class="ph">
+        <div class="nav">
+          <div style="display: flex; align-items: baseline; gap: 12px">
+            <h2 class="ttl" style="flex: 1 1 auto">Add to dinner</h2>
+            <span class="rnd" style="font-size: 16px; color: #A8450E; font-weight: 600">Cancel</span>
+          </div>
+        </div>
+        <div style="padding: 14px 16px 10px">
+          <div class="field" style="border-color: #E8641C">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="#9C9389" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="5.6"></circle><path d="M13.2 13.2L17 17"></path></svg>
+            <span style="flex: 1 1 auto; font-size: 16px; color: #9C9389">Search 10,440 foods</span>
+            <span style="width: 2px; height: 19px; background: #E8641C"></span>
+          </div>
+          <div style="display: flex; gap: 8px; margin-top: 10px">
+            <span class="mod"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="#2A2724" stroke-width="1.7" aria-hidden="true"><path d="M3 4v12M6 4v12M9 4v12M12.5 4v12M15 4v12M17 4v12"></path></svg>Scan a barcode</span>
+            <span class="mod"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="#2A2724" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M2.5 7A1.3 1.3 0 013.8 5.7h1.7L6.8 4h6.4l1.3 1.7h1.7A1.3 1.3 0 0117.5 7v7.3A1.3 1.3 0 0116.2 15.6H3.8A1.3 1.3 0 012.5 14.3z"></path><circle cx="10" cy="10.6" r="2.8"></circle></svg>Photograph it</span>
+          </div>
+        </div>
+        <div class="body" style="gap: 10px">
+          <div>
+            <div class="head">Logged recently</div>
+            <div class="group">
+              <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Chicken breast fillet fried</div><div class="rmeta">usually 150 g · 218 kcal</div></div><span class="rnd" style="font-size: 23px; color: #A8450E; line-height: 1; font-weight: 700">+</span></div>
+              <div class="hair"></div>
+              <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Rye bread</div><div class="rmeta">usually 50 g · 110 kcal</div></div><span class="rnd" style="font-size: 23px; color: #A8450E; line-height: 1; font-weight: 700">+</span></div>
+              <div class="hair"></div>
+              <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Butter salted</div><div class="rmeta">usually 10 g · 73 kcal</div></div><span class="rnd" style="font-size: 23px; color: #A8450E; line-height: 1; font-weight: 700">+</span></div>
+              <div class="hair"></div>
+              <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Gouda cheese 48 %</div><div class="rmeta">usually 30 g · 114 kcal</div></div><span class="rnd" style="font-size: 23px; color: #A8450E; line-height: 1; font-weight: 700">+</span></div>
+              <div class="hair"></div>
+              <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Lentil soup with vegetables</div><div class="rmeta">usually 350 g · 287 kcal</div></div><span class="rnd" style="font-size: 23px; color: #A8450E; line-height: 1; font-weight: 700">+</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="kb">
+          <div class="krow"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+          <div class="krow"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+          <div class="krow"><span class="k" style="background: #C9BFB2; width: 42px">⇧</span><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span><span class="k" style="background: #C9BFB2; width: 42px">⌫</span></div>
+          <div class="krow"><span class="k" style="background: #C9BFB2; width: 42px; font-size: 14px">123</span><span class="k" style="flex: 1 1 auto; font-size: 15px">space</span><span class="k" style="background: #C9BFB2; width: 78px; font-size: 15px">search</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 tray -->
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">2</div><div class="capt">The tray</div></div>
+      <div class="capd">Picks gather at the foot with their own composition bar, so a dinner being assembled shows its shape before it is committed. Hold a chip to change its weight.</div>
+      <div class="ph">
+        <div class="nav">
+          <div style="display: flex; align-items: baseline; gap: 12px">
+            <h2 class="ttl" style="flex: 1 1 auto">Add to dinner</h2>
+            <span class="rnd" style="font-size: 16px; color: #A8450E; font-weight: 600">Cancel</span>
+          </div>
+        </div>
+        <div style="padding: 14px 16px 10px">
+          <div class="field">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="#9C9389" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="5.6"></circle><path d="M13.2 13.2L17 17"></path></svg>
+            <span style="flex: 1 1 auto; font-size: 16px">chick</span>
+            <span style="width: 2px; height: 19px; background: #E8641C"></span>
+          </div>
+        </div>
+        <div class="body" style="gap: 10px">
+          <div>
+            <div class="head">4 of 10,440 foods</div>
+            <div class="group">
+              <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Chicken breast fillet fried</div><div class="rmeta">145 kcal / 100 g · usually 150 g</div><div class="barS" style="width: 120px; margin-top: 7px"><span style="width: 85%; background: #2E5FA3"></span><span style="width: 15%; background: #B03060"></span></div></div><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#A8450E" stroke-width="2.4" stroke-linecap="round" aria-label="In the tray"><path d="M4 10.5l4 4 8-9"></path></svg></div>
+              <div class="hair"></div>
+              <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Chicken grilled</div><div class="rmeta">257 kcal / 100 g</div><div class="barS" style="width: 120px; margin-top: 7px"><span style="width: 38%; background: #2E5FA3"></span><span style="width: 62%; background: #B03060"></span></div></div><span class="rnd" style="font-size: 23px; color: #A8450E; line-height: 1; font-weight: 700">+</span></div>
+              <div class="hair"></div>
+              <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Chicken breast fillet, boiled</div><div class="rmeta">116 kcal / 100 g</div><div class="barS" style="width: 120px; margin-top: 7px"><span style="width: 90%; background: #2E5FA3"></span><span style="width: 10%; background: #B03060"></span></div></div><span class="rnd" style="font-size: 23px; color: #A8450E; line-height: 1; font-weight: 700">+</span></div>
+              <div class="hair"></div>
+              <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Chicken stock</div><div class="rmeta">5 kcal / 100 g</div></div><span class="rnd" style="font-size: 23px; color: #A8450E; line-height: 1; font-weight: 700">+</span></div>
+            </div>
+          </div>
+          <div style="font-size: 13px; line-height: 1.45; color: #6B645C; padding: 0 6px">Each result carries its own shape per 100 g, which tells two near-identical names apart faster than the wording does.</div>
+        </div>
+        <div style="margin: 0 16px 14px; background: #FFFFFF; border-radius: 22px; padding: 14px 16px 16px">
+          <div style="display: flex; align-items: baseline; gap: 10px">
+            <span style="font-size: 13px; color: #6B645C; flex: 1 1 auto; font-weight: 600">In the tray · 3 foods</span>
+            <span class="big" style="font-size: 20px">319 <span style="font-size: 12px; font-weight: 700; color: #6B645C">kcal</span></span>
+          </div>
+          <div class="bar" style="margin-top: 10px"><span style="width: 44%; background: #2E5FA3"></span><span style="width: 4%; background: #E8641C"></span><span style="width: 52%; background: #B03060"></span></div>
+          <div style="display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px">
+            <span class="chip">Chicken fillet · 150 g<span style="color: #9C9389">✕</span></span>
+            <span class="chip">Green salad · 80 g<span style="color: #9C9389">✕</span></span>
+            <span class="chip">Olive oil · 10 g<span style="color: #9C9389">✕</span></span>
+          </div>
+          <button class="cta" style="margin-top: 13px">Log 3 to dinner</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 scan -->
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">3</div><div class="capt">Scanning</div></div>
+      <div class="capd">Detection runs on the phone through the system scanner, so the scan itself needs no network. The sentence underneath is there because the lookup that follows does.</div>
+      <div class="ph" style="background: #1A1714">
+        <div style="height: 520px; background: #000000; display: flex; align-items: center; justify-content: center; position: relative">
+          <div style="width: 254px; height: 152px; border: 2.5px solid #FFFFFF; border-radius: 18px; opacity: 0.92"></div>
+          <div class="rnd" style="position: absolute; top: 34px; left: 0; right: 0; text-align: center; color: #FFFFFF; font-size: 16px; font-weight: 600">Point at the barcode</div>
+          <div class="rnd" style="position: absolute; top: 28px; right: 22px; color: #FFFFFF; font-size: 16px; font-weight: 600">Done</div>
+        </div>
+        <div style="flex: 1 1 auto; background: #FBFAF8; border-radius: 26px 26px 0 0; margin-top: -26px; padding: 22px 20px; display: flex; flex-direction: column; gap: 14px">
+          <div class="group" style="padding: 16px">
+            <div class="rnd" style="font-size: 17px; font-weight: 700">Nothing found yet</div>
+            <div style="font-size: 15px; line-height: 1.45; color: #6B645C; margin-top: 6px">Hold the pot steady. Barcodes on a curved surface sometimes need a second try.</div>
+          </div>
+          <div class="group" style="padding: 14px 16px">
+            <div style="display: flex; align-items: flex-start; gap: 10px">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#6B645C" stroke-width="1.7" aria-hidden="true" style="margin-top: 2px"><circle cx="10" cy="10" r="7.5"></circle><path d="M10 6.5v.2M10 9.2v4.3"></path></svg>
+              <div style="font-size: 14px; line-height: 1.45; color: #6B645C">Reading the barcode happens here. Looking up what it means does not — the number goes to Open Food Facts and nothing else does.</div>
+            </div>
+          </div>
+          <button class="ghost" style="width: 100%">Type the number instead</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 product -->
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">4</div><div class="capt">A product found</div></div>
+      <div class="capd">The answer is kept on the phone permanently, so the same pot never asks twice. Attribution is on the row rather than buried in Settings, because this row is not from the bundled tables.</div>
+      <div class="ph">
+        <div class="nav">
+          <div style="display: flex; align-items: baseline; gap: 12px">
+            <h2 class="ttl" style="flex: 1 1 auto">Scanned</h2>
+            <span class="rnd" style="font-size: 16px; color: #A8450E; font-weight: 600">Done</span>
+          </div>
+        </div>
+        <div class="body" style="padding-top: 16px">
+          <div class="group" style="padding: 16px">
+            <div style="display: flex; align-items: flex-start; gap: 14px">
+              <div class="blob" style="width: 56px; height: 56px; border-radius: 16px"></div>
+              <div style="flex: 1 1 auto">
+                <div class="rnd" style="font-size: 17px; font-weight: 700; line-height: 1.25">Yogurt, plain, 3.5 % fat</div>
+                <div style="font-size: 13px; color: #6B645C; margin-top: 4px">[Brand] · 4061458····</div>
+              </div>
+            </div>
+            <div class="hair" style="margin: 14px 0"></div>
+            <div style="display: flex; align-items: baseline; gap: 14px">
+              <span class="big" style="font-size: 28px">101 <span style="font-size: 14px; font-weight: 700; color: #6B645C">kcal</span></span>
+              <span style="font-size: 13px; color: #6B645C">150 g · 67 kcal / 100 g</span>
+            </div>
+            <div class="bar" style="margin-top: 11px"><span style="width: 24%; background: #2E5FA3"></span><span style="width: 25%; background: #E8641C"></span><span style="width: 47%; background: #B03060"></span><span class="hatch" style="width: 4%"></span></div>
+            <div style="font-size: 12px; color: #6B645C; margin-top: 7px">P 6 g · C 6 g · F 5 g · no fibre figure</div>
+          </div>
+          <div>
+            <div class="head">The weight</div>
+            <div class="group" style="padding: 14px 16px">
+              <div style="font-size: 13px; color: #6B645C">First time for this one, so there is nothing to multiply</div>
+              <div style="display: flex; align-items: center; margin-top: 11px"><div style="font-size: 16px">Grams</div><div class="fig" style="margin-left: auto; border-bottom: 2px solid #A8450E; padding: 0 3px 1px">150</div></div>
+            </div>
+          </div>
+          <div class="group" style="padding: 14px 16px">
+            <div style="display: flex; align-items: center; gap: 8px"><span class="badge">Open Food Facts</span><span style="font-size: 13px; color: #6B645C">ODbL · kept on this phone</span></div>
+            <div style="font-size: 13px; line-height: 1.45; color: #6B645C; margin-top: 9px">Products are never in the bundled database — a composition table has never held a brand — so this row lives only here and says where it came from.</div>
+          </div>
+        </div>
+        <div style="padding: 0 16px 16px; display: flex; flex-direction: column; gap: 9px">
+          <button class="cta">Log to snack</button>
+          <button class="ghost" style="width: 100%">Scan another</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 photo -->
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">5</div><div class="capt">A photograph</div></div>
+      <div class="capd">The camera is inside the field, not beside it: a picture of a plate and a sentence about it are one input, and the model takes either. Here it is taking both.</div>
+      <div class="ph">
+        <div class="nav"><h2 class="ttl" style="font-size: 31px">Tuesday</h2><p class="sub">Two of four meals · 882 kcal</p></div>
+        <div class="body" style="padding-top: 16px">
+          <div>
+            <div class="head">Lunch · 12:40</div>
+            <div class="group">
+              <div class="row"><div style="flex: 1 1 auto"><div class="rname">Lentil soup with vegetables</div><div class="rmeta">350 g</div></div><div class="fig">287</div></div>
+              <div class="hair"></div>
+              <div class="row"><div style="flex: 1 1 auto"><div class="rname">Rye bread</div><div class="rmeta">50 g</div></div><div class="fig">110</div></div>
+            </div>
+          </div>
+          <div class="group" style="padding: 14px 16px">
+            <div style="display: flex; align-items: flex-start; gap: 10px">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#6B645C" stroke-width="1.7" aria-hidden="true" style="margin-top: 2px"><circle cx="10" cy="10" r="7.5"></circle><path d="M10 6.5v.2M10 9.2v4.3"></path></svg>
+              <div style="font-size: 14px; line-height: 1.45; color: #6B645C">The photo is read by whichever model you chose. On this phone that is the on-device one, so the picture does not leave.</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin: 0 16px 8px; background: #FFFFFF; border-radius: 20px; padding: 11px 14px; display: flex; align-items: center; gap: 12px">
+          <div class="blob" style="width: 46px; height: 46px; border-radius: 14px"></div>
+          <div style="flex: 1 1 auto; font-size: 14px; color: #6B645C; font-weight: 500">Photo attached</div>
+          <span class="rnd" style="font-size: 14px; color: #A8450E; font-weight: 700">Remove</span>
+        </div>
+        <div class="comp">
+          <span style="flex: 1 1 auto; font-size: 16px">roast chicken with potatoes and greens</span>
+          <div style="width: 34px; height: 34px; border-radius: 17px; background: #F6F3EE; display: flex; align-items: center; justify-content: center; flex: 0 0 auto">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#A8450E" stroke-width="2.2" stroke-linecap="round" aria-label="Working"><path d="M10 2.6a7.4 7.4 0 015.2 12.6"></path></svg>
+          </div>
+        </div>
+        <div style="padding: 0 16px 16px"><div style="font-size: 13px; color: #6B645C; text-align: center">Reading the photo and the line together…</div></div>
+      </div>
+    </div>
+
+    <!-- 6 estimate draft -->
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">6</div><div class="capt">What it made of it</div></div>
+      <div class="capd">Four rows, each one a row from the bundled tables rather than a number the model invented — that is the whole safety property, and the footer says so. Every weight is editable before anything is logged.</div>
+      <div class="ph">
+        <div class="nav">
+          <div style="font-size: 15px; color: #A8450E; margin-bottom: 8px; font-weight: 600">‹ Tuesday</div>
+          <h2 class="ttl">Four foods</h2><p class="sub">From the photo and the line · 712 kcal</p>
+        </div>
+        <div class="body" style="padding-top: 16px">
+          <div class="group" style="padding: 14px 16px">
+            <div class="bar"><span style="width: 34%; background: #2E5FA3"></span><span style="width: 32%; background: #E8641C"></span><span style="width: 31%; background: #B03060"></span><span class="hatch" style="width: 3%"></span></div>
+            <div style="font-size: 12px; color: #6B645C; margin-top: 8px">P 61 g · C 57 g · F 24 g</div>
+          </div>
+          <div class="group">
+            <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Chicken grilled</div><div class="rmeta">180 g · <span style="color: #A8450E">estimated</span></div></div><div class="fig">463</div><span style="color: #9C9389; margin-left: 6px">›</span></div>
+            <div class="hair"></div>
+            <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Potato boiled</div><div class="rmeta">200 g · <span style="color: #A8450E">estimated</span></div></div><div class="fig">146</div><span style="color: #9C9389; margin-left: 6px">›</span></div>
+            <div class="hair"></div>
+            <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Green beans cooked</div><div class="rmeta">120 g · <span style="color: #A8450E">estimated</span></div></div><div class="fig">34</div><span style="color: #9C9389; margin-left: 6px">›</span></div>
+            <div class="hair"></div>
+            <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Butter salted</div><div class="rmeta">10 g · <span style="color: #A8450E">estimated</span></div></div><div class="fig">73</div><span style="color: #9C9389; margin-left: 6px">›</span></div>
+            <div class="hair"></div>
+            <div class="row" style="align-items: center"><div style="flex: 1 1 auto; font-size: 16px; color: #A8450E; font-weight: 600">Add a food it missed</div><span style="color: #9C9389">›</span></div>
+          </div>
+          <div class="group" style="padding: 14px 16px">
+            <div style="display: flex; align-items: flex-start; gap: 10px">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#6B645C" stroke-width="1.7" aria-hidden="true" style="margin-top: 2px"><path d="M4 10.5l4 4 8-9"></path></svg>
+              <div style="font-size: 14px; line-height: 1.45; color: #6B645C">Every row above is a database row the model picked, never a composition it wrote. The weights are its guesses and are marked as such until you change one.</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding: 0 16px 16px; display: flex; flex-direction: column; gap: 9px">
+          <button class="cta">Log 4 items to dinner</button>
+          <button class="ghost" style="width: 100%">Start again</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

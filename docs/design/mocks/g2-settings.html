@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="mocks.css">
+<title>G2 · Settings and first run</title>
+</head>
+<body>
+<style>
+body { margin: 0; font-family: -apple-system, system-ui, "Helvetica Neue", sans-serif; color: #2A2724; -webkit-font-smoothing: antialiased; }
+a { color: #A8450E; } a:hover { color: #7C3309; }
+.rnd { font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; }
+.ph { width: 390px; height: 844px; box-sizing: border-box; border: 1px solid #E4DFD8; border-radius: 46px; background: #FBFAF8; overflow: hidden; display: flex; flex-direction: column; }
+.nav { padding: 26px 20px 0; }
+.ttl { font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; font-size: 30px; font-weight: 700; line-height: 1.05; margin: 0; letter-spacing: -0.6px; }
+.sub { font-size: 13px; color: #6B645C; margin: 4px 0 0; font-weight: 500; }
+.body { flex: 1 1 auto; padding: 0 16px; overflow: hidden; display: flex; flex-direction: column; gap: 12px; }
+.group { background: #FFFFFF; border-radius: 20px; padding: 6px 16px; }
+.hair { height: 1px; background: #F0ECE6; }
+.head { font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 14px; font-weight: 700; color: #6B645C; padding: 2px 6px 6px; }
+.row { display: flex; align-items: baseline; gap: 12px; padding: 12px 0; }
+.rname { font-size: 16px; font-weight: 500; }
+.rmeta { font-size: 13px; color: #6B645C; margin-top: 3px; line-height: 1.4; }
+.fig { font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.big { font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-weight: 800; letter-spacing: -1.5px; }
+.sw { width: 46px; height: 28px; border-radius: 14px; background: #E4DFD8; position: relative; flex: 0 0 auto; }
+.swOn { width: 46px; height: 28px; border-radius: 14px; background: #A8450E; position: relative; flex: 0 0 auto; }
+.knob { position: absolute; top: 3px; width: 22px; height: 22px; border-radius: 11px; background: #FFFFFF; }
+.cta { background: #A8450E; color: #FFFFFF; border: 0; border-radius: 16px; padding: 15px 0; width: 100%; font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; }
+.ghost { background: #FFFFFF; color: #2A2724; border: 1.5px solid #E4DFD8; border-radius: 16px; padding: 13px 16px; width: 100%; font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; }
+.badge { font-size: 11px; font-weight: 700; color: #6B645C; background: #F0ECE6; border-radius: 7px; padding: 3px 7px; }
+.tick { font-size: 13px; font-weight: 700; color: #6B645C; }
+.seg { display: flex; background: #F0ECE6; border-radius: 13px; padding: 3px; }
+.segOn { font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 14px; font-weight: 700; background: #FFFFFF; border-radius: 10px; padding: 7px 13px; }
+.segOff { font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 14px; font-weight: 600; color: #6B645C; padding: 7px 13px; }
+.field { background: #FFFFFF; border: 1.5px solid #E4DFD8; border-radius: 14px; padding: 11px 13px; font-size: 15px; }
+.tabs { display: flex; justify-content: space-around; align-items: center; background: #FFFFFF; border-top: 1px solid #F0ECE6; padding: 9px 14px 16px; }
+.tabIcon { display: flex; align-items: center; justify-content: center; padding: 8px 16px; border-radius: 15px; }
+.tabIconOn { display: flex; align-items: center; justify-content: center; padding: 8px 16px; border-radius: 15px; background: #FDEFE6; }
+.capn { width: 22px; height: 22px; border-radius: 11px; background: #2A2724; color: #FFFFFF; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.cap { width: 390px; display: flex; flex-direction: column; gap: 7px; }
+.capt { font-size: 18px; font-weight: 600; }
+.capd { font-size: 15px; line-height: 1.45; color: #5A5A5A; }
+</style>
+<div style="width: 2760px; height: 1300px; box-sizing: border-box; background: #FFFFFF; padding: 44px 56px; display: flex; flex-direction: column; gap: 24px">
+
+  <div style="border-bottom: 1px solid #E5E5EA; padding-bottom: 16px; display: flex; align-items: flex-end; gap: 28px">
+    <div>
+      <div class="rnd" style="font-size: 13px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #6B645C">G2 · four of five</div>
+      <h1 class="rnd" style="margin: 4px 0 0; font-size: 36px; font-weight: 700; letter-spacing: -0.8px">Settings, and the first two minutes</h1>
+    </div>
+    <p style="margin: 0 0 4px; font-size: 16px; line-height: 1.45; color: #5A5A5A; max-width: 920px">Where the two opt-ins live, what Health will and will not take, who the data came from, and the two screens anyone sees before any of it. Everything the user agreed to once is said here and not repeated at every use.</p>
+  </div>
+
+  <div style="display: flex; gap: 59px">
+
+    <!-- 1 settings root -->
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">1</div><div class="capt">Settings</div></div>
+      <div class="capd">Both modules are off until turned on, and the app is complete without either. The two rows that send anything anywhere say so on the row rather than behind it.</div>
+      <div class="ph">
+        <div class="nav"><h2 class="ttl">Settings</h2></div>
+        <div class="body" style="padding-top: 16px">
+          <div>
+            <div class="head">Health</div>
+            <div class="group" style="padding: 4px 16px">
+              <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Writing to Health</div><div class="rmeta">All eight accepted</div></div><span style="color: #9C9389">›</span></div>
+            </div>
+          </div>
+          <div>
+            <div class="head">Modules</div>
+            <div class="group" style="padding: 8px 16px">
+              <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0"><div style="flex: 1 1 auto"><div class="rname">Reading what you write</div><div class="rmeta">On this phone, by Apple Intelligence</div></div><div class="swOn"><span class="knob" style="right: 3px"></span></div></div>
+              <div class="hair"></div>
+              <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0"><div style="flex: 1 1 auto"><div class="rname">Barcode scanning</div><div class="rmeta">Sends a barcode to Open Food Facts</div></div><div class="swOn"><span class="knob" style="right: 3px"></span></div></div>
+              <div class="hair"></div>
+              <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0"><div style="flex: 1 1 auto"><div class="rname">Searching products by name</div><div class="rmeta">Sends what you typed to Open Food Facts</div></div><div class="sw"><span class="knob" style="left: 3px"></span></div></div>
+            </div>
+          </div>
+          <div>
+            <div class="head">What it asks of you</div>
+            <div class="group" style="padding: 4px 16px">
+              <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">How often to ask</div><div class="rmeta">Three days a week</div></div><span style="color: #9C9389">›</span></div>
+              <div class="hair"></div>
+              <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Figures on Shape</div><div class="rmeta">Sat. fat, fibre, sugar, sodium</div></div><span style="color: #9C9389">›</span></div>
+            </div>
+          </div>
+          <div>
+            <div class="head">About</div>
+            <div class="group" style="padding: 4px 16px">
+              <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Where the food data came from</div><div class="rmeta">Ciqual and the BLS · 10,440 foods</div></div><span style="color: #9C9389">›</span></div>
+              <div class="hair"></div>
+              <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div class="rname">Omnomnom</div><div class="rmeta">Version 1.0 · no account, no network needed</div></div></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin: 10px 16px 8px; background: #FFFFFF; border: 1.5px solid #E4DFD8; border-radius: 26px; padding: 11px 11px 11px 18px; display: flex; align-items: center; gap: 10px">
+          <span style="flex: 1 1 auto; font-size: 16px; color: #9C9389; font-weight: 500">What did you eat?</span>
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#6B645C" stroke-width="1.7" aria-hidden="true"><path d="M3 8.5A1.5 1.5 0 014.5 7h2L8 5h8l1.5 2h2A1.5 1.5 0 0121 8.5v9A1.5 1.5 0 0119.5 19h-15A1.5 1.5 0 013 17.5z"></path><circle cx="12" cy="13" r="3.4"></circle></svg>
+          <span style="width: 34px; height: 34px; border-radius: 17px; background: #EDE8E1; display: flex; align-items: center; justify-content: center; flex: 0 0 auto"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9C9389" stroke-width="2.6" stroke-linecap="round" aria-label="Log this line"><path d="M12 20V5M12 5l-6 6M12 5l6 6"></path></svg></span>
+        </div>
+        <div class="tabs">
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Today"><rect x="3" y="4.5" width="14" height="12.5" rx="3"></rect><path d="M3 8.2h14M7 2.8v2.6M13 2.8v2.6"></path></svg></span>
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Shape"><path d="M4.5 16V9M10 16V4.5M15.5 16v-4.5"></path></svg></span>
+          <span class="tabIcon"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#8A8178" stroke-width="1.9" stroke-linecap="round" aria-label="Library"><rect x="4" y="3" width="12" height="14" rx="2.5"></rect><path d="M4 7.2h12"></path></svg></span>
+          <span class="tabIconOn"><svg width="23" height="23" viewBox="0 0 20 20" fill="none" stroke="#A8450E" stroke-width="2" stroke-linecap="round" aria-label="Settings"><path d="M3.5 7h13M3.5 13h13"></path><circle cx="7.5" cy="7" r="2"></circle><circle cx="12.5" cy="13" r="2"></circle></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 health -->
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">2</div><div class="capt">Health</div></div>
+      <div class="capd">Per type, because partial permission is normal and the app keeps working on whatever it was given. Reading is never queryable, so the screen never claims to know whether a read was refused.</div>
+      <div class="ph">
+        <div class="nav">
+          <div style="font-size: 15px; color: #A8450E; margin-bottom: 8px; font-weight: 600">‹ Settings</div>
+          <h2 class="ttl" style="font-size: 27px">Writing to Health</h2><p class="sub">Seven of eight accepted</p>
+        </div>
+        <div class="body" style="padding-top: 14px">
+          <div class="group">
+            <div class="row" style="align-items: center"><div style="flex: 1 1 auto; font-size: 15px">Energy</div><span class="tick">Accepted</span></div>
+            <div class="hair"></div>
+            <div class="row" style="align-items: center"><div style="flex: 1 1 auto; font-size: 15px">Protein</div><span class="tick">Accepted</span></div>
+            <div class="hair"></div>
+            <div class="row" style="align-items: center"><div style="flex: 1 1 auto; font-size: 15px">Carbohydrate</div><span class="tick">Accepted</span></div>
+            <div class="hair"></div>
+            <div class="row" style="align-items: center"><div style="flex: 1 1 auto; font-size: 15px">Fat</div><span class="tick">Accepted</span></div>
+            <div class="hair"></div>
+            <div class="row" style="align-items: center"><div style="flex: 1 1 auto; font-size: 15px">Saturated fat</div><span class="tick">Accepted</span></div>
+            <div class="hair"></div>
+            <div class="row" style="align-items: center"><div style="flex: 1 1 auto; font-size: 15px">Fiber</div><span class="tick">Accepted</span></div>
+            <div class="hair"></div>
+            <div class="row" style="align-items: center"><div style="flex: 1 1 auto; font-size: 15px">Sugar</div><span class="tick">Accepted</span></div>
+            <div class="hair"></div>
+            <div class="row" style="align-items: center"><div style="flex: 1 1 auto; font-size: 15px">Sodium</div><span class="tick" style="color: #A8450E">Declined</span></div>
+          </div>
+          <div class="group" style="padding: 14px 16px">
+            <div style="font-size: 14px; line-height: 1.5; color: #2A2724">Sodium stays here only. Everything else is written to Health as you log it, and the seven that are accepted are unaffected.</div>
+            <div class="hair" style="margin: 13px 0"></div>
+            <div style="font-size: 13px; line-height: 1.5; color: #6B645C">iOS asks about each type once and once only. Changing your mind is done in the Health app, under Sources.</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 9px; padding: 0 2px">
+            <button class="ghost">Open Health</button>
+          </div>
+          <div>
+            <div class="head">Entries Health does not hold</div>
+            <div class="group" style="padding: 4px 16px">
+              <div class="row" style="align-items: center"><div style="flex: 1 1 auto"><div style="font-size: 15px">2 entries</div><div class="rmeta">Written before permission was given</div></div><span style="color: #9C9389">›</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 estimation -->
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">3</div><div class="capt">Reading what you write</div></div>
+      <div class="capd">The one screen where a key is typed. It goes to the Keychain, device-only, never to a backup — and the table says exactly what each choice sends, because that is the whole decision.</div>
+      <div class="ph">
+        <div class="nav">
+          <div style="font-size: 15px; color: #A8450E; margin-bottom: 8px; font-weight: 600">‹ Settings</div>
+          <h2 class="ttl" style="font-size: 27px">Who reads your lines</h2>
+        </div>
+        <div class="body" style="padding-top: 14px">
+          <div class="group" style="padding: 8px 16px">
+            <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0">
+              <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="#A8450E" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 10.5l4 4 8-9"></path></svg>
+              <div style="flex: 1 1 auto"><div class="rname">This phone</div><div class="rmeta">Apple Intelligence · nothing leaves</div></div>
+            </div>
+            <div class="hair"></div>
+            <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0 10px 31px">
+              <div style="flex: 1 1 auto"><div class="rname">An endpoint you set</div><div class="rmeta">Your line and a shortlist of food names are sent</div></div>
+            </div>
+            <div class="hair"></div>
+            <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0 10px 31px">
+              <div style="flex: 1 1 auto"><div class="rname">Nobody</div><div class="rmeta">Only a line you have logged before resolves</div></div>
+            </div>
+          </div>
+          <div>
+            <div class="head">The endpoint</div>
+            <div class="group" style="padding: 14px 16px">
+              <div style="font-size: 13px; color: #6B645C; font-weight: 600">Address</div>
+              <div class="field" style="margin-top: 6px; color: #9C9389">https://…</div>
+              <div style="font-size: 13px; color: #6B645C; font-weight: 600; margin-top: 13px">Key</div>
+              <div class="field" style="margin-top: 6px; color: #9C9389">Kept in the Keychain</div>
+              <div style="font-size: 13px; line-height: 1.5; color: #6B645C; margin-top: 11px">Stored on this device only, never in a backup and never in a log. It is not shown again after you save it.</div>
+            </div>
+          </div>
+          <div>
+            <div class="head">What leaves the device</div>
+            <div class="group" style="padding: 4px 16px">
+              <div class="row"><div style="flex: 1 1 auto; font-size: 15px">Your line, when an endpoint is set</div><span class="tick">Sent</span></div>
+              <div class="hair"></div>
+              <div class="row"><div style="flex: 1 1 auto; font-size: 15px">A photo of a plate</div><span class="tick">Never</span></div>
+              <div class="hair"></div>
+              <div class="row"><div style="flex: 1 1 auto; font-size: 15px">What you logged, or your day</div><span class="tick">Never</span></div>
+              <div class="hair"></div>
+              <div class="row"><div style="flex: 1 1 auto; font-size: 15px">A barcode, when scanning is on</div><span class="tick">Sent</span></div>
+            </div>
+          </div>
+          <div class="group" style="padding: 14px 16px">
+            <div style="font-size: 13px; line-height: 1.5; color: #6B645C">Checking a match is always done on this phone, whichever option is chosen above: a shortlist of candidate rows is a cheap question, and sending one would be a second disclosure for a smaller gain.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 sources -->
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">4</div><div class="capt">Where the data came from</div></div>
+      <div class="capd">Attribution is a licence condition for one of these and good manners for the other, so it is a screen rather than a line in an About box. The build date and row counts come from the database itself.</div>
+      <div class="ph">
+        <div class="nav">
+          <div style="font-size: 15px; color: #A8450E; margin-bottom: 8px; font-weight: 600">‹ Settings</div>
+          <h2 class="ttl" style="font-size: 27px">Sources</h2><p class="sub">Built 3 November 2025 · 10,440 foods</p>
+        </div>
+        <div class="body" style="padding-top: 14px">
+          <div class="group" style="padding: 14px 16px">
+            <div class="rname" style="font-size: 17px">Ciqual</div>
+            <div class="rmeta">ANSES, France · 3,484 foods</div>
+            <div class="hair" style="margin: 12px 0"></div>
+            <div style="font-size: 13px; line-height: 1.5; color: #6B645C">Licence Ouverte / Etalab. The French table of generic foods, analytically measured. Its English names are used; the French ones are read and dropped.</div>
+          </div>
+          <div class="group" style="padding: 14px 16px">
+            <div class="rname" style="font-size: 17px">Bundeslebensmittelschlüssel 4.0</div>
+            <div class="rmeta">Max Rubner-Institut, Germany · 7,140 foods</div>
+            <div class="hair" style="margin: 12px 0"></div>
+            <div style="font-size: 13px; line-height: 1.5; color: #6B645C">CC BY 4.0, attribution to the Max Rubner-Institut. Strong on composite dishes, which is why a margherita pizza has a row of its own.</div>
+          </div>
+          <div class="group" style="padding: 14px 16px">
+            <div class="rname" style="font-size: 17px">Open Food Facts</div>
+            <div class="rmeta">Products only · 7 cached here</div>
+            <div class="hair" style="margin: 12px 0"></div>
+            <div style="font-size: 13px; line-height: 1.5; color: #6B645C">ODbL. Never part of the bundled database, so nothing shipped with the app carries a share-alike obligation. Only what you scanned is here.</div>
+          </div>
+          <div class="group" style="padding: 14px 16px">
+            <div style="font-size: 13px; line-height: 1.5; color: #6B645C">666 of the bundled rows are short of at least one of the eight nutrients. A day holding one of them says its total is a floor rather than quietly treating the gap as zero.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 onboarding 1 -->
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">5</div><div class="capt">First screen</div></div>
+      <div class="capd">One of only two places the voice is allowed to be warm. It says what the app does and what it refuses to do, and it does not promise a result.</div>
+      <div class="ph">
+        <div style="flex: 1 1 auto; padding: 72px 30px 0; display: flex; flex-direction: column">
+          <svg width="76" height="76" viewBox="0 0 1024 1024" aria-hidden="true">
+            <defs><mask id="biteOb" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024"><rect width="1024" height="1024" fill="white"></rect><circle cx="711.68" cy="332.8" r="138.24" fill="black"></circle></mask></defs>
+            <circle cx="512" cy="542.72" r="307.2" fill="#E8641C" mask="url(#biteOb)"></circle>
+            <circle cx="819.2" cy="240.64" r="24.576" fill="#E8641C"></circle>
+            <circle cx="875.52" cy="317.44" r="16.384" fill="#E8641C"></circle>
+          </svg>
+          <h2 class="rnd" style="font-size: 38px; font-weight: 700; letter-spacing: -1px; line-height: 1.1; margin: 26px 0 0">Write down what you ate</h2>
+          <p style="font-size: 17px; line-height: 1.5; color: #6B645C; margin: 16px 0 0">One line is enough. The app works out which foods you meant, adds them up, and writes the day to Health.</p>
+          <p style="font-size: 17px; line-height: 1.5; color: #6B645C; margin: 14px 0 0">It does not score your diet, set you a target or tell you what to eat. It records, and it reports.</p>
+          <div style="margin-top: 26px; display: flex; flex-direction: column; gap: 12px">
+            <div style="display: flex; align-items: flex-start; gap: 11px"><svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="#A8450E" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="margin-top: 2px"><path d="M4 10.5l4 4 8-9"></path></svg><div style="font-size: 15px; line-height: 1.45">Ten thousand foods are already on the phone</div></div>
+            <div style="display: flex; align-items: flex-start; gap: 11px"><svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="#A8450E" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="margin-top: 2px"><path d="M4 10.5l4 4 8-9"></path></svg><div style="font-size: 15px; line-height: 1.45">No account, and nothing needs a network</div></div>
+            <div style="display: flex; align-items: flex-start; gap: 11px"><svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="#A8450E" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="margin-top: 2px"><path d="M4 10.5l4 4 8-9"></path></svg><div style="font-size: 15px; line-height: 1.45">A day you never looked at is never written</div></div>
+          </div>
+        </div>
+        <div style="padding: 0 24px 30px"><button class="cta">Next</button></div>
+      </div>
+    </div>
+
+    <!-- 6 onboarding 2 -->
+    <div class="cap">
+      <div style="display: flex; align-items: center; gap: 10px"><div class="capn">6</div><div class="capt">Before the Health sheet</div></div>
+      <div class="capd">iOS shows its permission sheet once per type, for ever, so this screen has to do the explaining first. It names all eight, says what they are for, and offers a way past.</div>
+      <div class="ph">
+        <div style="flex: 1 1 auto; padding: 62px 30px 0; display: flex; flex-direction: column">
+          <h2 class="rnd" style="font-size: 34px; font-weight: 700; letter-spacing: -0.9px; line-height: 1.12; margin: 0">What goes into Health</h2>
+          <p style="font-size: 16px; line-height: 1.5; color: #6B645C; margin: 14px 0 0">Eight figures per item, under your name as the source, so the Health app's own nutrition picture is filled in and the Longevity tab has something to read.</p>
+          <div class="group" style="padding: 6px 16px; margin-top: 20px">
+            <div class="row" style="padding: 10px 0"><div style="flex: 1 1 auto; font-size: 15px">Energy, protein, carbohydrate, fat</div></div>
+            <div class="hair"></div>
+            <div class="row" style="padding: 10px 0"><div style="flex: 1 1 auto; font-size: 15px">Saturated fat, fibre, sugar, sodium</div></div>
+          </div>
+          <p style="font-size: 15px; line-height: 1.5; color: #6B645C; margin: 18px 0 0">iOS will ask next, once per figure. Decline any of them and the app carries on as a local log, writing whatever it was allowed.</p>
+          <p style="font-size: 15px; line-height: 1.5; color: #6B645C; margin: 12px 0 0">Nothing is read back out of Health except other apps' nutrition on the day you are looking at, and that is shown separately and never edited.</p>
+        </div>
+        <div style="padding: 0 24px 30px; display: flex; flex-direction: column; gap: 10px">
+          <button class="cta">Ask me now</button>
+          <button class="ghost">Not yet</button>
+          <div style="font-size: 12px; color: #6B645C; text-align: center; margin-top: 2px">You can start this again from Settings at any time.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
