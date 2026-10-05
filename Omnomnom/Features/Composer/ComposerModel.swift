@@ -97,6 +97,15 @@ final class ComposerModel {
         self.resolution = resolution
     }
 
+    /// Appends a row for a food the user picked themselves, which is how something the
+    /// line never said — or something the model missed — gets into the same meal rather
+    /// than into a second one.
+    func add(_ row: ResolvedRow) {
+        guard var resolution else { return }
+        resolution.rows.append(row)
+        self.resolution = resolution
+    }
+
     /// Removes a row the user does not want, which is one of the two ways past a row
     /// that blocks.
     func remove(_ row: ResolvedRow) {

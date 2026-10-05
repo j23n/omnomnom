@@ -10,6 +10,10 @@ nonisolated enum RowOrigin: Hashable, Sendable {
     case database
     /// Found in Open Food Facts, which is opt-in and online.
     case product
+    /// The user named this food themselves on the sign-off screen, by picking it from
+    /// search — either adding a food the line never mentioned, or replacing one that was
+    /// matched for them. Nothing guessed it, so nothing about it is worth a glance.
+    case chosen
 
     /// Whether the user already asserted this, in which case there is nothing to check
     /// and no model call to wait for.
@@ -26,6 +30,7 @@ nonisolated enum RowOrigin: Hashable, Sendable {
         case .item: "From what you logged before"
         case .database: checked ? "Checked" : "Matched by name"
         case .product: checked ? "Checked, Open Food Facts" : "Matched by name, Open Food Facts"
+        case .chosen: "You chose this"
         }
     }
 }

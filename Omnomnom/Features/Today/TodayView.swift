@@ -82,6 +82,7 @@ struct TodayView: View {
                         day: model.selectedDay,
                         onChange: { composer.update($0) },
                         onRemove: { composer.remove($0) },
+                        onAdd: { composer.add($0) },
                         onLog: { slot, at in
                             // The screen's own rows, not the resolution captured when it
                             // opened: an amount changed in it has to be the one logged.

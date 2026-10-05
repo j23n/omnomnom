@@ -1,5 +1,21 @@
 import SwiftUI
 
+/// Why the food search screen is up over the sign-off screen. One slot, so adding and
+/// replacing can never fight over it.
+private nonisolated enum FoodPick: Identifiable, Hashable, Sendable {
+    /// Changing the food on a row the line produced.
+    case replacing(ResolvedRow)
+    /// Adding a food of the user's own, which the line may never have mentioned.
+    case adding
+
+    var id: String {
+        switch self {
+        case .replacing(let row): "replace-\(row.id)"
+        case .adding: "add"
+        }
+    }
+}
+
 /// What the line resolved to, before it is logged.
 ///
 /// A pushed screen and not a sheet. Signing off a meal means changing a food and choosing a
@@ -23,6 +39,10 @@ struct ResolutionScreen: View {
     let resolution: LineResolution
     let onChange: (ResolvedRow) -> Void
     let onRemove: (ResolvedRow) -> Void
+    /// Appends a food the user picked, which is the other half of signing off: a model
+    /// that names four of the five things on a plate leaves nothing to do about the fifth
+    /// otherwise, and the way out used to be to abandon the line and type it again.
+    let onAdd: (ResolvedRow) -> Void
     /// Logs the line into the meal and at the time the sheet is showing.
     ///
     /// Carried out rather than decided by the caller, because this screen is the one place
@@ -42,21 +62,23 @@ struct ResolutionScreen: View {
     /// about it, and the screen should not then argue.
     @State private var mealSlot: MealSlot
     @State private var timestamp: Date
-    /// The row whose food is being changed. Presented from here, which is the point of the
-    /// screen being pushed: the search screen brings its own navigation and so wants to be
-    /// a sheet, and a sheet put up from here lands on top of here.
-    @State private var picking: ResolvedRow?
+    /// The food search screen, when it is up. Presented from here, which is the point of
+    /// the screen being pushed: the search screen brings its own navigation and so wants
+    /// to be a sheet, and a sheet put up from here lands on top of here.
+    @State private var pick: FoodPick?
 
     init(
         resolution: LineResolution,
         day: Date,
         onChange: @escaping (ResolvedRow) -> Void,
         onRemove: @escaping (ResolvedRow) -> Void,
+        onAdd: @escaping (ResolvedRow) -> Void,
         onLog: @escaping (MealSlot, Date) -> Void
     ) {
         self.resolution = resolution
         self.onChange = onChange
         self.onRemove = onRemove
+        self.onAdd = onAdd
         self.onLog = onLog
         let slot = resolution.meal ?? MealSlot.inferred(from: QuantitySheet.defaultTimestamp(on: day))
         _mealSlot = State(initialValue: slot)
@@ -70,7 +92,7 @@ struct ResolutionScreen: View {
                     ResolutionRowView(
                         row: row,
                         checked: resolution.wasChecked,
-                        onPick: { picking = row },
+                        onPick: { pick = .replacing(row) },
                         onChange: onChange
                     )
                     .swipeActions(edge: .trailing) {
@@ -79,6 +101,14 @@ struct ResolutionScreen: View {
                         }
                     }
                 }
+                // Under the foods rather than in the navigation bar: it belongs to this
+                // list, it is read as the end of it, and the bar is where Back is.
+                Button {
+                    pick = .adding
+                } label: {
+                    Label("Add a food", systemImage: "plus")
+                }
+                .accessibilityHint("Searches for a food to add to this meal")
             } footer: {
                 if !resolution.wasChecked, resolution.rows.contains(where: { $0.origin == .database }) {
                     // A description of what happened, not an apology for what did
@@ -102,14 +132,21 @@ struct ResolutionScreen: View {
                 }
                 DatePicker("Time", selection: $timestamp, displayedComponents: [.date, .hourAndMinute])
             }
-            }
+        }
         .navigationTitle("Log this")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaBar(edge: .bottom) {
             footer
         }
-        .sheet(item: $picking) { row in
-            FoodSearchView(mode: .pick(multiple: false, onPick: { choose($0, for: row) }))
+        .sheet(item: $pick) { request in
+            switch request {
+            case .replacing(let row):
+                FoodSearchView(mode: .pick(multiple: false, onPick: { choose($0, for: row) }))
+            // Several at a time: someone who noticed one missing food often noticed two,
+            // and the search screen already stays open and counts them in that mode.
+            case .adding:
+                FoodSearchView(mode: .pick(multiple: true, onPick: { add($0) }))
+            }
         }
     }
 
@@ -123,12 +160,44 @@ struct ResolutionScreen: View {
         updated.confidence = .settled
         updated.implausible = false
         if updated.amount == 0 {
-            updated.amount = choice.lastAmount ?? 100
+            updated.amount = choice.lastAmount ?? Self.defaultAmount
         }
         updated.baseAmount = choice.lastAmount
+        // Whatever matched this row before, the food on it is now one the user named, and
+        // "matched by name" would be a description of something that no longer happened.
+        updated.origin = .chosen
         onChange(updated)
-        picking = nil
+        pick = nil
     }
+
+    /// Appends a food of the user's own.
+    ///
+    /// Settled, with nothing to check: a food someone searched for and tapped is as sure
+    /// as this screen gets. The amount is what they last had of it, which is also what
+    /// gives the steps something to measure from; a food they have never had starts at
+    /// `defaultAmount` with no steps offered, and is edited by typing.
+    ///
+    /// The search screen stays open afterwards, so the row count grows behind it and
+    /// nothing here needs closing.
+    private func add(_ choice: FoodChoice) {
+        onAdd(ResolvedRow(
+            name: choice.name,
+            choice: choice,
+            amount: choice.lastAmount ?? Self.defaultAmount,
+            baseAmount: choice.lastAmount,
+            origin: .chosen,
+            confidence: .settled
+        ))
+    }
+
+    /// What a food with no history behind it starts at, as the recipe editor and the
+    /// photo estimate's draft both start a new row at.
+    ///
+    /// The Quantity sheet leaves that field empty instead and waits to be typed into,
+    /// which is the better answer where a field is the whole screen. Here the amount is
+    /// one control on a row among several, and a row showing nothing where every other
+    /// row shows a figure reads as broken rather than as a question.
+    private static let defaultAmount = 100.0
 
     private var footer: some View {
         VStack(spacing: 8) {
@@ -200,7 +269,7 @@ private func previewRow(
                 wasChecked: false
             ),
             day: .now,
-            onChange: { _ in }, onRemove: { _ in }, onLog: { _, _ in }
+            onChange: { _ in }, onRemove: { _ in }, onAdd: { _ in }, onLog: { _, _ in }
         )
     }
 }
@@ -219,7 +288,7 @@ private func previewRow(
                 wasChecked: true
             ),
             day: .now,
-            onChange: { _ in }, onRemove: { _ in }, onLog: { _, _ in }
+            onChange: { _ in }, onRemove: { _ in }, onAdd: { _ in }, onLog: { _, _ in }
         )
     }
 }
@@ -237,7 +306,7 @@ private func previewRow(
                 wasChecked: false
             ),
             day: .now,
-            onChange: { _ in }, onRemove: { _ in }, onLog: { _, _ in }
+            onChange: { _ in }, onRemove: { _ in }, onAdd: { _ in }, onLog: { _, _ in }
         )
     }
 }
