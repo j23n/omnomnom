@@ -68,17 +68,23 @@ struct TodayView: View {
                 // field being in reach of a thumb undone. An inset is laid out above the
                 // keyboard as any other content would be.
                 .safeAreaInset(edge: .bottom, spacing: 0) {
-                    TodayBottomBar(model: model, composer: composer) {
-                        composer.submit(using: resolver)
-                    }
+                    TodayBottomBar(
+                        model: model,
+                        composer: composer,
+                        onSubmit: send,
+                        onUndo: undo
+                    )
                 }
                 // Dragging the day away puts the keyboard down, which is the gesture
                 // people try first.
                 .scrollDismissesKeyboard(.interactively)
-                // Pushed, not presented. Signing off a meal means changing a food and
+                // Pushed, not presented. Naming a food means searching for one and
                 // choosing a weight, and both of those want a screen of their own on top
                 // of this one — which a sheet cannot give them, because the thing it would
                 // have to present belongs to whatever put the sheet up.
+                //
+                // Only ever up for the rows a send could not place, and only when the user
+                // asks. A line that resolved cleanly is in the day already.
                 .navigationDestination(item: $composer.resolution) { resolution in
                     ResolutionScreen(
                         resolution: resolution,
@@ -90,6 +96,7 @@ struct TodayView: View {
                             // The screen's own rows, not the resolution captured when it
                             // opened: an amount changed in it has to be the one logged.
                             let edited = composer.resolution ?? resolution
+                            composer.clearUnplaced()
                             Task { await log(edited, mealSlot: slot, at: at) }
                         }
                     )
@@ -100,11 +107,11 @@ struct TodayView: View {
                 }
                 .onChange(of: router.pendingLine) { _, line in
                     // Siri took a line it could not finish. The composer picks it up so
-                    // the user lands on the question rather than on an empty field.
+                    // the user lands on what became of it rather than on an empty field.
                     guard let line else { return }
                     composer.line = line
                     router.clearPendingLine()
-                    composer.submit(using: resolver)
+                    send()
                 }
                 .onChange(of: composer.banner) { _, banner in
                     guard let banner else { return }
@@ -161,11 +168,31 @@ struct TodayView: View {
         return { await ProductRung.choices(for: $0, in: context) }
     }
 
-    /// Logs every row, clears the field, and reports what happened in one banner.
+    /// Sends what is in the field: resolves it, and logs what came back.
     ///
-    /// The meal and the time come from the sheet, which defaults them to the selected day
-    /// at the current hour and then lets them be changed. They used to be inferred here,
-    /// which meant a line could only ever be logged into the meal its hour implied.
+    /// The meal and the time are nobody's decision here. The model's reading of which meal
+    /// this is wins, since oats at nine in the evening are breakfast, and the clock decides
+    /// when nothing read it — the same rule the sign-off screen used to default to, applied
+    /// without asking. Both are still changeable afterwards, on the entry itself.
+    private func send() {
+        let day = model.selectedDay
+        composer.submit(using: resolver) { placed in
+            let slot = placed.meal ?? MealSlot.inferred(from: QuantitySheet.defaultTimestamp(on: day))
+            await log(placed, mealSlot: slot, at: slot.timestamp(on: day))
+        }
+    }
+
+    /// Takes back what the last line wrote.
+    private func undo() {
+        guard let logged = model.lastLogged else { return }
+        Task { await model.undo(logged, using: EntryLogger(context: context, health: health)) }
+    }
+
+    /// Logs every row and offers the way back from it.
+    ///
+    /// Nothing is signed off first. What the line said, with a food behind it and no
+    /// question over it, is in the day by the time the user has looked up from the field,
+    /// and `LoggedLine` is what makes that safe rather than merely fast.
     private func log(_ resolution: LineResolution, mealSlot: MealSlot, at timestamp: Date) async {
         let logger = EntryLogger(context: context, health: health)
         let outcome = await logger.logLine(
@@ -173,8 +200,7 @@ struct TodayView: View {
             mealSlot: mealSlot,
             at: timestamp
         )
-        composer.clear()
-        model.show(banner: Self.loggedMessage(outcome, of: resolution.rows.count))
+        model.show(logged: LoggedLine(resolution: resolution, outcome: outcome))
     }
 
     /// Logs the line a widget tap named.
@@ -198,21 +224,7 @@ struct TodayView: View {
             mealSlot: phrase.lastSlot ?? MealSlot.inferred(from: timestamp),
             at: timestamp
         )
-        model.show(banner: Self.loggedMessage(outcome, of: resolution.rows.count))
-    }
-
-    /// One sentence for the whole line, naming only what the user can act on.
-    static func loggedMessage(_ outcome: LineLogOutcome, of rows: Int) -> String {
-        if outcome.loggedCount == 0 {
-            return "Nothing could be logged from that line."
-        }
-        let logged = outcome.loggedCount == 1 ? "Logged 1 item." : "Logged \(outcome.loggedCount) items."
-        var problems = outcome.failed > 0 ? ["\(outcome.failed) could not be logged."] : []
-        var seen: Set<String> = []
-        for message in outcome.results.compactMap(\.bannerMessage) where seen.insert(message).inserted {
-            problems.append(message)
-        }
-        return ([logged] + problems).joined(separator: " ")
+        model.show(logged: LoggedLine(resolution: resolution, outcome: outcome))
     }
 }
 

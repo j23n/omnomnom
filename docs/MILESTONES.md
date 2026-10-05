@@ -905,12 +905,57 @@ and ask instead of guessing — "lasagne with beef" and "spag bol", neither of w
 bundled tables hold under a head the model offered. Blocking is the honest answer there and
 the sheet is built for it.
 
-One finding this leaves open rather than fixing: the table *does* hold spaghetti bolognese,
-as *Bolognese-style pasta (spaghetti, tagliatelle…)*, under the head "bolognese". The
-matcher cannot reach it from "spaghetti with bolognese sauce" and should not try to. What
-should change is the prompt, which asks for the wording a composition table uses and ought
-to ask for the dish's own name first.
+Two of the hundred lines were the harness's fault rather than the app's, and the correction
+matters more than the finding. "Spag bol" and "the rest of the lasagne" were given the
+lookup terms "spaghetti with bolognese sauce" and "lasagne with beef" — and the prompt
+already forbids exactly that, in as many words: a dish named rather than described is to be
+broken into the staples it is made of, and `lookupTerm` is never a dish name. Measured again
+with items a model obeying that instruction would return — pasta, minced beef, tomato puree,
+onion, olive oil — both lines resolve completely, and the fix above costs no blocked rows at
+all rather than the two first reported.
+
+What it does leave open is a handful of mediocre-but-marked rows, all of them underlined
+rather than silently logged: "peanut" answers with *Peanut butter*, "minced lamb" with
+*Minced meat soup*, and "aubergine, cooked" with *Aubergine salad with lemon marinade*. The
+first is the clearest: a prefix match on a compound beating the plain ingredient. None of
+them is a wrong row logged quietly, which is the line that matters, and all of them are
+candidates for the next pass at the scorer.
 
 Tests: fourteen on the head phrase and the function words, five on whether a word answers a
 row's head — the asparagus row and the melon among them — and five on the resolver, one per
 fault above, each failing before the change.
+
+## Sending is logging, and the way back from it
+
+The sign-off screen stood between every line and the log. It is gone from that path. A line
+with a food behind it is written the moment it is understood — `ComposerModel.submit` logs
+rather than presents — and what used to be approval is now an offer to take it back.
+
+`LoggedLine` is what makes that defensible rather than merely quick. It holds the identifiers
+of the entries one send created, the count of rows worth a look, and the sentence the bar
+reads; `EntryLogger.undo` puts each of them through the same delete the swipe action uses, so
+Health is mirrored first and an entry it will not release stays visible instead of vanishing
+here and surviving there. The offer sits above the field, on no timer. The transient banner
+goes after four seconds, which is the wrong shape for the only way back from a write nobody
+confirmed, so this one stays until the next send, a change of day, or a dismissal.
+
+What the line taught is deliberately left alone. A phrase records that this wording means
+these foods, which taking the log back does not make untrue — and a line undone because the
+reading was wrong is re-sent corrected, which `Phrase.remember` replaces those items on.
+
+A line is rarely all or nothing, so the rows split. `LineResolution.placed` is everything
+with a food and no question over it, including a probable match — logged and marked, never
+held back, which is the whole point. `LineResolution.unplaced` is what nothing matched or
+matched too weakly to assert on someone's behalf, and it is a question beside the field
+rather than a gate in front of it: four foods of five in the day beats none of them, the
+same rule `logLine` already followed row by row. The sign-off screen survives as the answer
+to that question alone, opened when the user asks for it.
+
+One thing this loses, stated plainly: an outstanding question is held in memory. Quit with
+one open and the words that raised it are gone. Nothing was logged for them, so the record is
+not wrong — only unanswered — and making it survive a launch means storing a resolved row,
+which is a schema decision and not a detail to slip in here.
+
+Tests: sixteen, over the split, the counts, the sentences and their singulars, that an
+implausible amount is still written, and that a second question about a line takes a fresh
+identity rather than looking to the navigation stack like the first one still being up.

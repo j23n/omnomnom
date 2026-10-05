@@ -66,7 +66,7 @@ struct ComposerView: View {
     /// which is what makes it findable: with something to send it sends, and with an empty
     /// field and a keyboard up it closes the keyboard.
     @ViewBuilder private var trailing: some View {
-        if isFocused, !model.canSubmit, !model.isResolving {
+        if isFocused, !model.canSubmit, !model.isBusy {
             Button(action: putKeyboardAway) {
                 Image(systemName: "keyboard.chevron.compact.down")
             }
@@ -80,7 +80,7 @@ struct ComposerView: View {
 
     private var submit: some View {
         Button(action: send) {
-            if model.isResolving {
+            if model.isBusy {
                 ProgressView().controlSize(.small)
             } else {
                 Image(systemName: "arrow.up")
@@ -89,7 +89,7 @@ struct ComposerView: View {
         .buttonStyle(.glassProminent)
         .buttonBorderShape(.circle)
         .disabled(!model.canSubmit)
-        .accessibilityLabel(model.isResolving ? "Working" : "Log this line")
+        .accessibilityLabel(model.isBusy ? "Working" : "Log this line")
     }
 
     /// Sends what is in the field, with the keyboard put away first.

@@ -463,7 +463,7 @@ extension DayEntriesView {
             resolution, mealSlot: slot, at: timestamp, origin: .baseline
         )
         phrase.noteRecalled()
-        model.show(banner: TodayView.loggedMessage(outcome, of: resolution.rows.count))
+        model.show(logged: LoggedLine(resolution: resolution, outcome: outcome))
     }
 
     /// Turns a slot's proposal down. Permanent until the user asks for it again, because

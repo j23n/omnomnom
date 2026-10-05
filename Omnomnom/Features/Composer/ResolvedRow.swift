@@ -203,4 +203,28 @@ nonisolated struct LineResolution: Identifiable, Hashable, Sendable {
     var total: Nutrition {
         rows.compactMap(\.nutrition).reduce(.empty, +)
     }
+
+    /// The rows a send writes straight away: everything with a food that nothing has to
+    /// be asked about. A probable match is in here — it is logged and marked, not held
+    /// back — and so is an amount the model doubted.
+    var placed: LineResolution? {
+        containing { !$0.blocks }
+    }
+
+    /// The rows a send cannot write: nothing matched, or the match was too weak to assert
+    /// on someone's behalf. These are the only rows a question is ever asked about.
+    var unplaced: LineResolution? {
+        containing(\.blocks)
+    }
+
+    /// The same line over a subset of its rows, or `nil` when none of them are kept.
+    ///
+    /// A fresh identifier, because this is what gets pushed as a screen: reusing the
+    /// identifier of the resolution it came from would make the second question about a
+    /// line look like the first one still being up.
+    private func containing(_ keep: (ResolvedRow) -> Bool) -> LineResolution? {
+        let kept = rows.filter(keep)
+        guard !kept.isEmpty else { return nil }
+        return LineResolution(line: line, rows: kept, wasChecked: wasChecked, meal: meal)
+    }
 }

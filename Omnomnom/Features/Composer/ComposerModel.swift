@@ -12,10 +12,21 @@ import SwiftData
 final class ComposerModel {
     /// What is in the field.
     var line: String = ""
-    /// The sheet's content, non-nil while the sheet is up.
+    /// The sign-off screen's content, non-nil while that screen is up.
+    ///
+    /// Only ever the rows a send could not place. A line that resolved cleanly is logged
+    /// without this ever being set, which is what the field is for.
     var resolution: LineResolution?
-    /// True while a line is being resolved, which is the only slow step on this path.
+    /// Rows the last send could not write, waiting for a word from the user.
+    ///
+    /// Held here and not stored, which is the one thing this loses: quit the app with a
+    /// question outstanding and the words that raised it are gone. What they named was
+    /// never logged, so nothing is wrong in the record — only unanswered.
+    var unplaced: LineResolution?
+    /// True while a line is being resolved, which is the slowest step on this path.
     var isResolving = false
+    /// True while what came back is being written.
+    var isLogging = false
     /// One sentence when something went wrong that the user can do nothing about.
     var banner: String?
 
@@ -34,11 +45,21 @@ final class ComposerModel {
     /// only whether there is anything in it. That is the whole cost of giving the question
     /// to a model: nothing is understood until it is asked.
     var canSubmit: Bool {
-        !isResolving && (!line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || image != nil)
+        !isBusy && (!line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || image != nil)
     }
 
-    /// Resolves what is in the field and opens the sheet on the answer.
-    func submit(using resolver: LineResolver) {
+    /// Whether the composer is in the middle of something, by either of the two steps.
+    /// One flag for the field to read, so the spinner does not blink between them.
+    var isBusy: Bool { isResolving || isLogging }
+
+    /// Resolves what is in the field and logs it.
+    ///
+    /// Sending is the whole act. Nothing is held for a sign-off: what the line said with a
+    /// food behind it goes into the day, and `write` is what leaves the offer to take that
+    /// back behind it. The rows nothing could be placed on stay in `unplaced`, where
+    /// they are one question and not a gate — four foods of five in the day beats none of
+    /// them, which is the same rule `logLine` follows row by row.
+    func submit(using resolver: LineResolver, writing write: @escaping (LineResolution) async -> Void) {
         guard canSubmit else { return }
         let line = self.line
         let input: EstimationInput = if let image {
@@ -50,15 +71,42 @@ final class ComposerModel {
         isResolving = true
         task = Task { [weak self] in
             let resolved = await resolver.resolve(input, line: line)
-            guard !Task.isCancelled else { return }
-            guard let self else { return }
-            self.isResolving = false
+            guard !Task.isCancelled, let self else { return }
+            isResolving = false
             if resolved.isEmpty {
-                self.banner = Self.nothingFound(hasEstimator: resolver.estimator != nil)
+                banner = Self.nothingFound(hasEstimator: resolver.estimator != nil)
                 return
             }
-            self.resolution = resolved
+            // The field empties here rather than after the write. What was typed is
+            // understood by now, and leaving it standing invites the same line twice.
+            clearField()
+            unplaced = resolved.unplaced
+            guard let placed = resolved.placed else { return }
+            isLogging = true
+            await write(placed)
+            isLogging = false
         }
+    }
+
+    /// Opens the sign-off screen on the rows the send could not place, which is the only
+    /// thing that screen is for now.
+    func askAboutUnplaced() {
+        guard let unplaced else { return }
+        resolution = unplaced
+    }
+
+    /// Everything about a line has been dealt with: the question is answered or dropped.
+    func clearUnplaced() {
+        unplaced = nil
+        resolution = nil
+    }
+
+    /// "1 food needs a word from you."
+    var unplacedNote: String? {
+        guard let unplaced else { return nil }
+        return unplaced.rows.count == 1
+            ? "1 food needs a word from you."
+            : "\(unplaced.rows.count) foods need a word from you."
     }
 
     /// Why nothing came back.
@@ -72,13 +120,20 @@ final class ComposerModel {
             : "No model is set up to read that. Choose one in Settings, or add food by searching."
     }
 
-    /// Clears the field after a line has been logged.
+    /// Clears the field and everything outstanding, which is what abandoning a line means.
     func clear() {
         task?.cancel()
         task = nil
+        clearField()
+        unplaced = nil
+        resolution = nil
+        isLogging = false
+    }
+
+    /// Empties what was typed, leaving any outstanding question alone.
+    private func clearField() {
         line = ""
         image = nil
-        resolution = nil
         isResolving = false
     }
 
@@ -90,11 +145,11 @@ final class ComposerModel {
         banner = nil
     }
 
-    /// Replaces one row, which is what correcting a food or an amount does.
+    /// Replaces one row, which is what naming a food or setting an amount does.
     func update(_ row: ResolvedRow) {
         guard var resolution, let index = resolution.rows.firstIndex(where: { $0.id == row.id }) else { return }
         resolution.rows[index] = row
-        self.resolution = resolution
+        show(resolution)
     }
 
     /// Appends a row for a food the user picked themselves, which is how something the
@@ -103,14 +158,28 @@ final class ComposerModel {
     func add(_ row: ResolvedRow) {
         guard var resolution else { return }
         resolution.rows.append(row)
-        self.resolution = resolution
+        show(resolution)
     }
 
     /// Removes a row the user does not want, which is one of the two ways past a row
-    /// that blocks.
+    /// nothing could be placed on.
     func remove(_ row: ResolvedRow) {
         guard var resolution else { return }
         resolution.rows.removeAll { $0.id == row.id }
-        self.resolution = resolution.rows.isEmpty ? nil : resolution
+        if resolution.rows.isEmpty {
+            clearUnplaced()
+        } else {
+            show(resolution)
+        }
+    }
+
+    /// Puts an edited set of rows back, in both the places that hold it.
+    ///
+    /// The screen and the bar are two views of one thing: the only rows that reach the
+    /// screen are the ones the bar is asking about, so a food named there has to change
+    /// what the bar says about what is left.
+    private func show(_ resolution: LineResolution) {
+        self.resolution = resolution
+        unplaced = resolution
     }
 }
