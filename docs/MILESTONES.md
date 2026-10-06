@@ -1088,3 +1088,46 @@ and an unanswered meal is a faint ring segment rather than a dotted one.
 Tests: twenty-two, over the headline's sentence and its note, the run row's wording with a
 broken run and with none at all, the month the grid draws at its edges, and what a cell says
 aloud including a day the cadence does not ask about.
+
+## Every gap in one queue
+
+The last screen the boards asked for: loose ends. One card per thing left to answer about a
+day, each with its fix on it, reached from a row under Today's headline that is there only
+when there is something in it.
+
+`LooseEnd.items(rows:answers:usual:isAsked:isClosed:)` is where the rules are and it knows
+nothing about the store. Four kinds, in the order they are worked: an unanswered meal, which
+is the only card that changes what the day says it holds; a row whose food the app chose; a
+nutrient the day's total is a floor for; and the day itself, which only appears once there
+is nothing else owed — closing it would otherwise claim the day holds everything eaten while
+the cards above it say it does not.
+
+Three rules hold it to being a queue rather than a chore list:
+
+- **Nothing in it is a percentage and nothing fills a bar.** A count goes down, the mark's
+  ring closes, the run holds. There is no progress to be at 60 per cent of, and a test
+  asserts that no card and no heading can carry a `%`.
+- **Every card's second answer costs nothing.** "Nothing tonight" closes a meal without
+  inventing food; "it is right" closes a question about a match without changing anything;
+  "leave it" drops a missing figure for the visit. A queue where every exit writes something
+  is a queue that teaches people to invent food.
+- **A day the cadence does not ask about raises nothing.** The cadence decides when the app
+  speaks, and this is the app speaking.
+
+A missing figure is one card per nutrient and not one per row: 666 of the 10,440 bundled
+rows are short of something, so a card per row would bury everything else on an ordinary
+day — and the day's total is what a floor is a floor of, not the row. Where exactly one row
+is short, the card carries that row and offers to swap it for a fuller one; where two are,
+it offers nothing but the words, because there is no single answer.
+
+"Leave it" is remembered for the visit and not stored. A dismissal that outlived the day
+would be a standing instruction never to mention a nutrient again, which is not what the
+button says.
+
+Offering a slot's usual meal moved to `EntryLogger.logUsual(_:for:on:resolver:)`: the
+proposal card on Today and this queue offer the same thing in two places and must not do it
+two ways.
+
+Tests: eighteen, over every kind of card, the order they come in, the day the cadence is
+quiet about, a figure missing from one row against two, and that nothing anywhere in the
+queue can be a percentage.

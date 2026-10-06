@@ -11,6 +11,9 @@ import SwiftUI
 struct DayEntriesView: View {
     let model: TodayViewModel
     private let interval: DateInterval
+    /// The calendar the day's bounds were taken with, kept so everything else about the
+    /// day is read in the same one.
+    private let calendar: Calendar
 
     @Environment(\.modelContext) private var context
     @Environment(\.health) private var health
@@ -36,9 +39,12 @@ struct DayEntriesView: View {
     @State private var isCopying = false
     /// The marked entry being asked about, if any.
     @State private var questioned: LogEntry?
+    /// Whether the loose-ends queue is up.
+    @State private var isShowingLooseEnds = false
 
     init(day: Date, model: TodayViewModel, calendar: Calendar = .current) {
         self.model = model
+        self.calendar = calendar
         let start = calendar.startOfDay(for: day)
         let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start
         let previousStart = calendar.date(byAdding: .day, value: -1, to: start) ?? start
@@ -167,6 +173,19 @@ struct DayEntriesView: View {
         MacroComposition(of: headlineNutrition)
     }
 
+    /// Everything left to answer about this day. Read here only to count it; the queue
+    /// itself reads the same thing from the same place.
+    private var looseEnds: [LooseEnd] {
+        LooseEnd.items(
+            entries: entries,
+            record: dayRecords.first,
+            baselines: baselines,
+            day: interval.start,
+            cadence: cadence,
+            calendar: calendar
+        )
+    }
+
     /// The editor's presentation, driven by the model's entry rather than by
     /// `sheet(item:)`, which would ask a SwiftData model to be `Identifiable` across
     /// a delete. Clearing the entry closes the sheet and closing it clears the entry.
@@ -217,6 +236,15 @@ struct DayEntriesView: View {
                     composition: composition,
                     isAssumed: dayState == .assumed
                 )
+                // Only when there is something in it. A row saying nothing is loose is a
+                // row about the app rather than about the day.
+                if !looseEnds.isEmpty {
+                    Button {
+                        isShowingLooseEnds = true
+                    } label: {
+                        LooseEndsRow(count: looseEnds.count)
+                    }
+                }
             }
             if !composition.isEmpty {
                 Section("What today was made of") {
@@ -291,6 +319,9 @@ struct DayEntriesView: View {
                     model.finishedEdit(banner: banner)
                 }
             }
+        }
+        .sheet(isPresented: $isShowingLooseEnds) {
+            LooseEndsView(day: interval.start, dayTitle: model.dayTitle, calendar: calendar)
         }
         .sheet(isPresented: isQuestionPresented) {
             if let entry = questioned {
@@ -531,27 +562,22 @@ extension DayEntriesView {
         model.finishedEdit(banner: message)
     }
 
-    /// Logs a slot's usual line, marked as assumed.
-    ///
-    /// This is the only place an entry is written without anyone describing it, and it
-    /// still takes a tap. `EntryOrigin.baseline` is what keeps the day distinguishable
-    /// afterwards: it reads as assumed rather than complete, and any mean including it
-    /// says so.
+    /// Logs a slot's usual line, through the one path that does it.
     func accept(_ phrase: Phrase, for slot: MealSlot) async {
         acceptingSlot = slot
         defer { acceptingSlot = nil }
-        let resolver = LineResolver(context: context, repository: repository)
-        guard let resolution = resolver.resolution(for: phrase) else {
-            model.show(banner: "That meal can't be logged any more: one of its foods is gone.")
-            return
-        }
-        let timestamp = QuantitySheet.defaultTimestamp(on: interval.start)
         let logger = EntryLogger(context: context, health: health)
-        let outcome = await logger.logLine(
-            resolution, mealSlot: slot, at: timestamp, origin: .baseline
-        )
-        phrase.noteRecalled()
-        composer.show(logged: LoggedLine(resolution: resolution, outcome: outcome))
+        switch await logger.logUsual(
+            phrase,
+            for: slot,
+            on: interval.start,
+            resolver: LineResolver(context: context, repository: repository)
+        ) {
+        case .logged(let line):
+            composer.show(logged: line)
+        case .gone:
+            model.show(banner: UsualOutcome.gone.message)
+        }
     }
 
     /// Turns a slot's proposal down. Permanent until the user asks for it again, because
