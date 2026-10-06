@@ -1,4 +1,5 @@
 import DeveloperToolsSupport
+import Foundation
 import SwiftUI
 
 /// The day as one mark and one sentence, above everything else on Today.

@@ -689,10 +689,12 @@ The second principle, new in revision 4 and the one that constrains the first: *
 
 | Screen | Purpose |
 | --- | --- |
-| Today | Default. Date, headline totals, entries by meal slot, baseline proposals, the composer |
-| Composer | One line of text or speech, and a camera button that attaches a photo to it. The primary input, pinned to the bottom of Today |
-| Sign-off | What the model made of the line, as rows: the food behind each, its amount, where it came from, the meal and the time. Change any of it, add a food it missed, then log |
-| Shape | All eight nutrients over time, the week as composition bars, and the coverage strip. Called Trends until the design pass renamed it for what it answers |
+| Today | Default. The day as one mark and one sentence, the composition bar, all eight totals, entries by meal slot, baseline proposals, and a row to the loose ends when there are any |
+| Composer | One line of text or speech, and a camera button that attaches a photo to it. The primary input, over the tab bar rather than on one screen, so it is on all four. Sending logs |
+| Sign-off | The part of a line nothing could be placed, opened from the bar over the field. The food behind each row, its amount, the meal and the time. Also the tray's screen, where a gathered row of foods is checked before Log |
+| Shape | All eight nutrients over time, the coverage strip, and a row to the run. Called Trends until the design pass renamed it for what it answers |
+| The run | Days answered in a row, the best there has been, a prompt for a day still answerable, and the month as marks |
+| Loose ends | Every gap in one queue: an unanswered meal, a row the app chose the food for, a nutrient the day's total is a floor for, and the day itself. Each with its fix on the card, and every card's second answer costs nothing |
 | Add | Search over foods, phrases and recipes; still the way to pick a specific row |
 | Quantity | Portion buckets, the gram field behind them, live nutrition preview |
 | Library | Foods, phrases and recipes; custom food creation, recipe builder |
