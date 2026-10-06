@@ -1,5 +1,6 @@
 import Foundation
 import os
+import SwiftData
 
 extension EntryLogger {
     /// Accepts the match on a marked entry. The food was right, so the mark goes and
@@ -46,7 +47,9 @@ extension EntryLogger {
 
         do {
             let result = try await log(choice: choice, amount: amount, mealSlot: slot, at: timestamp)
-            if let fresh = entry(id: result.entryID) {
+            // Qualified: the row being replaced is this method's own `entry`, which would
+            // otherwise shadow the lookup.
+            if let fresh = self.entry(id: result.entryID) {
                 fresh.origin = origin
                 fresh.wording = wording
                 fresh.guessed = false
