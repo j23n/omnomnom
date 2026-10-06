@@ -1131,3 +1131,39 @@ two ways.
 Tests: eighteen, over every kind of card, the order they come in, the day the cadence is
 quiet about, a figure missing from one row against two, and that nothing anywhere in the
 queue can be a percentage.
+
+## Sending shows the parse, every time
+
+A reversal, from use rather than from argument: the field no longer logs. Sending resolves
+the line and puts the sign-off screen up, and that screen is the only thing in the app that
+writes a typed line to Health.
+
+The reason is the honest one. On-device estimation is not good enough to be trusted
+silently. What a model made of a sentence is a reading, not a record — it picks the foods,
+it estimates the weights, it decides which meal this was — and all three of those are
+guesses that land wrong often enough that somebody has to see them. So all three are shown,
+all three are changeable, and nothing reaches Health until the button is tapped. "Four foods
+of five in the day beats none of them" was the right rule for a matcher that is right most
+of the time, and the matcher is not that yet.
+
+What that removed: the split of a line into what could be written and what could not
+(`LineResolution.placed` / `.unplaced`), and the bar over the field that asked about the
+remainder. A row that blocks blocks the line again, which is what `canLog` already said and
+what the screen was already built to carry — three tiers in a sentence above the button
+rather than a fourth surface somewhere else. The field keeps what was typed until the screen
+logs it, so backing out is never how a sentence gets lost.
+
+What stayed, and is worth keeping: `LoggedLine` and the undo. Two paths still write in one
+tap and nothing else — a widget tap, which is the tap, and accepting a slot's usual meal —
+and for those the offer is the only way back. After a line signed off it is a courtesy
+rather than a necessity and reads the same either way.
+
+The screen is presented with a navigation stack of its own rather than pushed, which is the
+other change. Pushing was chosen because the food picker has to come up *over* the sign-off
+screen, and a sheet presented by Today could not host it. A sheet carrying its own stack
+has the property pushing had — it is the topmost thing — and unlike pushing it can come up
+over any of the four tabs, which is what the field being on all four requires.
+
+Tests: the four that asserted the split now assert what the screen gates on instead —
+settled and probable both log, unsure and unmatched both block, an amount the model doubted
+is worth a look and not a block, and an empty line logs nothing.

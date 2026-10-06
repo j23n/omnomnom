@@ -690,8 +690,8 @@ The second principle, new in revision 4 and the one that constrains the first: *
 | Screen | Purpose |
 | --- | --- |
 | Today | Default. The day as one mark and one sentence, the composition bar, all eight totals, entries by meal slot, baseline proposals, and a row to the loose ends when there are any |
-| Composer | One line of text or speech, and a camera button that attaches a photo to it. The primary input, over the tab bar rather than on one screen, so it is on all four. Sending logs |
-| Sign-off | The part of a line nothing could be placed, opened from the bar over the field. The food behind each row, its amount, the meal and the time. Also the tray's screen, where a gathered row of foods is checked before Log |
+| Composer | One line of text or speech, and a camera button that attaches a photo to it. The primary input, at the bottom of every tab rather than of one screen. Sending resolves the line and shows it; it never logs |
+| Sign-off | What the line resolved to, every time, before anything is written: the food behind each row, its amount, where it came from, the meal and the time. Change any of it, add a food it missed, then log. Also the tray's screen, where a gathered row of foods is checked before Log |
 | Shape | All eight nutrients over time, the coverage strip, and a row to the run. Called Trends until the design pass renamed it for what it answers |
 | The run | Days answered in a row, the best there has been, a prompt for a day still answerable, and the month as marks |
 | Loose ends | Every gap in one queue: an unanswered meal, a row the app chose the food for, a nutrient the day's total is a floor for, and the day itself. Each with its fix on the card, and every card's second answer costs nothing |
@@ -700,7 +700,9 @@ The second principle, new in revision 4 and the one that constrains the first: *
 | Library | Foods, phrases and recipes; custom food creation, recipe builder |
 | Settings | Health status, opt-in toggles, sampling cadence, sources and attribution |
 
-Four tabs now: Today, Shape, Library, Settings, and the composer is on every one of them — it is the app's one verb and does not belong to a single tab. The composer is part of Today rather than a destination; Add and Quantity are sheets over it, and sign-off is **pushed** rather than presented. That last one is not a preference. Signing off a meal means changing a food and choosing a weight, and both want a screen on top of the sign-off screen — which a sheet cannot give them, because whatever presented a sheet owns the next presentation, so the food picker was being put up by Today while the sheet sat in front of it. Pushing makes sign-off the topmost thing, which is the only arrangement in which its own controls work.
+Four tabs now: Today, Shape, Library, Settings, and the composer is on every one of them — it is the app's one verb and does not belong to a single tab. Each tab applies the field to its own content as a bottom inset, sharing one `ComposerModel`; an inset on the tab view itself belongs to the tab bar's chrome, where it drew over the bar, took keystrokes as tab selection and re-laid-out the tab on every character.
+
+Add and Quantity are sheets over whatever is showing. Sign-off is **presented with a navigation stack of its own** rather than pushed, which is a change from revision 4 and for the reason revision 4 gave: signing off a meal means changing a food and choosing a weight, and both want a screen on top of the sign-off screen — which the screen underneath cannot provide, since whatever presented a sheet owns the next presentation. A sheet carrying its own stack has the property pushing had, which is being the topmost thing, and unlike pushing it can come up over any of the four tabs.
 
 ### The fast path
 

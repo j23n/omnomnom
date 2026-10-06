@@ -2,12 +2,14 @@ import DeveloperToolsSupport
 import Foundation
 import SwiftUI
 
-/// What the last send wrote, with the way back from it.
+/// What was last logged, with the way back from it.
 ///
-/// A line is logged without being signed off, so this is not a notice: it is the other
-/// half of that decision. It stays until the next send, until the day changes or until it
-/// is dismissed, where the transient banner beside it goes after four seconds. A window on
-/// a clock is the wrong shape for the only way back from a write nobody confirmed.
+/// Not a notice, which is why it is on no timer: two paths write in one tap and nothing
+/// else — a widget tap, and accepting a usual meal — and for those this is the only way
+/// back. After a line signed off on the sign-off screen it is a courtesy rather than a
+/// necessity, and it reads the same either way. It stays until the next send, until the day
+/// changes or until it is dismissed, where the transient banner beside it goes after four
+/// seconds.
 ///
 /// Dismissing it is not another way of keeping the entries — they are kept either way, and
 /// the day's own rows are where one of them gets removed on its own.
@@ -40,43 +42,7 @@ struct LoggedLineBar: View {
     }
 }
 
-/// The part of a line nothing could be placed, which is the one question a send ever asks.
-///
-/// It asks after the fact and beside the field rather than in the way of it: what the line
-/// got right is already in the day, and this is about the one food that is not. Leaving it
-/// drops the words, which is honest — nothing was logged for them, so there is nothing to
-/// correct later.
-struct UnplacedRowsBar: View {
-    let note: String
-    let onPick: () -> Void
-    let onLeave: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(note)
-                .font(.footnote)
-                .multilineTextAlignment(.leading)
-            HStack(spacing: 16) {
-                Button("Choose a food", action: onPick)
-                    .font(.footnote.weight(.semibold))
-                    .accessibilityHint("Opens what the line said so you can name the food")
-                Button("Leave it", action: onLeave)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .accessibilityHint("Drops the question. Nothing was logged for it")
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .glassEffect(in: RoundedRectangle(cornerRadius: 16))
-    }
-}
-
 #if DEBUG
-private let oneItem = LoggedLine(
-    line: "oats, banana, coffee", entryIDs: [UUID()], marked: 0, failed: 0
-)
-
 #Preview("A clean send", traits: .sizeThatFitsLayout) {
     LoggedLineBar(
         logged: LoggedLine(
@@ -116,25 +82,14 @@ private let oneItem = LoggedLine(
     .padding()
 }
 
-#Preview("A question outstanding", traits: .sizeThatFitsLayout) {
-    VStack(spacing: 8) {
-        LoggedLineBar(logged: oneItem, onUndo: {}, onDismiss: {})
-        UnplacedRowsBar(note: "1 food needs a word from you.", onPick: {}, onLeave: {})
-    }
-    .padding()
-}
-
 #Preview("Accessibility 5", traits: .sizeThatFitsLayout) {
-    VStack(spacing: 8) {
-        LoggedLineBar(
-            logged: LoggedLine(
-                line: "pancake", entryIDs: [UUID(), UUID()], marked: 1, failed: 1,
-                notes: ["Logged here only. Health didn't accept it."]
-            ),
-            onUndo: {}, onDismiss: {}
-        )
-        UnplacedRowsBar(note: "2 foods need a word from you.", onPick: {}, onLeave: {})
-    }
+    LoggedLineBar(
+        logged: LoggedLine(
+            line: "pancake", entryIDs: [UUID(), UUID()], marked: 1, failed: 1,
+            notes: ["Logged here only. Health didn't accept it."]
+        ),
+        onUndo: {}, onDismiss: {}
+    )
     .padding()
     .environment(\.dynamicTypeSize, .accessibility5)
 }

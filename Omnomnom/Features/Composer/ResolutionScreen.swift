@@ -16,23 +16,23 @@ private nonisolated enum FoodPick: Identifiable, Hashable, Sendable {
     }
 }
 
-/// The part of a line nothing could be placed, and what to do about it.
+/// What the line resolved to, before any of it is logged.
 ///
-/// This screen used to stand between every line and the log. It does not any more: a line
-/// with a food behind it is written the moment it is understood, and what reaches here is
-/// only what could not be — a food nothing matched, or a match too weak to assert on
-/// someone's behalf. It comes up when the user asks, from the bar above the field, and
-/// what it logs is a meal they named rather than one they approved.
+/// Every line comes through here and nothing is ever written without it. What a model made
+/// of a sentence is a reading: it picks the foods, it estimates the weights, and it decides
+/// which meal this was. All three are on this screen, all three are changeable, and the
+/// button is the only thing in the app that writes a typed line to Health.
 ///
-/// A pushed screen and not a sheet. Naming a food means searching for one and choosing a
-/// weight, and both want something on top of this — a search screen, a keypad. A sheet
-/// cannot host those: whatever presented the sheet owns the next presentation, so the food
-/// picker was being put up by the screen underneath while this one was in the way. Pushing
-/// makes this the topmost thing, which is the only arrangement where its own controls work.
+/// Presented with a navigation stack of its own rather than pushed. It used to be pushed,
+/// because naming a food means searching for one and choosing a weight and both want a
+/// screen on top of this one — which the screen underneath cannot provide, since whatever
+/// presented a sheet owns the next presentation. A sheet carrying its own stack has the
+/// same property pushing did: it is the topmost thing, so its own controls work. That is
+/// what lets the field live over all four tabs rather than inside Today's stack.
 ///
 /// The sentence above the button is what carries the state. Row height is a weak signal in
 /// a short list and nearly worthless at accessibility sizes, and no colour may encode a
-/// verdict, so how many rows still need a food is said in words.
+/// verdict, so how many rows want a look, or still need a food, is said in words.
 struct ResolutionScreen: View {
     let resolution: LineResolution
     let onChange: (ResolvedRow) -> Void

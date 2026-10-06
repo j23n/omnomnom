@@ -44,15 +44,16 @@ fixed or written down as a deviation in `DESIGN.md`.
    in words. The alternative was a sheet that logged one food and closed the screen on
    four others the user had gathered. Needs trying on someone.
 8. **The undo offer is on no timer.** It stays until the next send, a change of day, or a
-   dismissal, because four seconds is the wrong window for the only way back from a write
-   nobody confirmed. It is also therefore in the way for as long as it is up.
+   dismissal, because for the two paths that write in one tap — a widget tap, and accepting
+   a usual meal — it is the only way back. It is also therefore in the way for as long as
+   it is up.
 
 ## True, and worth knowing
 
-9. **An outstanding "needs a word from you" question lives in memory.** Quit with one open
-   and the words that raised it are gone. Nothing was logged for them, so the record is not
-   wrong — only unanswered. Making it survive a launch means storing a resolved row, which
-   is a schema decision.
+9. **A resolved line lives in memory until it is signed off.** Quit with the sign-off
+   screen up and the parse is gone; the typed line is gone with it. Nothing was logged, so
+   the record is not wrong — only the retyping is annoying. Making it survive a launch
+   means storing a resolved row, which is a schema decision.
 10. **One undo offer at a time.** A second send replaces the first offer, so the earlier
     line's entries lose their one-tap undo. They are still one swipe each on the day.
 11. **"Leave it" on a missing figure is remembered for the visit only.** It will be back

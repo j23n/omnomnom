@@ -89,7 +89,7 @@ struct TrayTests {
         let gathered = tray([row("Oat flakes", kcal: 372, amount: 45), row("Banana", kcal: 89, amount: 120)])
         #expect(gathered.canLog)
         #expect(gathered.glanceCount == 0)
-        #expect(gathered.unplaced == nil)
+        #expect(gathered.blockingCount == 0)
         #expect(gathered.rows.allSatisfy(\.isSettled))
     }
 }

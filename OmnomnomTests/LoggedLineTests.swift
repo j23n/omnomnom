@@ -26,53 +26,41 @@ struct LoggedLineTests {
         LineResolution(line: line, rows: rows, wasChecked: true, meal: .breakfast)
     }
 
-    // MARK: - What a send writes and what it holds back
+    // MARK: - What the screen gates on
 
-    @Test func aSettledRowAndAProbableOneAreBothWritten() {
-        // The probable row is the whole point: it is logged and marked, not held back.
-        // Waiting for a word about every uncertain match is what made logging a chore.
+    @Test func aSettledRowAndAProbableOneAreBothLoggable() {
+        // A probable match is logged and marked, not held back: the matcher would defend
+        // it, and the screen the user is looking at is where it gets corrected if it is
+        // wrong.
         let line = resolution([
             row("Oat flakes"),
             row("Banana", confidence: .probable)
         ])
-        #expect(line.placed?.rows.map(\.displayName) == ["Oat flakes", "Banana"])
-        #expect(line.unplaced == nil)
+        #expect(line.canLog)
+        #expect(line.blockingCount == 0)
+        #expect(line.glanceCount == 1)
     }
 
-    @Test func anUnsureMatchAndAnUnmatchedRowAreTheOnesAskedAbout() {
+    @Test func anUnsureMatchAndAnUnmatchedRowBothStopTheLog() {
         let line = resolution([
             row("Oat flakes"),
             row("something", matched: false),
             row("Rye bread", confidence: .unsure)
         ])
-        #expect(line.placed?.rows.map(\.displayName) == ["Oat flakes"])
-        #expect(line.unplaced?.rows.map(\.displayName) == ["something", "Rye bread"])
+        #expect(!line.canLog)
+        #expect(line.blockingCount == 2)
     }
 
-    @Test func anImplausibleAmountIsStillWritten() {
+    @Test func anImplausibleAmountIsWorthALookAndNotABlock() {
         // The model doubting a weight is a reason to mark the row, never a reason to
         // refuse what the person said they ate.
         let line = resolution([row("Olive oil", implausible: true)])
-        #expect(line.placed?.rows.count == 1)
-        #expect(line.unplaced == nil)
+        #expect(line.canLog)
+        #expect(line.glanceCount == 1)
     }
 
-    @Test func aSplitKeepsTheLineAndItsMealAndTakesANewIdentity() throws {
-        let line = resolution([row("Oat flakes"), row("x", matched: false)])
-        let placed = try #require(line.placed)
-        #expect(placed.line == "oats, banana")
-        #expect(placed.meal == .breakfast)
-        #expect(placed.wasChecked)
-        // A new identity, or the second question about a line would look to the
-        // navigation stack like the first one still being up.
-        #expect(placed.id != line.id)
-        #expect(placed.id != line.unplaced?.id)
-    }
-
-    @Test func aLineWithNothingPlaceableWritesNothing() {
-        let line = resolution([row("x", matched: false)])
-        #expect(line.placed == nil)
-        #expect(line.unplaced?.rows.count == 1)
+    @Test func anEmptyLineCannotBeLogged() {
+        #expect(!resolution([]).canLog)
     }
 
     // MARK: - The offer
