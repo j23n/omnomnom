@@ -69,7 +69,10 @@ final class ComposerModel {
     /// back behind it. The rows nothing could be placed on stay in `unplaced`, where
     /// they are one question and not a gate — four foods of five in the day beats none of
     /// them, which is the same rule `logLine` follows row by row.
-    func submit(using resolver: LineResolver, writing write: @escaping (LineResolution) async -> Void) {
+    func submit(
+        using resolver: LineResolver,
+        writing write: @escaping (LineResolution) async -> LoggedLine
+    ) {
         guard canSubmit else { return }
         let line = self.line
         let input: EstimationInput = if let image {
@@ -89,12 +92,19 @@ final class ComposerModel {
             }
             // The field empties here rather than after the write. What was typed is
             // understood by now, and leaving it standing invites the same line twice.
+            let typed = line
             clearField()
             unplaced = resolved.unplaced
             guard let placed = resolved.placed else { return }
             isLogging = true
-            await write(placed)
+            let logged = await write(placed)
             isLogging = false
+            // Nothing reached the day, so the words go back in the field. Clearing it on
+            // a write that wrote nothing would lose what someone said in the one case
+            // where they have to say it again.
+            if !logged.canUndo, self.line.isEmpty {
+                self.line = typed
+            }
         }
     }
 

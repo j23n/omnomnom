@@ -101,7 +101,7 @@ struct ComposerBar: View {
         let day = composer.day
         composer.submit(using: resolver) { placed in
             let slot = placed.meal ?? MealSlot.inferred(from: QuantitySheet.defaultTimestamp(on: day))
-            await log(placed, mealSlot: slot, at: slot.timestamp(on: day))
+            return await log(placed, mealSlot: slot, at: slot.timestamp(on: day))
         }
     }
 
@@ -110,10 +110,15 @@ struct ComposerBar: View {
     /// Nothing is signed off first. What the line said, with a food behind it and no
     /// question over it, is in the day by the time the user has looked up from the field,
     /// and `LoggedLine` is what makes that safe rather than merely fast.
-    private func log(_ resolution: LineResolution, mealSlot: MealSlot, at timestamp: Date) async {
+    @discardableResult
+    private func log(
+        _ resolution: LineResolution, mealSlot: MealSlot, at timestamp: Date
+    ) async -> LoggedLine {
         let logger = EntryLogger(context: context, health: health)
         let outcome = await logger.logLine(resolution, mealSlot: mealSlot, at: timestamp)
-        composer.show(logged: LoggedLine(resolution: resolution, outcome: outcome))
+        let logged = LoggedLine(resolution: resolution, outcome: outcome)
+        composer.show(logged: logged)
+        return logged
     }
 
     /// Takes back what the last line wrote.
