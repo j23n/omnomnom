@@ -107,18 +107,18 @@ struct LoggedLineTests {
         #expect(logged.message == "Logged 3 items. \(refused)")
     }
 
-    @Test func theOfferCountsTheRowsItWroteRatherThanTheRowsTheLineNamed() throws {
-        // Built from the placed rows, so a line with one unmatched food says "logged 1"
-        // and not "logged 1 of 2" — what could not be placed is a separate question.
-        let line = resolution([row("Oat flakes"), row("x", matched: false)])
-        let placed = try #require(line.placed)
+    @Test func theOfferCountsWhatReachedTheDayAndNotWhatTheLineNamed() {
+        // Two rows went to the log and one of them could not be written, so the offer
+        // says "logged 1" and names the other rather than reading "1 of 2", which would
+        // be a figure about the line instead of about the day.
+        let line = resolution([row("Oat flakes"), row("Rye bread")])
         let outcome = LineLogOutcome(
             results: [LogResult(entryID: UUID(), written: [.energy], healthError: nil, storeError: nil)],
-            failed: 0,
+            failed: 1,
             remembered: true
         )
-        let logged = LoggedLine(resolution: placed, outcome: outcome)
-        #expect(logged.message == "Logged 1 item.")
+        let logged = LoggedLine(resolution: line, outcome: outcome)
+        #expect(logged.message == "Logged 1 item. 1 could not be logged.")
         #expect(logged.entryIDs.count == 1)
     }
 
@@ -129,7 +129,7 @@ struct LoggedLineTests {
             failed: 0,
             remembered: true
         )
-        let logged = LoggedLine(resolution: line.placed ?? line, outcome: outcome)
+        let logged = LoggedLine(resolution: line, outcome: outcome)
         #expect(logged.marked == 1)
         #expect(logged.message == "Logged 1 item. 1 wants a look.")
     }

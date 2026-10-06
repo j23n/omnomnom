@@ -63,9 +63,8 @@ nonisolated struct LoggedLine: Identifiable, Hashable, Sendable {
 
     /// What logging one resolved line came to.
     ///
-    /// `resolution` is the rows that were offered to the log, so on the send path it is
-    /// the placed rows rather than everything the line named — what the send could not
-    /// place is a separate question and not part of what an undo would remove.
+    /// `resolution` is the rows that were offered to the log, which is what the user signed
+    /// off: the counts are about what reached the day rather than about what was typed.
     init(resolution: LineResolution, outcome: LineLogOutcome, id: UUID = UUID()) {
         var seen: Set<String> = []
         self.init(

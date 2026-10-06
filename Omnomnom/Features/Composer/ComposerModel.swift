@@ -155,8 +155,8 @@ final class ComposerModel {
         self.resolution = resolution
     }
 
-    /// Removes a row the user does not want, which is one of the two ways past a row
-    /// nothing could be placed on.
+    /// Removes a row the user does not want, which is one of the two ways past a row that
+    /// blocks the log.
     func remove(_ row: ResolvedRow) {
         guard var resolution else { return }
         resolution.remove(row)
