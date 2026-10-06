@@ -228,24 +228,33 @@ struct DayEntriesView: View {
         }
     }
 
-    var body: some View {
-        List {
-            Section {
-                DayHeadline(
-                    answers: answers,
-                    composition: composition,
-                    isAssumed: dayState == .assumed
-                )
-                // Only when there is something in it. A row saying nothing is loose is a
-                // row about the app rather than about the day.
-                if !looseEnds.isEmpty {
-                    Button {
-                        isShowingLooseEnds = true
-                    } label: {
-                        LooseEndsRow(count: looseEnds.count)
-                    }
+    /// The day as one mark and one sentence, with what is left to answer about it.
+    ///
+    /// Its own property so the queue is read once per redraw rather than once to ask
+    /// whether it is empty and again to count it.
+    @ViewBuilder private var headline: some View {
+        let ends = looseEnds
+        Section {
+            DayHeadline(
+                answers: answers,
+                composition: composition,
+                isAssumed: dayState == .assumed
+            )
+            // Only when there is something in it. A row saying nothing is loose is a row
+            // about the app rather than about the day.
+            if !ends.isEmpty {
+                Button {
+                    isShowingLooseEnds = true
+                } label: {
+                    LooseEndsRow(count: ends.count)
                 }
             }
+        }
+    }
+
+    var body: some View {
+        List {
+            headline
             if !composition.isEmpty {
                 Section("What today was made of") {
                     CompositionBar(composition: composition)

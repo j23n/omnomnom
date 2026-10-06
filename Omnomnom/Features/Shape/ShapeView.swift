@@ -93,6 +93,7 @@ struct ShapeView: View {
                     Text("Read from Health, which counts every source once. What a complete day is comes from this app.")
                 }
             }
+            .composingTab()
             .navigationTitle("Shape")
             .overlay {
                 if model.isLoading, model.trends.isEmpty {

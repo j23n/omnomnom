@@ -127,6 +127,7 @@ struct LibraryView: View {
                     }
                 }
             }
+            .composingTab()
             .navigationTitle("Library")
             .searchable(text: $searchText, prompt: "Search names and tags")
             .toolbar {

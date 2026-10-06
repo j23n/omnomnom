@@ -69,20 +69,17 @@ struct TodayView: View {
                         }
                     }
                 }
-                // Only this screen's own notices. The field itself is over the tab bar,
-                // where every tab has it.
+                // This screen's own notices, above the field: two insets, and the one
+                // applied second is the one nearer the bottom of the screen.
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     TodayBottomBar(model: model)
                 }
+                // The field, pointed at the day being looked at — this is the only screen
+                // where that is not today.
+                .composingTab(day: model.selectedDay)
                 // Dragging the day away puts the keyboard down, which is the gesture
                 // people try first.
                 .scrollDismissesKeyboard(.interactively)
-                // The field logs into the day being looked at, and this is the only screen
-                // where that is not today.
-                .onAppear { composer.looking(at: model.selectedDay) }
-                .onChange(of: model.selectedDay) { _, day in
-                    composer.looking(at: day)
-                }
                 .onOpenURL { url in
                     guard let id = WidgetSnapshot.phraseID(from: url) else { return }
                     Task { await logFromWidget(id) }

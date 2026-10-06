@@ -31,45 +31,31 @@ struct RootView: View {
 /// whole app, so a line half typed survives a change of tab and an Undo stays reachable
 /// from wherever the user went next.
 ///
+/// The field itself is applied by each tab, with `composingTab`, rather than to the tab
+/// view: an inset here would belong to the tab bar's chrome, where it drew over the bar,
+/// took keystrokes meant for the field as tab selection, and re-laid-out the whole tab on
+/// every character. What is shared is the state and not the placement.
+///
 /// Everything the field leads to — the sign-off sheet, the Add screen, Quantity — is still
 /// presented rather than pushed, so the input path stays one screen deep however many ways
 /// into it there are.
 struct MainTabView: View {
-    /// Which tab is up, kept only so that leaving Today points the field back at today:
-    /// Today is the one screen that can be showing another day, and a line typed anywhere
-    /// else can only mean now.
-    private enum Showing: Hashable {
-        case today, shape, library, settings
-    }
-
     @State private var composer = ComposerModel()
-    @State private var showing: Showing = .today
 
     var body: some View {
-        TabView(selection: $showing) {
-            Tab("Today", systemImage: "calendar", value: Showing.today) {
+        TabView {
+            Tab("Today", systemImage: "calendar") {
                 TodayView()
             }
-            Tab("Shape", systemImage: "chart.xyaxis.line", value: Showing.shape) {
+            Tab("Shape", systemImage: "chart.xyaxis.line") {
                 ShapeView()
             }
-            Tab("Library", systemImage: "books.vertical", value: Showing.library) {
+            Tab("Library", systemImage: "books.vertical") {
                 LibraryView()
             }
-            Tab("Settings", systemImage: "gear", value: Showing.settings) {
+            Tab("Settings", systemImage: "gear") {
                 SettingsView()
             }
-        }
-        .onChange(of: showing) { _, tab in
-            guard tab != .today else { return }
-            composer.looking(at: .now)
-        }
-        // An inset and not a bar. A bar does not move for the keyboard, so the field it
-        // holds ends up underneath one, which undoes the whole point of the field being
-        // in reach of a thumb. An inset is laid out above the keyboard as any other
-        // content would be.
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            ComposerBar()
         }
         .environment(\.composer, composer)
     }

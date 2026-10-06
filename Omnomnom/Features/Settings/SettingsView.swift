@@ -104,6 +104,7 @@ struct SettingsView: View {
                     .accessibilityElement(children: .combine)
                 }
             }
+            .composingTab()
             .navigationTitle("Settings")
             .task(id: scenePhase) {
                 estimation = fixedEstimation ?? EstimationAvailability.current()
