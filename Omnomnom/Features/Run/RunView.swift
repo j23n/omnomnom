@@ -36,8 +36,10 @@ struct RunView: View {
                     openDay(open)
                 }
             }
-            Section(Self.monthTitle(model.month)) {
+            Section {
                 grid
+            } header: {
+                Text(Self.monthTitle(model.month))
             } footer: {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(
