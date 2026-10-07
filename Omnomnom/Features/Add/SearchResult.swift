@@ -36,11 +36,71 @@ nonisolated struct SearchResult: Identifiable, Hashable, Sendable {
         case fetch(ProductRecord)
     }
 
+    /// Which of the eight nutrient figures a row actually carries.
+    ///
+    /// The one thing that tells two otherwise identical rows apart. Two cheeses with the
+    /// same name and the same energy are not the same row if one of them has no figure for
+    /// fibre: everything summed over it afterwards is a floor rather than a total, and the
+    /// person choosing is the only one who can prefer the fuller row.
+    ///
+    /// A count and never a grade. "Six of eight" is a fact about a record; it says nothing
+    /// about the food, and a row short of a figure is often the right answer anyway —
+    /// a brand that only declares what a label has to declare is still that brand.
+    nonisolated struct Figures: Hashable, Sendable {
+        /// Nutrients with no value at all.
+        let missing: Set<Nutrient>
+
+        var isComplete: Bool { missing.isEmpty }
+
+        init(missing: Set<Nutrient>) {
+            self.missing = missing
+        }
+
+        init(of nutrition: Nutrition) {
+            self.init(missing: nutrition.missingNutrients)
+        }
+
+        /// "All 8", "No fibre figure", "3 figures missing": what the pill says.
+        ///
+        /// The gap is named where there is one of it, because which figure is missing is
+        /// what decides whether this row will do — someone watching sodium cares about a
+        /// different absence than someone watching fibre. Past one, the count is the only
+        /// thing that fits.
+        var pill: String {
+            switch missing.count {
+            case 0: "All \(Nutrient.allCases.count)"
+            case 1: "No \(names(of: missing)) figure"
+            default: "\(missing.count) figures missing"
+            }
+        }
+
+        /// The same, spelled out, for a screen reader: a pill is read in a list of pills
+        /// and "All 8" on its own says nothing about what eight.
+        var spoken: String {
+            switch missing.count {
+            case 0: "Every nutrient figure"
+            case 1: "No figure for \(names(of: missing))"
+            default: "Missing \(missing.count) nutrient figures: \(names(of: missing))"
+            }
+        }
+
+        /// In the nutrients' own display order, never in order of how much is missing,
+        /// which would be a judgement about which gap matters.
+        private func names(of nutrients: Set<Nutrient>) -> String {
+            Nutrient.allCases
+                .filter { nutrients.contains($0) }
+                .map { $0.displayName.lowercased() }
+                .formatted(.list(type: .and))
+        }
+    }
+
     let id: String
     let provenance: Provenance
     let name: String
     /// The one line under the name, already composed; never repeats the pill.
     let caption: String
+    /// Which of the eight figures this row holds.
+    let figures: Figures
     let photo: Data?
     let rank: Double
     /// When the user last logged this, which orders their own matches; `nil` for a row
@@ -60,6 +120,7 @@ extension SearchResult {
             provenance: .recipe,
             name: choice.name,
             caption: caption(for: choice),
+            figures: Figures(of: choice.perUnit),
             photo: choice.photo,
             rank: SearchRelevance.rank(
                 anyOf: [choice.name] + (recipe.tags ?? []).map(\.name),
@@ -81,6 +142,7 @@ extension SearchResult {
             provenance: crowdsourced ? .openFoodFacts : .yours,
             name: choice.name,
             caption: caption(for: choice),
+            figures: Figures(of: choice.perUnit),
             photo: choice.photo,
             rank: SearchRelevance.rank(
                 anyOf: [choice.name] + [choice.attribution?.brand].compactMap { $0 }
@@ -111,6 +173,7 @@ extension SearchResult {
             provenance: .database,
             name: food.name,
             caption: parts.joined(separator: " · "),
+            figures: Figures(of: food.per100g),
             photo: nil,
             rank: SearchRelevance.rank(
                 anyOf: [food.name], query: query,
@@ -136,6 +199,7 @@ extension SearchResult {
             provenance: .openFoodFacts,
             name: record.name ?? record.code,
             caption: parts.joined(separator: " · "),
+            figures: Figures(of: record.per100g),
             photo: nil,
             rank: SearchRelevance.rank(
                 anyOf: [record.name, record.brand].compactMap { $0 }, query: query,

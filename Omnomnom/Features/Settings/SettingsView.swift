@@ -124,7 +124,7 @@ struct SettingsView: View {
         """
         Barcode scans run on this device. Looking up a product sends its barcode to Open Food Facts; results are kept on this device.
 
-        Product search sends what you type to Open Food Facts, so branded products can be found by name. The bundled database holds generic foods only and never a brand.
+        Product search sends what you type to Open Food Facts, so branded products can be found by name. The bundled database holds generic foods only and never a brand. With this on, a line you send is looked up there as well, food by food, and whichever answers better is what the sign-off screen shows.
 
         \(Self.estimationNote(for: provider))
         """

@@ -441,7 +441,7 @@ One model call per line, after retrieval, carrying every unsettled item and its 
 
 **What goes in.** Per candidate: its id, its name, its category, and its energy per 100 g. The energy is there precisely so the model can reject `Coffee, instant, powder` as a drink — the number is evidence for a judgment, not something to copy forward.
 
-**What comes out.** Per item: the id of the chosen candidate, a verdict of certain, probable or unsure, and nothing else. A `@Generable` enum and an id, so the output cannot contain a food name the model invented or a nutrient value it made up. An id outside the shortlist is read as "none of these", not as a hint. The model may also return none of these outright, which is the correct answer for a food the bundled tables do not hold, and leaves the row with no food for the user to settle. It does not then reach for a product: the fourth rung runs before validation, on a food the tables answered nothing at all for, so a row the validator empties stays empty.
+**What comes out.** Per item: the id of the chosen candidate, a verdict of certain, probable or unsure, and nothing else. A `@Generable` enum and an id, so the output cannot contain a food name the model invented or a nutrient value it made up. An id outside the shortlist is read as "none of these", not as a hint. The model may also return none of these outright, which is the correct answer for a food the bundled tables do not hold, and leaves the row with no food for the user to settle. It does not then reach for a product: the fourth rung runs before validation, so a row the validator empties stays empty.
 
 | Verdict | What happens |
 | --- | --- |
@@ -471,11 +471,17 @@ Without a model the second defence is simply absent: fewer rows settle, more are
 
 A generic composition table has never held a branded product, and a line like "a pancake with peanut butter" is quite likely to mean a specific jar. So the retrieval ladder gets one more rung, and it is the existing opt-in rather than anything new.
 
-When the bundled tables return nothing at all for a food the model named, and the product-search opt-in is on, that food's lookup term goes to `search.openfoodfacts.org` through the client that already exists. The hits are ranked by `SearchRelevance`, as the Add screen ranks them, and the best one is fetched by barcode and cached exactly as a scan would be, so attribution and the local cache are unchanged.
+With the product-search opt-in on, every food the model names has its lookup term sent to `search.openfoodfacts.org` through the client that already exists. The hits are ranked by `SearchRelevance`, as the Add screen ranks them, and the best one is fetched by barcode and cached exactly as a scan would be, so attribution and the local cache are unchanged.
+
+**It competes rather than rescues, which is a change from revision 4.** It used to be asked only where the bundled tables returned nothing at all, which meant the index was never consulted about the foods people mostly eat — and whether it is the better source for them was then unanswerable. Now both are asked for every term and the better score wins, which is already what the Add screen does: it reads the bundled tables and Open Food Facts as one ranked list. The thumb on the scale is `SearchRelevance.bonus(isCrowdsourced:)` and nothing else, so a measured row wins a tie and there is one number to turn rather than a rule to argue about. `LineResolver.tablesWin(bundled:wasNarrowed:product:)` is that rule, in four lines.
+
+One exception, and it is the case the rung was built for: a bundled match found by *narrowing* the term loses to a product outright. Narrowing means nothing answered what was said and a word of it was tried instead, so the score is against a question nobody asked. "Spaghetti with bolognese sauce" reaches a plain spaghetti row by dropping three words; a ready meal of that name is what was eaten.
+
+What makes this safe is the sign-off screen. Every line is read before any of it is written, so a product winning where it should not have costs one tap on a screen the user is already looking at.
 
 Two things it deliberately does not do. It does not go through validation: the validator chooses among rows the bundled tables returned, so a product has never been through it, and a product row is `probable` at best — logged, marked for a glance, never settled unasked, which is the right standing for a stranger's entry nothing has checked. And it does not ask about every candidate: the row reads the best hit only, and each further one would be a second request abroad for something nothing looks at. A hit whose name and brand do not hold every word of the term is not a candidate at all, which is the rule the bundled index applies by construction.
 
-It stays strictly opt-in and strictly a fallback. The order matters: the bundled tables are tried first because they are offline, licence-clean and analytically measured, and a crowdsourced record is consulted only when there is nothing better. With the opt-in off, an unmatched item goes straight to the user, which is where it went before.
+It stays strictly opt-in. With the opt-in off nothing may be asked at all, and an unmatched item goes straight to the user, which is where it went before. What the opt-in now costs is stated where it is given: a line you send is looked up abroad food by food, not only where the tables draw a blank.
 
 ### Four rungs, tried in order
 
@@ -486,7 +492,7 @@ The first question to ask of a typed line is not "what foods are these" but "hav
 | Phrase | The whole normalised line | Every food and every amount, from the last time this line was logged | No, it was asserted already | The Tuesday breakfast |
 | Item | One food the model named | That food, with what was last had of it as the reference a step measures from | No, same reason | A familiar food in a new combination |
 | Database | FTS5 over `foods.sqlite` | A shortlist; the amount is the model's estimate | Yes | Something eaten for the first time |
-| Products | Open Food Facts by name, opt-in, online | The best branded product for the term | No; `probable` at best, never settled | A jar of something the tables do not hold |
+| Products | Open Food Facts by name, opt-in, online | The best branded product for the term, which wins where it scores higher than the tables | No; `probable` at best, never settled | A jar of something, whether or not the tables hold a generic form of it |
 
 Only the first rung avoids the model, and it is the one that matters for speed: a line logged before is recognised before anything is asked, which is what keeps a repeat under five seconds. The lower three all follow a model naming the foods, and the third is the one validation then checks.
 

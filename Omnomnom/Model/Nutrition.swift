@@ -77,6 +77,21 @@ nonisolated struct Nutrition: Codable, Hashable, Sendable {
         Set(Nutrient.allCases.filter { self[$0] != nil })
     }
 
+    /// Nutrients with no value at all, which is not the same as a value of zero.
+    ///
+    /// 666 of the 10,440 bundled rows are short of at least one of the eight, and a
+    /// crowdsourced row can be short of most of them. Anything summed over a row with a
+    /// gap in it is a floor rather than a total, so every screen that shows such a sum has
+    /// to be able to say which figure is missing.
+    var missingNutrients: Set<Nutrient> {
+        Set(Nutrient.allCases).subtracting(presentNutrients)
+    }
+
+    /// Whether all eight figures are here.
+    var isComplete: Bool {
+        missingNutrients.isEmpty
+    }
+
     /// Treats `self` as per 100 units of the food and returns the amounts in `grams` of
     /// it. The unit is the food's own, so this scales millilitres exactly as it scales
     /// grams; nothing here converts between the two.

@@ -115,14 +115,15 @@ struct SearchSectionsTests {
         }
         return SearchResult(
             id: "\(provenance.pill)-\(name)", provenance: provenance, name: name,
-            caption: "", photo: nil, rank: rank, lastUsed: lastUsed, action: action
+            caption: "", figures: SearchResult.Figures(missing: []), photo: nil,
+            rank: rank, lastUsed: lastUsed, action: action
         )
     }
 
     private func saved(_ name: String, barcode: String, rank: Double) -> SearchResult {
         SearchResult(
             id: "saved-\(barcode)", provenance: .openFoodFacts, name: name, caption: "",
-            photo: nil, rank: rank, lastUsed: nil,
+            figures: SearchResult.Figures(missing: []), photo: nil, rank: rank, lastUsed: nil,
             action: .choice(FoodChoice(
                 source: .product(foodID: UUID()), name: name, perUnit: Nutrition(energy: 100),
                 attribution: ProductAttribution(barcode: barcode, brand: nil, source: .openFoodFacts)

@@ -1167,3 +1167,57 @@ over any of the four tabs, which is what the field being on all four requires.
 Tests: the four that asserted the split now assert what the screen gates on instead —
 settled and probable both log, unsure and unmatched both block, an amount the model doubted
 is worth a look and not a block, and an empty line logs nothing.
+
+## Open Food Facts competes, and every row says what it is short of
+
+Two changes from use, and they turn out to be the same subject: which row you get, and how
+you tell two rows apart.
+
+**The fourth rung stops being a rescue.** It was asked only where the bundled tables
+returned nothing at all, which meant the index was never consulted about the foods people
+mostly eat — and whether it is the better source for them was unanswerable rather than
+answered. Now every term a line names goes to both and the better score wins, which is
+what the Add screen has always done: it reads the bundled tables and Open Food Facts as one
+ranked list. `ProductRung.best(for:in:)` returns a scored `ProductMatch` on the same 0-to-1
+scale a bundled match carries, with the crowdsourced penalty already taken off, so the
+comparison needs no second rule — `LineResolver.tablesWin(bundled:wasNarrowed:product:)` is
+four lines and the thumb on the scale is one number, `SearchRelevance.bonus(isCrowdsourced:)`.
+If brands start winning too often, that is the number to turn.
+
+One exception, and it is the case the rung was built for: a bundled match found by
+*narrowing* the term loses outright. Narrowing means nothing answered what was said and a
+word of it was tried instead, so its score is against a question nobody asked. "Spaghetti
+with bolognese sauce" reaches a plain spaghetti row by dropping three words, and a ready
+meal of that name is what was eaten.
+
+A product row is still `probable` at best and never settles: nothing has checked a
+stranger's entry. What makes the whole change safe is the sign-off screen, which every line
+now goes through — a product winning where it should not have costs one tap on a screen the
+user is already reading.
+
+What it costs is said where the opt-in is given. A line is looked up abroad food by food
+now, not only where the tables draw a blank, and the Settings paragraph says so.
+
+**Every search row says which of the eight figures it holds.** `SearchResult.Figures` is a
+pill: "All 8", or "No fibre figure" where there is one gap, or "3 figures missing" past
+that. It is the only thing that tells two otherwise identical rows apart — the same cheese
+twice, where one of them has no figure for fibre — and that matters because everything
+summed over a row with a gap in it is a floor rather than a total. The gap is named where
+there is one of it, because *which* figure is missing is what decides whether the row will
+do: someone watching sodium cares about a different absence than someone watching fibre.
+
+A count and never a grade. A row short of a figure is often the right answer anyway — a
+brand that declares only what a label must declare is still that brand — so the pill says
+what is there and takes no view. A test asserts that neither the pill nor its spoken form
+can carry a percentage or a word like "poor" or "better".
+
+It lands hardest on the rung above: a crowdsourced record with an energy figure and nothing
+else used to be indistinguishable from a measured row, and now it is one pill apart.
+
+`Nutrition.missingNutrients` and `.isComplete` are where that reading lives, which the
+loose-ends queue now shares rather than filtering the eight by hand.
+
+Tests: twelve on the pill, including that zero is a figure and not a gap — feta holds no
+fibre and the table says so with a 0, which makes it a complete row — and four on which of
+the two sources answers, plus three on a product's score being on the same scale as a table
+row's.

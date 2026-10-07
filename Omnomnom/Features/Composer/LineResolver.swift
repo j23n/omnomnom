@@ -62,9 +62,9 @@ struct LineResolver {
     /// rather than a failure: the line still resolves, fewer rows settle, and the sheet
     /// says what it did instead of apologising for what it could not.
     let validator: (any MatchValidating)?
-    /// Looked up when the bundled tables answer nothing, and only when the user has
-    /// turned product search on.
-    let products: ((String) async -> [FoodChoice])?
+    /// Asked about every term a line names, alongside the bundled tables, and only when
+    /// the user has turned product search on. `nil` means nothing may be asked at all.
+    let products: ((String) async -> ProductMatch?)?
     /// Names the foods in what was written. `nil` when neither Apple Intelligence nor an
     /// endpoint of the user's own will answer, in which case nothing new can be resolved
     /// and only a line logged before comes back.
@@ -74,7 +74,7 @@ struct LineResolver {
         context: ModelContext,
         repository: any FoodSearching,
         validator: (any MatchValidating)? = nil,
-        products: ((String) async -> [FoodChoice])? = nil,
+        products: ((String) async -> ProductMatch?)? = nil,
         estimator: (any MealEstimating)? = nil
     ) {
         self.context = context
@@ -97,6 +97,8 @@ struct LineResolver {
     /// The product rung is `nil` when the user has not turned product search on, which is
     /// not the same as a rung that answers nothing: `nil` means nothing may be asked at
     /// all, so an unmatched food goes straight to the user as it did before it existed.
+    /// With it on, every term a line names is asked of Open Food Facts as well as of the
+    /// tables, and the better score wins; see `ProductRung`.
     static func app(
         context: ModelContext,
         repository: FoodRepository,
@@ -107,7 +109,7 @@ struct LineResolver {
             context: context,
             repository: repository,
             validator: estimationEnabled ? FoundationMatchValidator() : nil,
-            products: productSearchEnabled ? { await ProductRung.choices(for: $0, in: context) } : nil,
+            products: productSearchEnabled ? { await ProductRung.best(for: $0, in: context) } : nil,
             estimator: Estimators.current()
         )
     }
@@ -342,7 +344,7 @@ struct LineResolver {
         }
     }
 
-    /// A row from the best match, falling back to a product when the tables held nothing.
+    /// The best row for one item: the tables and Open Food Facts, whichever answers better.
     ///
     /// A match found by narrowing the term never settles on its own. The retriever answered
     /// a question nobody asked — one word of the term rather than the term — so the row is
@@ -350,8 +352,25 @@ struct LineResolver {
     /// validator can still settle it afterwards, which is the right order: a model that saw
     /// the line and the candidates may know the narrowed answer is the right one, and the
     /// retriever's own confidence cannot.
+    ///
+    /// Where a product wins, the row is `probable` and never settled: nothing has checked a
+    /// stranger's entry. The sign-off screen reads either way, so the cost of a product
+    /// winning when it should not have is one tap on a screen already on the user's phone.
     private func databaseRow(for item: ResolvableItem, found: Found) async -> ResolvedRow {
-        if let best = found.matches.first {
+        // Spelled out rather than optional-chained: a chained call on an optional closure
+        // whose answer is itself optional gives an optional of an optional.
+        let product: ProductMatch?
+        if let products {
+            product = await products(item.lookupTerm)
+        } else {
+            product = nil
+        }
+        let tablesWin = Self.tablesWin(
+            bundled: found.matches.first?.score,
+            wasNarrowed: found.wasNarrowed,
+            product: product?.score
+        )
+        if let best = found.matches.first, tablesWin {
             let choice = remembered(FoodChoice(bundled: best.food))
             let confidence: MatchConfidence =
                 found.wasNarrowed && best.confidence == .settled ? .probable : best.confidence
@@ -366,14 +385,14 @@ struct LineResolver {
                 confidence: confidence
             )
         }
-        if let products, let product = await products(item.lookupTerm).first {
+        if let product {
             return ResolvedRow(
                 id: item.id,
                 name: item.name,
-                choice: product,
+                choice: product.choice,
                 amount: item.estimated,
                 bucket: nil,
-                baseAmount: product.lastAmount,
+                baseAmount: product.choice.lastAmount,
                 origin: .product,
                 confidence: .probable
             )
@@ -382,6 +401,28 @@ struct LineResolver {
             id: item.id, name: item.name, choice: nil, amount: 0,
             origin: .database, confidence: .unsure
         )
+    }
+
+    /// Whether the bundled row is the better answer of the two.
+    ///
+    /// Two clauses and no third. On the plain score the tables win ties, because a
+    /// crowdsourced row already paid `SearchRelevance.bonus(isCrowdsourced:)` for being
+    /// one — that penalty is the whole of the thumb on the scale, deliberately, so there
+    /// is one number to turn rather than a rule to argue about.
+    ///
+    /// The exception is a table match found by narrowing the term. Narrowing means nothing
+    /// answered what was actually said and a word of it was tried instead, so its score is
+    /// against a question the user did not ask; a product that answers the whole term is
+    /// the better answer even where the number says otherwise. "Spaghetti with bolognese
+    /// sauce" is the case: the tables reach a plain spaghetti row by dropping three words,
+    /// and a ready meal of that name is what was eaten.
+    /// Takes the two scores rather than the two matches, so the rule can be read and
+    /// tested on its own terms.
+    static func tablesWin(bundled: Double?, wasNarrowed: Bool, product: Double?) -> Bool {
+        guard let product else { return true }
+        guard let bundled else { return false }
+        guard !wasNarrowed else { return false }
+        return bundled >= product
     }
 
     /// The same choice, with what this person last had of that food filled in.

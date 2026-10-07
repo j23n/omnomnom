@@ -203,6 +203,7 @@ enum PreviewStore {
             provenance: provenance,
             name: choice.name,
             caption: SearchResult.caption(for: choice),
+            figures: SearchResult.Figures(of: choice.perUnit),
             photo: choice.photo,
             rank: SearchRelevance.rank(
                 anyOf: [choice.name, choice.attribution?.brand].compactMap { $0 },

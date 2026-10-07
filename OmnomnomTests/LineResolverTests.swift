@@ -546,17 +546,24 @@ struct LineResolverTests {
         #expect(!row.canStep)
     }
 
-    // MARK: - Rung four: a product the tables do not hold
+    // MARK: - Rung four: Open Food Facts, competing
+
+    private static func product(_ name: String, score: Double) -> ProductMatch {
+        ProductMatch(
+            choice: FoodChoice(
+                source: .product(foodID: UUID()), name: name,
+                perUnit: Nutrition(energy: 620), lastAmount: nil
+            ),
+            score: score
+        )
+    }
 
     @Test func aProductAnswersForAFoodTheTablesDoNotHold() async throws {
         let context = try makeContext()
-        let jar = FoodChoice(
-            source: .product(foodID: UUID()), name: "Calvé Peanut Butter",
-            perUnit: Nutrition(energy: 620), lastAmount: nil
-        )
         let resolver = LineResolver(
             context: context, repository: FakeRepository(),
-            products: { _ in [jar] }, estimator: FakeEstimator()
+            products: { _ in Self.product("Calvé Peanut Butter", score: 0.9) },
+            estimator: FakeEstimator()
         )
         let row = try #require(await resolver.resolve("calvé peanut butter").rows.first)
         #expect(row.origin == .product)
@@ -568,18 +575,35 @@ struct LineResolverTests {
         #expect(row.origin.detail(checked: true) == "Matched by name, Open Food Facts")
     }
 
-    @Test func theTablesAreAlwaysTriedBeforeAProduct() async throws {
-        // Offline, licence-clean and measured first; a crowdsourced record only when there
-        // is nothing better. A products closure that fails the test if it is reached.
+    @Test func theIndexIsAskedEvenWhereTheTablesAnswer() async throws {
+        // It used to be asked only where the tables held nothing, which meant it was never
+        // asked about the foods people mostly eat. Now both are asked and the score
+        // decides; here the product is the better answer to a branded term.
         let context = try makeContext()
-        let repository = FakeRepository(hits: ["oats": [bundled(1, "Oat flakes")]])
+        let repository = FakeRepository(hits: ["oat bar": [bundled(1, "Oat flakes")]])
         let resolver = LineResolver(
             context: context, repository: repository,
-            products: { _ in Issue.record("the product rung was asked"); return [] },
+            products: { _ in Self.product("Oatly Oat Bar", score: 0.95) },
+            estimator: FakeEstimator()
+        )
+        let row = try #require(await resolver.resolve("oat bar").rows.first)
+        #expect(row.origin == .product)
+        #expect(row.choice?.name == "Oatly Oat Bar")
+    }
+
+    @Test func aMeasuredRowWinsWhenItScoresAsWell() async throws {
+        // The tables are offline, licence-clean and analytically measured, so they take
+        // ties — the crowdsourced penalty is the whole of the thumb on the scale.
+        let context = try makeContext()
+        let repository = FakeRepository(hits: ["oats": [bundled(1, "Oat flakes", popularity: 90)]])
+        let resolver = LineResolver(
+            context: context, repository: repository,
+            products: { _ in Self.product("Branded Oats", score: 0.5) },
             estimator: FakeEstimator()
         )
         let row = try #require(await resolver.resolve("oats").rows.first)
         #expect(row.origin == .database)
+        #expect(row.choice?.name == "Oat flakes")
     }
 
     @Test func withoutTheOptInNoProductIsAsked() async throws {
@@ -592,5 +616,32 @@ struct LineResolverTests {
         let row = try #require(await resolver.resolve("calvé peanut butter").rows.first)
         #expect(row.choice == nil)
         #expect(row.blocks)
+    }
+
+    // MARK: - Which of the two answers better
+
+    @Test func withNoProductTheTablesAnswerWhateverTheyScored() {
+        #expect(LineResolver.tablesWin(bundled: 0.1, wasNarrowed: false, product: nil))
+        #expect(LineResolver.tablesWin(bundled: nil, wasNarrowed: false, product: nil))
+    }
+
+    @Test func withNoTableRowTheProductAnswers() {
+        #expect(!LineResolver.tablesWin(bundled: nil, wasNarrowed: false, product: 0.5))
+    }
+
+    @Test func theHigherScoreWinsAndATieGoesToTheTables() {
+        #expect(LineResolver.tablesWin(bundled: 0.8, wasNarrowed: false, product: 0.7))
+        #expect(LineResolver.tablesWin(bundled: 0.8, wasNarrowed: false, product: 0.8))
+        #expect(!LineResolver.tablesWin(bundled: 0.8, wasNarrowed: false, product: 0.81))
+    }
+
+    @Test func aNarrowedTableMatchLosesToAProductThatAnsweredTheWholeTerm() {
+        // Narrowing means nothing answered what was said and a word of it was tried
+        // instead, so the score is against a question nobody asked. "Spaghetti with
+        // bolognese sauce" reaches a plain spaghetti row by dropping three words, and a
+        // ready meal of that name is what was eaten.
+        #expect(!LineResolver.tablesWin(bundled: 0.95, wasNarrowed: true, product: 0.5))
+        // With nothing to lose to, a narrowed match still answers.
+        #expect(LineResolver.tablesWin(bundled: 0.95, wasNarrowed: true, product: nil))
     }
 }

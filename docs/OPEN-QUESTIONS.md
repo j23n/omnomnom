@@ -50,6 +50,17 @@ fixed or written down as a deviation in `DESIGN.md`.
 
 ## True, and worth knowing
 
+8b. **With product search on, a line is looked up abroad food by food.** It used to go to
+    Open Food Facts only where the bundled tables drew a blank; now every term a line names
+    is sent, so a four-food line is four requests. It is one request per unrecalled item —
+    a line recalled from memory asks nothing, and `ProductResults.isWorthSearching` drops
+    the terms not worth a round trip — but it is a real change in what leaves the device and
+    in how long a line takes to resolve on a slow connection. The Settings paragraph that
+    governs the opt-in now says so. If it proves too slow, the fix is to ask both at once
+    rather than one after the other; that was left out deliberately, because handing a
+    main-actor closure to a child task is exactly the kind of change that should not be made
+    blind in a session that cannot compile.
+
 9. **A resolved line lives in memory until it is signed off.** Quit with the sign-off
    screen up and the parse is gone; the typed line is gone with it. Nothing was logged, so
    the record is not wrong — only the retyping is annoying. Making it survive a launch

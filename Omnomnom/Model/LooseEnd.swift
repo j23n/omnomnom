@@ -181,7 +181,7 @@ extension LooseEnd {
                     foodName: entry.foodName,
                     wording: entry.wording,
                     guessed: entry.guessed,
-                    missing: Set(Nutrient.allCases.filter { entry.snapshot[$0] == nil })
+                    missing: entry.snapshot.missingNutrients
                 )
             },
             answers: DayAnswers(

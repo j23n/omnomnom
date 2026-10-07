@@ -2,12 +2,12 @@ import Foundation
 import Testing
 @testable import Omnomnom
 
-/// The bar a product has to clear to answer for a food the bundled tables do not hold.
+/// The bar a product has to clear, and the scale it is judged on.
 ///
 /// The search index matches more than this app asks it to — categories, labels, text it
 /// never requested — so it answers a narrow term with a wide list. These are about what is
-/// then thrown away, which is the only part of the rung that can be tested without a
-/// network.
+/// then thrown away and what the survivor is worth, which is the only part of the rung
+/// that can be tested without a network.
 struct ProductRungTests {
     private func record(_ name: String, brand: String? = nil, code: String = "1") -> ProductRecord {
         ProductRecord(code: code, name: name, brand: brand, per100g: Nutrition(energy: 600))
@@ -57,5 +57,36 @@ struct ProductRungTests {
         let unexplained = SearchRelevance.unexplained + SearchRelevance.bonus(isCrowdsourced: true)
         #expect(ProductRung.floor > unexplained)
         #expect(ProductRung.floor < SearchRelevance.everyToken)
+    }
+
+    // MARK: - The scale it is judged on
+
+    @Test func aProductIsScoredOnTheSameScaleAsATableRow() {
+        // The whole of the thumb on the scale, in one number: the same words at the same
+        // tier score exactly the crowdsourced penalty lower than a measured row would,
+        // which is what makes the tables win a tie in `LineResolver.tablesWin`.
+        let scored = ProductRung.rank(record("Oat flakes"), term: "oat flakes")
+        let measured = SearchRelevance.score(anyOf: ["Oat flakes"], query: "oat flakes")
+        #expect(abs(measured - scored - SearchRelevance.crowdsourcedPenalty) < 0.000_001)
+    }
+
+    @Test func aProductIsScoredOverItsBrandToo() {
+        // "Calvé peanut butter" is a name of two words and a brand, and the index holds
+        // them in two fields.
+        let branded = ProductRung.rank(
+            record("Peanut butter", brand: "Calvé"), term: "calvé peanut butter"
+        )
+        let unbranded = ProductRung.rank(record("Peanut butter"), term: "calvé peanut butter")
+        #expect(branded > unbranded)
+    }
+
+    @Test func aProductTheIndexReturnedForNoVisibleReasonStaysBelowTheBar() {
+        // `rank` floors at `unexplained`, because the index also matches categories and
+        // labels this app never asked about and such a row still belongs in a list a
+        // person reads. It must never reach the resolver, and the bar is what stops it.
+        let scored = ProductRung.rank(record("Chocolate spread"), term: "oat flakes")
+        #expect(scored > 0)
+        #expect(scored < ProductRung.floor)
+        #expect(ProductRung.bestMatch(for: "oat flakes", in: [record("Chocolate spread")]) == nil)
     }
 }

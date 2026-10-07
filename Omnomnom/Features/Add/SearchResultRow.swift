@@ -11,7 +11,13 @@ import SwiftUI
 /// already says what everything below it is, so `showsSource` is off there. A label on
 /// every row of a list that cannot vary is not information.
 ///
-/// At accessibility type sizes the pill moves above the figures rather than squeezing
+/// A second pill says which of the eight nutrient figures the row carries, and that one is
+/// on every row. It is what tells two otherwise identical rows apart — the same cheese
+/// twice, where one of them has no figure for fibre — and that is a question the user is
+/// the only one who can answer, since a row short of a figure is often still the right
+/// answer. It is a count and never a grade.
+///
+/// At accessibility type sizes the pills move above the figures rather than squeezing
 /// them, since both are short and the name needs the width.
 struct SearchResultRow: View {
     let result: SearchResult
@@ -31,10 +37,16 @@ struct SearchResultRow: View {
             : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 6))
     }
 
-    private var figures: some View {
+    private var numbers: some View {
         ValueText(result.caption)
             .font(.caption)
             .foregroundStyle(.secondary)
+    }
+
+    /// How many of the eight figures the row holds, as a pill of its own.
+    private var figures: some View {
+        Badge(result.figures.pill)
+            .accessibilityLabel(result.figures.spoken)
     }
 
     var body: some View {
@@ -42,13 +54,12 @@ struct SearchResultRow: View {
             PhotoThumbnail(data: result.photo, size: 44)
             VStack(alignment: .leading, spacing: 4) {
                 Text(result.name)
-                if showsSource {
-                    detailLayout {
+                detailLayout {
+                    if showsSource {
                         Badge(result.provenance.pill)
-                        figures
                     }
-                } else {
                     figures
+                    numbers
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -123,6 +134,41 @@ struct PickableResultRow: View {
         }
     }
     .padding()
+    .environment(\.dynamicTypeSize, .accessibility5)
+}
+
+/// Two rows that read the same until the figures pill: the whole reason it is there.
+private func feta(_ missing: Set<Nutrient>, id: String) -> SearchResult {
+    SearchResult(
+        id: id,
+        provenance: .database,
+        name: "Feta",
+        caption: "Cheese · 264 kcal per 100 g",
+        figures: SearchResult.Figures(missing: missing),
+        photo: nil,
+        rank: 0.8,
+        lastUsed: nil,
+        action: .choice(FoodChoice(
+            source: .bundled(id: 1), name: "Feta", perUnit: Nutrition(energy: 264)
+        ))
+    )
+}
+
+#Preview("Telling two identical rows apart", traits: .sizeThatFitsLayout) {
+    List {
+        SearchResultRow(result: feta([], id: "a"))
+        SearchResultRow(result: feta([.fiber], id: "b"))
+        SearchResultRow(result: feta([.fiber, .sugar, .sodium], id: "c"))
+    }
+    .listStyle(.plain)
+}
+
+#Preview("The figures pill at accessibility 5", traits: .sizeThatFitsLayout) {
+    List {
+        SearchResultRow(result: feta([], id: "a"))
+        SearchResultRow(result: feta([.fiber], id: "b"))
+    }
+    .listStyle(.plain)
     .environment(\.dynamicTypeSize, .accessibility5)
 }
 

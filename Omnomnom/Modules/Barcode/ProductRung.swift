@@ -2,8 +2,15 @@ import Foundation
 import os
 import SwiftData
 
-/// The fourth rung of the line resolver's ladder: a branded product, by name, for a food
-/// the bundled tables hold nothing for.
+/// One candidate from Open Food Facts, with the score it is willing to be judged on.
+nonisolated struct ProductMatch: Hashable, Sendable {
+    let choice: FoodChoice
+    /// Relevance on the same 0-to-1 scale a bundled match carries, the crowdsourced
+    /// penalty already taken off, so the two can be compared without a second rule.
+    let score: Double
+}
+
+/// The fourth rung of the line resolver's ladder: a branded product, found by name.
 ///
 /// A generic composition table has never held a particular jar of peanut butter, so a line
 /// naming one used to dead-end on a row with no food and block the log. This answers that
@@ -11,18 +18,24 @@ import SwiftData
 /// the Add screen already searches, and the hit resolved by barcode through the flow a scan
 /// uses, so it is cached and attributed identically.
 ///
-/// Strictly a fallback and strictly opt-in. The bundled tables are tried first because they
-/// are offline, licence-clean and analytically measured; a crowdsourced record is consulted
-/// only when there is nothing better, and the row it produces is never settled — `probable`
-/// at best, marked for a glance, which is the right standing for a stranger's entry that
-/// nothing has checked.
+/// **It competes rather than rescues.** It used to be consulted only where the tables held
+/// nothing, which meant the index was never asked about the foods people mostly eat. Now
+/// every term goes to both and the better score wins, which is already what the Add screen
+/// does — it reads the bundled tables and Open Food Facts as one ranked list. The thumb on
+/// the scale stays: a crowdsourced row carries `SearchRelevance.bonus(isCrowdsourced:)`
+/// against it, so a measured row wins a tie and the one number to turn, if brands start
+/// winning too often, is that one.
+///
+/// Opt-in, and never settled. A product row is `probable` at best — marked for a glance,
+/// which is the right standing for a stranger's entry that nothing has checked — and every
+/// line is read on the sign-off screen before any of it is logged.
 enum ProductRung {
-    /// The best product for `term`, as the shortlist the resolver reads, or nothing.
+    /// The best product for `term`, scored, or nothing.
     ///
-    /// One fetch, not several. The resolver reads the first element only, and every further
-    /// candidate would be a second request abroad for a row nothing looks at.
-    static func choices(for term: String, in context: ModelContext) async -> [FoodChoice] {
-        guard ProductResults.isWorthSearching(term) else { return [] }
+    /// One fetch, not several. The resolver compares one product against the tables, and
+    /// every further candidate would be a second request abroad for a row nothing looks at.
+    static func best(for term: String, in context: ModelContext) async -> ProductMatch? {
+        guard ProductResults.isWorthSearching(term) else { return nil }
         let client = OpenFoodFactsClient(
             transport: URLSessionTransport(), userAgent: UserAgent.current()
         )
@@ -31,12 +44,12 @@ enum ProductRung {
             records = try await client.products(matching: term)
         } catch {
             AppLog.barcode.info("product rung found nothing: \(error.localizedDescription, privacy: .public)")
-            return []
+            return nil
         }
-        guard let best = bestMatch(for: term, in: records) else { return [] }
+        guard let best = bestMatch(for: term, in: records) else { return nil }
         let flow = BarcodeLookupFlow(context: context, client: client)
-        guard case .found(let choice) = await flow.resolve(code: best.code) else { return [] }
-        return [choice]
+        guard case .found(let choice) = await flow.resolve(code: best.code) else { return nil }
+        return ProductMatch(choice: choice, score: rank(best, term: term))
     }
 
     /// The highest-ranked record whose name or brand holds every word of the term.
@@ -60,7 +73,9 @@ enum ProductRung {
     /// scale the merged search list uses.
     static let floor = SearchRelevance.everyToken + SearchRelevance.bonus(isCrowdsourced: true)
 
-    private static func rank(_ record: ProductRecord, term: String) -> Double {
+    /// What a record scores against a term: every name it carries, less the penalty every
+    /// crowdsourced row pays.
+    static func rank(_ record: ProductRecord, term: String) -> Double {
         SearchRelevance.rank(
             anyOf: [record.name, record.brand].compactMap { $0 }, query: term,
             bonus: SearchRelevance.bonus(isCrowdsourced: true)
