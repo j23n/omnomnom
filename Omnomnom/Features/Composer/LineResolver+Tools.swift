@@ -68,12 +68,13 @@ extension LineResolver {
         switch candidate.pick {
         case .bundled(let food):
             let choice = remembered(FoodChoice(bundled: food))
-            return ResolvedRow(
+            var row = ResolvedRow(
                 name: name, choice: choice, amount: grams, bucket: nil,
                 baseAmount: choice.lastAmount, origin: .database,
-                confidence: Self.confidence(item.certainty, isIngredient: food.isIngredient),
-                implausible: item.implausible || isImplausible(grams: grams, choice: choice)
+                confidence: Self.confidence(item.certainty, isIngredient: food.isIngredient)
             )
+            row.implausible = item.implausible || row.isImplausibleByEnergy
+            return row
         case .product(let code):
             return await productRow(name: name, code: code, grams: grams, item: item)
         }
@@ -99,24 +100,17 @@ extension LineResolver {
                 name: name, choice: nil, amount: 0, origin: .product, confidence: .unsure
             )
         }
-        return ResolvedRow(
+        var row = ResolvedRow(
             name: name, choice: choice, amount: grams, bucket: nil,
             baseAmount: choice.lastAmount, origin: .product,
             // Never settled, which is the rule a product has always been held to, and the
             // reason survives this path: the model can confirm *which* product this is —
             // it read the name, the brand and the energy — but not whether a stranger
             // typed the figures in correctly, and it is the figures that reach Health.
-            confidence: Self.noBetterThanProbable(Self.confidence(item.certainty, isIngredient: false)),
-            implausible: item.implausible || isImplausible(grams: grams, choice: choice)
+            confidence: Self.noBetterThanProbable(Self.confidence(item.certainty, isIngredient: false))
         )
-    }
-
-    /// Whether this much of this food is worth a look whatever anything thinks.
-    ///
-    /// The same guard the other path applies, asked before there is a row to ask about.
-    private func isImplausible(grams: Double, choice: FoodChoice) -> Bool {
-        guard let energy = choice.snapshot(for: grams).energy else { return false }
-        return energy > Self.implausibleEnergy
+        row.implausible = item.implausible || row.isImplausibleByEnergy
+        return row
     }
 
     /// A confidence held to `probable`, for the two rows that may never settle unasked.
@@ -135,11 +129,7 @@ extension LineResolver {
     /// from `FoodMatch.confidence`: the scorer has no idea what the row is, and this model
     /// does.
     static func confidence(_ certainty: VerdictCertainty, isIngredient: Bool) -> MatchConfidence {
-        let stated: MatchConfidence = switch certainty {
-        case .certain: .settled
-        case .probable: .probable
-        case .unsure: .unsure
-        }
+        let stated = certainty.confidence
         return isIngredient ? noBetterThanProbable(stated) : stated
     }
 }

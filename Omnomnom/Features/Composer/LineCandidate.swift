@@ -69,7 +69,6 @@ nonisolated struct LineCandidatePool: Hashable, Sendable {
     init() {}
 
     var count: Int { byID.count }
-    var isEmpty: Bool { byID.isEmpty }
 
     /// The candidate an id names, or `nil` when this request never issued it.
     func candidate(id: Int) -> LineCandidate? {

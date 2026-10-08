@@ -15,12 +15,6 @@ nonisolated enum RowOrigin: Hashable, Sendable {
     /// matched for them. Nothing guessed it, so nothing about it is worth a glance.
     case chosen
 
-    /// Whether the user already asserted this, in which case there is nothing to check
-    /// and no model call to wait for.
-    var isRecalled: Bool {
-        self == .phrase || self == .item
-    }
-
     /// The short line under the food name. Deliberately a description of what happened
     /// rather than a warning about what did not: "Matched by name" is the honest reading
     /// of a row the model never saw, and it carries no implication of a defect.
@@ -91,6 +85,33 @@ nonisolated struct ResolvedRow: Identifiable, Hashable, Sendable {
     /// What the matched food holds in this amount; `nil` while nothing is matched.
     var nutrition: Nutrition? {
         choice?.snapshot(for: amount)
+    }
+
+    /// A guard that needs no model: one item coming to more than this is worth a look
+    /// whatever anything thinks, which is what catches a powder logged as a drink on a
+    /// device with no Apple Intelligence.
+    static let implausibleEnergy: Double = 1_200
+
+    /// Whether this much of this food is worth a look whatever anything thinks.
+    ///
+    /// Asked of every row by both resolution paths, so the threshold is one rule rather
+    /// than two that can drift apart.
+    var isImplausibleByEnergy: Bool {
+        guard let energy = nutrition?.energy else { return false }
+        return energy > Self.implausibleEnergy
+    }
+
+    /// How much, as a figure: servings for a recipe, the food's own unit otherwise.
+    ///
+    /// `nil` while nothing is matched, because the unit comes from the food. The callers
+    /// wrap it differently — the sheet puts the step in front of it, the prompt says
+    /// "about" — and the figure itself is the same one in both.
+    var figureText: String? {
+        guard let choice else { return nil }
+        if case .recipe = choice.source {
+            return Formatters.servings(amount)
+        }
+        return Formatters.amount(amount, measure: choice.measure)
     }
 
     /// Whether this row stops the line being logged.

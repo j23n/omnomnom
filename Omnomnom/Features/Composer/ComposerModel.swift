@@ -16,8 +16,6 @@ final class ComposerModel {
     var resolution: LineResolution?
     /// True while a line is being resolved, which is the slowest step on this path.
     var isResolving = false
-    /// True while what came back is being written.
-    var isLogging = false
     /// One sentence when something went wrong that the user can do nothing about.
     var banner: String?
     /// What was last logged, while the way back from it is still offered.
@@ -51,9 +49,9 @@ final class ComposerModel {
         !isBusy && (!line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || image != nil)
     }
 
-    /// Whether the composer is in the middle of something, by either of the two steps.
-    /// One flag for the field to read, so the spinner does not blink between them.
-    var isBusy: Bool { isResolving || isLogging }
+    /// Whether the composer is in the middle of something: one flag for the field to read,
+    /// rather than the field knowing which step is running.
+    var isBusy: Bool { isResolving }
 
     /// Resolves what is in the field and opens the sign-off screen on the answer.
     ///
@@ -131,7 +129,6 @@ final class ComposerModel {
         image = nil
         resolution = nil
         isResolving = false
-        isLogging = false
     }
 
     func dismissSheet() {

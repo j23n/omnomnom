@@ -174,12 +174,7 @@ struct ResolutionRowView: View {
 
     /// The amount, with the step it came from when there was one to come from.
     private var amountText: String {
-        guard let choice = row.choice else { return "" }
-        let figure: String = if case .recipe = choice.source {
-            Formatters.servings(row.amount)
-        } else {
-            Formatters.amount(row.amount, measure: choice.measure)
-        }
+        guard let figure = row.figureText else { return "" }
         guard let bucket = row.bucket, bucket != .usual else { return figure }
         return "\(bucket.label) · \(figure)"
     }

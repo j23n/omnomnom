@@ -594,33 +594,22 @@ struct LineResolver {
             // the food that won.
             row.baseAmount = replacement.lastAmount
         }
-        row.confidence = switch verdict.certainty {
-        case .certain: .settled
-        case .probable: .probable
-        case .unsure: .unsure
-        }
-        row.implausible = verdict.implausible || isImplausible(row)
+        row.confidence = verdict.certainty.confidence
+        row.implausible = verdict.implausible || row.isImplausibleByEnergy
     }
 
     // MARK: - Amounts
 
-    /// A guard that needs no model: one item coming to more than this is worth a look
-    /// whatever anything thinks, which is what catches a powder logged as a drink on a
-    /// device with no Apple Intelligence.
-    static let implausibleEnergy: Double = 1_200
-
-    private func isImplausible(_ row: ResolvedRow) -> Bool {
-        guard let energy = row.nutrition?.energy else { return false }
-        return energy > Self.implausibleEnergy
-    }
-
-    /// How much, in words, for the prompt.
+    /// How much, in words, for the prompt. Servings stand alone; a weight or a volume is
+    /// hedged, because it is a model's estimate of what was on the plate.
     private func amountText(_ row: ResolvedRow) -> String {
-        guard let choice = row.choice else { return "an unknown amount" }
-        if case .recipe = choice.source {
-            return Formatters.servings(row.amount)
+        guard let choice = row.choice, let figure = row.figureText else {
+            return "an unknown amount"
         }
-        return "about \(Formatters.amount(row.amount, measure: choice.measure))"
+        if case .recipe = choice.source {
+            return figure
+        }
+        return "about \(figure)"
     }
 
     // MARK: - Reading a stored item back

@@ -243,7 +243,7 @@ private func previewRow(
             )
             : nil,
         amount: amount,
-        bucket: origin.isRecalled ? .usual : nil,
+        bucket: (origin == .phrase || origin == .item) ? .usual : nil,
         origin: origin,
         confidence: confidence
     )

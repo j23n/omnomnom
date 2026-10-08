@@ -7,6 +7,18 @@ nonisolated enum VerdictCertainty: String, Hashable, Sendable {
     case certain
     case probable
     case unsure
+
+    /// The same certainty as a row's confidence.
+    ///
+    /// One mapping, because two paths read a verdict — the validator and the tool loop —
+    /// and what "probable" is worth on a row must not depend on which of them answered.
+    var confidence: MatchConfidence {
+        switch self {
+        case .certain: .settled
+        case .probable: .probable
+        case .unsure: .unsure
+        }
+    }
 }
 
 /// The model's answer for one item of a line.
