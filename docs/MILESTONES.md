@@ -2,6 +2,10 @@
 
 Status log for the build order in `PLAN.md`. Each milestone is planned, implemented, reviewed by a separate pass, then signed off here before the next one starts.
 
+A log, not a design document. Entries are kept as they were written, so an older one can
+describe a design that has since changed; where an entry disagrees with `PLAN.md`, `PLAN.md`
+is current.
+
 | # | Milestone | Status | Sign-off |
 | --- | --- | --- | --- |
 | 1 | Data pipeline | done | 2026-09-21 |
@@ -21,10 +25,38 @@ Status log for the build order in `PLAN.md`. Each milestone is planned, implemen
 | 15 | Sampling | done, awaiting first build | |
 
 Milestones 8 to 15 come from `PLAN.md` revision 4, which rethinks logging around one line of
-natural language and puts trends back in scope. The shippable app is now 1 to 4 plus 8 to 12.
+natural language and puts trends back in scope. Steps 1 to 4 were the shippable app before
+they existed; with them the shippable app is 1 to 4 plus 8 to 12 — the matcher, the memory,
+the composer, coverage and the charts. Steps 13 to 15 are additive.
 
 Revision 5 rebuilt milestone 10 rather than adding a milestone: the line is read by a model
 and by nothing else. See "The model is the input" at the end of this log.
+
+## Build order as planned
+
+What each step was to deliver. Moved here from `PLAN.md`, which carries the dependency
+ordering alone; what each one actually landed as is in the entries below.
+
+1. **Data pipeline.** A standalone script producing `foods.sqlite` and `sources.json` from FDC. No app code. Single source, so the risk is the FDC file format and the Foundation versus SR Legacy overlap, not cross-source deduplication.
+2. **Log to Health end-to-end.** Search a bundled food, enter grams, write the food correlation, see it in the Health app. Proves the write path and the correlation grouping. Ends with the Milestone 2 device checks.
+3. **Reconciliation.** Observer queries, anchored queries, per-sample deletion handling, restore affordance. Tedious to retrofit once entries exist, so it comes before features.
+4. **Recipes.** Ingredient rows, servings, snapshot on log.
+5. **Barcode.** Scanner, lookup, cache, attribution, manual fallback.
+6. **AI estimation.** Availability gate, image prompt, generable struct, editable draft.
+7. **Internationalization.** Localised UI, and the user's language ranked first in search. The sources themselves are already bundled.
+
+Steps 8 to 15 are ordered so that each one is useful on its own, and so that the riskiest
+thing — auto-matching a food the model named well enough to log it without being asked — is
+proved before anything is built on top of it.
+
+8. **The matcher and its deterministic defences.** Confidence scoring on `SearchRelevance`, the two thresholds, a rewritten `popularity` list against real Ciqual and BLS names, and the `is_ingredient` flag in the pipeline with the demotion that reads it. No UI and no model. The gate is a fixture set of real typed lines with their expected matches, including the ingredient-form traps, because every later milestone assumes this one works.
+9. **Phrase memory.** `Phrase` and `PhraseItem`, the normalisation function, recall before search, amounts from history. Testable without a model at all: a phrase is recorded and recalled whatever produced it.
+10. **The composer, the estimator and the sign-off screen.** The estimator first, since nothing new resolves without one: Apple Intelligence where it answers, an endpoint of the user's own where it does not. Then the validation call and the three verdicts it returns. Keyboard dictation comes free with the text field. The screen has to make a validated row, an unvalidated one and a rejected one tell themselves apart without colour-coding any of them as good or bad, and it has to take a food the model never named. This is the milestone the redesign is for.
+11. **Buckets and coverage.** Portion buckets with the reference ladder, `DayRecord`, marking a day complete, and partial-day totals on Today.
+12. **Trends.** Statistics-collection queries per nutrient, the three charts, the coverage strip, the range switcher.
+13. **Baseline days.** `BaselinePhrase`, proposals on Today, accept and deviate.
+14. **Widget and Siri.** Top phrases on the home and Lock Screen, an App Intent for a spoken line. It shows lines to tap and no figure about a day, because a widget that fits three numbers is read as a score. The decision not to share the store, and its three reasons, is under "Milestone 14: Siri and the widget" below.
+15. **Sampling.** Cadence setting, day nomination, means over in-sample complete days.
 
 ## Milestones 9 to 15: the one-line path
 
@@ -340,7 +372,7 @@ Tests (Swift Testing, no HealthKit)
 
 Bundle identifier `com.j23n.omnomnom`, no signing team set. Both outputs of the data pipeline must exist in `Omnomnom/Resources/` before building.
 
-Sandbox constraint: no Swift toolchain here, so the code is reviewed but not compiled. First Xcode build on a Mac is the gate, and the device checks in PLAN.md close the milestone.
+Sandbox constraint: no Swift toolchain here, so the code is reviewed but not compiled. First Xcode build on a Mac is the gate, and the device checks below close the milestone.
 
 ### Review
 
@@ -363,7 +395,18 @@ Signed off 2026-09-21 subject to the first build. Nothing in this sandbox can co
 5. With all eight write permissions revoked, confirm Health reports `errorAuthorizationDenied` on delete so the orphaned path triggers.
 6. Entries logged with a nil food relationship would mean insert-then-relate still misbehaves.
 
-The device checks listed in PLAN.md close this milestone.
+### Device checks
+
+Each is a behaviour the plan assumes but Apple does not document. Run them on a real device
+before milestone 3 starts and record the outcome against each one here; these six close this
+milestone. Nothing here has been run yet, for the reason above: the code has never been built.
+
+- Re-saving nine objects with bumped sync versions replaces them in place and leaves exactly one correlation. — *outcome: not yet run*
+- Deleting the correlation alone leaves the samples behind, so the batched delete is required. — *outcome: not yet run*
+- Deleting one nutrient in the Health app surfaces one deleted object with the expected sync identifier in its metadata. — *outcome: not yet run*
+- Background delivery for dietary types fires at `.immediate`, or note the actual minimum frequency. — *outcome: not yet run*
+- How the Health app displays the food correlation, and whether `HKMetadataKeyFoodType` appears anywhere a user can see. — *outcome: not yet run*
+- A partial authorization set (energy denied, the rest allowed) produces a correlation that Health accepts. — *outcome: not yet run*
 
 ## Milestone 3: Reconciliation
 

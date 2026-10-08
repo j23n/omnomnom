@@ -1,16 +1,16 @@
 # Offline iOS Nutrition Tracker — Technical Plan
 
-2026-10-05 · @Someone · revision 5
+2026-10-05 · @Someone
 
 ## Scope
 
 A minimal iOS app with two jobs: be the cheapest possible way to record what you ate, and show what that adds up to over time. It does not score or advise. It records, it reports, and it writes everything to HealthKit.
 
-Revision 4 is a rethink of the first job and a reversal on the second. Revisions 1 to 3 built an entry mask around gram-accurate per-food entry: a search screen, a gram field and eight nutrients per item. That is a precision instrument, and the precision is paid for at every meal and never collected, because the question being asked of the data is a broad-strokes trend over months. The target resolution is now stated explicitly, and most of what follows is a consequence of it.
+Gram-accurate per-food entry — a search screen, a gram field and eight nutrients per item — is a precision instrument, and the precision is paid for at every meal and never collected, because the question being asked of the data is a broad-strokes trend over months. So the target resolution is stated explicitly, and most of what follows is a consequence of it.
 
 > Day-level totals, accurate to roughly ±15 to 20 per cent, read as a seven-day rolling mean over months. Never meal-level accuracy.
 
-Revision 5 changes one thing and follows it through: a language model reads what was written, and nothing else does. Revision 4 had a hand-written parser as the floor, with a model above it on devices that had one. The parser could split a list and nothing else, and no rule it could be given told "yogurt with bananas" from "spaghetti bolognese" — the first is two foods, the second is one dish made of five. So the parser is gone, the model is the input, and a photograph is an attachment to the same question rather than a feature beside it. The price is stated rather than hidden: a device with no model and no endpoint cannot resolve a line it has never seen, and search is how the app is used there.
+A language model reads what was written, and nothing else does. A hand-written parser can split a list and nothing else, and no rule it can be given tells "yogurt with bananas" from "spaghetti bolognese" — the first is two foods, the second is one dish made of five. So the model is the input, and a photograph is an attachment to the same question rather than a feature beside it. The price is stated rather than hidden: a device with no model and no endpoint cannot resolve a line it has never seen, and search is how the app is used there.
 
 Against that target a gram field is over-specification, a per-item confirmation screen is a toll, and an unlogged day is normal rather than a failure. Approximate and complete beats precise and abandoned, for the user's own question and for the Longevity target below: an estimated kilocalorie is still a kilocalorie to that tab, and an empty history is worth nothing to it.
 
@@ -27,12 +27,12 @@ The motivating target is the redesigned Health app's Longevity tab, which scores
 | Products | Opt-in; Open Food Facts looked up by barcode or searched by name, cached locally |
 | Input | One line of text or speech, with an optional photo, read by a model; search and barcode remain the way in |
 | Amounts | Portion buckets against the last amount; grams canonical underneath and still reachable |
-| Trends | In scope as of revision 4: energy, protein and fiber over time, plus data coverage |
+| Trends | Energy, protein and fiber over time, plus data coverage |
 | On-device AI | Core path, not a module: names the foods in what was written, and checks each match. Apple Intelligence, or an endpoint the user sets; with neither, only a line logged before resolves |
 | AI estimation | Opt-in, and the gate the composer's own camera asks too; same model, same prompt, same matcher |
 | Meals | Remembered from what was logged, not built by weighing; `Recipe` in the schema for a batch cooked and portioned |
 
-Both optional modules degrade to nothing. With no network and no Apple Intelligence, the app still logs food from the bundled database and writes it to Health. That is the load-bearing requirement, and revision 5 moves what it rests on: the search screen, not the text field. The primary input needs a model to answer. Everything underneath it does not.
+Both optional modules degrade to nothing. With no network and no Apple Intelligence, the app still logs food from the bundled database and writes it to Health. That is the load-bearing requirement, and what it rests on is the search screen, not the text field. The primary input needs a model to answer. Everything underneath it does not.
 
 Local-only storage means the SwiftData store rides along in iCloud Backup, so a device restore carries the log, but two devices never agree. Retrofitting CloudKit later is possible; the schema rules in the Local store section keep that retrofit to a configuration change rather than a migration. Nutrition history has a second life regardless, since HealthKit syncs across devices independently of this app; recipes and custom foods exist only here.
 
@@ -44,7 +44,7 @@ Pure SwiftUI, Swift 6 language mode with strict concurrency on from the first co
 
 Universal: one target, both device families. The iPhone stays portrait, because logging a meal is a one-handed job done standing up; the iPad takes all four orientations, which multitasking requires. Not macOS, and not for want of trying — HealthKit is not supported there and `isHealthDataAvailable()` returns false, so the half of this app that matters cannot run. The app would degrade cleanly into a local food log, which is not the app.
 
-Nothing in this plan needs iOS 27 except the image-prompt call and the query for a time-limited Health authorization window, which is itself an iOS 27 feature. HealthKit correlations, sync identifiers, VisionKit scanning, SwiftData, Observation and text-only Foundation Models all exist on iOS 26, so availability checks appear in exactly two places.
+Nothing in this plan needs iOS 27 except the image-prompt call and the query for a time-limited Health authorization window, which is itself an iOS 27 feature. HealthKit correlations, sync identifiers, VisionKit scanning, SwiftData, Observation and text-only Foundation Models all exist on iOS 26, so availability checks stay confined to the estimation module and the one Health query that needs them.
 
 ### Project layout
 
@@ -71,7 +71,7 @@ OmnomnomTests/
 Tools/fooddb/        Python pipeline that builds foods.sqlite
 ```
 
-The HealthKit actor sits behind a protocol so the snapshot and reconciliation logic can be tested with a fake store. Nothing else needs mocking.
+The HealthKit actor sits behind a protocol so the snapshot and reconciliation logic can be tested with a fake store, and so the environment has something to hold on a device where Health is unavailable. The same applies to everything else the app cannot run in a test: the HTTP transport, the two model seams, the food search and the match validator each have a protocol for the same reason. Nothing pure is mocked — the derivations are tested directly.
 
 ### Concurrency posture
 
@@ -226,7 +226,7 @@ Search ranking deserves more effort than raw FTS5 matching, since a paid app is 
 
 ## Local store
 
-SwiftData, local-only. `Tag` and `Photo` joined the four original entities; revision 4 adds four more, all for memory and coverage.
+SwiftData, local-only. `Tag` and `Photo` sit beside the four core entities, and four more carry memory and coverage.
 
 | Entity | Holds |
 | --- | --- |
@@ -465,7 +465,7 @@ Validation must make the app better without being load-bearing, because a large 
 2. **The model's verdict**, where Apple Intelligence is available, which catches the cases a flag cannot enumerate — the oat biscuit, the wrong preparation, the composite that should have been two rows.
 3. **The user's one correction**, which writes a `Phrase` row and means the mistake cannot recur for that wording.
 
-Without a model the second defence is simply absent: fewer rows settle, more are marked for a glance, and the app is less convenient and equally correct where it works at all. What revision 5 changes is what "without a model" costs. It used to mean a line still resolved, unchecked. It now means a line the app has never seen does not resolve at all, because naming the foods is itself the model's job. So the first and third defences carry the whole weight wherever a model answers, and where none does, the way in is search.
+Without a model the second defence is simply absent: fewer rows settle, more are marked for a glance, and the app is less convenient and equally correct where it works at all. What "without a model" costs is the whole line: a line the app has never seen does not resolve at all, because naming the foods is itself the model's job. So the first and third defences carry the whole weight wherever a model answers, and where none does, the way in is search.
 
 ### Open Food Facts as the fourth rung
 
@@ -473,7 +473,7 @@ A generic composition table has never held a branded product, and a line like "a
 
 With the product-search opt-in on, every food the model names has its lookup term sent to `search.openfoodfacts.org` through the client that already exists. The hits are ranked by `SearchRelevance`, as the Add screen ranks them, and the best one is fetched by barcode and cached exactly as a scan would be, so attribution and the local cache are unchanged.
 
-**It competes rather than rescues, which is a change from revision 4.** It used to be asked only where the bundled tables returned nothing at all, which meant the index was never consulted about the foods people mostly eat — and whether it is the better source for them was then unanswerable. Now both are asked for every term and the better score wins, which is already what the Add screen does: it reads the bundled tables and Open Food Facts as one ranked list. The thumb on the scale is `SearchRelevance.bonus(isCrowdsourced:)` and nothing else, so a measured row wins a tie and there is one number to turn rather than a rule to argue about. `LineResolver.tablesWin(bundled:wasNarrowed:product:)` is that rule, in four lines.
+**It competes rather than rescues.** Asking it only where the bundled tables return nothing at all would mean never consulting the index about the foods people mostly eat, which leaves whether it is the better source for them unanswerable rather than answered. So both are asked for every term and the better score wins, which is already what the Add screen does: it reads the bundled tables and Open Food Facts as one ranked list. The thumb on the scale is `SearchRelevance.bonus(isCrowdsourced:)` and nothing else, so a measured row wins a tie and there is one number to turn rather than a rule to argue about. `LineResolver.tablesWin(bundled:wasNarrowed:product:)` is that rule, in four lines.
 
 One exception, and it is the case the rung was built for: a bundled match found by *narrowing* the term loses to a product outright. Narrowing means nothing answered what was said and a word of it was tried instead, so the score is against a question nobody asked. "Spaghetti with bolognese sauce" reaches a plain spaghetti row by dropping three words; a ready meal of that name is what was eaten.
 
@@ -544,7 +544,7 @@ The database never leaves the phone. What travels is the search terms the model 
 
 **The invariant survives the loop, by a different mechanism.** The validation prompt cannot invent a food because the shortlist is fixed in advance. Here the model chooses what to search for, so the shortlist is not known beforehand — but what came back is. `LineCandidatePool` numbers every row the searches returned during one request, and an id outside it reads as "none of these" exactly as 0 does. One counter spans both sources, which is also what lets a product be named at all: a table row id and a barcode share no namespace.
 
-**Two rules the loop deletes and one it keeps.** Narrowing goes: searching again is a cheaper and more honest recovery than dropping words from a term, and it is the model's to decide. The arbitration between the two retrievers goes with it — `tablesWin` is a score comparison standing in for a judgment about which row describes the food, and rows of both kinds now arrive as candidates in one list for the model to choose among. What stays is phrase memory: a whole line logged before comes back before anything is asked, which is what keeps a repeat under five seconds.
+**Two rules this path does without and one it keeps.** Narrowing is not used here: searching again is a cheaper and more honest recovery than dropping words from a term, and it is the model's to decide. The arbitration between the two retrievers is not either — `tablesWin` is a score comparison standing in for a judgment about which row describes the food, and on this path rows of both kinds arrive as candidates in one list for the model to choose among. Neither is deleted: both are still what the other providers resolve a line with, and narrowing also serves the "other foods this could have been" sheet on every path. What stays is phrase memory: a whole line logged before comes back before anything is asked, which is what keeps a repeat under five seconds.
 
 **Two caps on what the model's certainty can buy.** An ingredient or dry form never settles unasked, even on `certain` — the model is told which candidates are marked as one and told they are rarely what was eaten, so choosing one is deliberate and worth more than a score, but coffee powder settled at a portion weight is a hundredfold energy error landing silently in a trend. And a product never settles, for the reason it never did: the model can confirm *which* product this is, having read the name, the brand and the energy, but not whether a stranger typed the figures in correctly, and it is the figures that reach Health.
 
@@ -616,11 +616,12 @@ The baseline is built from what the user already does, never from a questionnair
 
 A day that was not fully logged is the normal case, not a failure, and the app has to know which kind of day it is looking at. Without that, every average silently divides by days holding nothing, and the overview is wrong in the one direction that matters.
 
-`DayRecord` is one row per date that has something to say: whether the user marked the day complete, and whether it is in the sample. Both default to false and a row is only created when there is something to record.
+`DayRecord` is one row per date that has something to say: whether the user marked the day complete, and which meals the user said held nothing. Everything is defaulted and a row is only created when there is something to record. Sample membership is not stored — it is derived from the date, for the reason given under Sampling below.
 
 | Day state | Condition |
 | --- | --- |
 | `complete` | The user marked it done |
+| `assumed` | Every entry came from a baseline proposal |
 | `partial` | Entries exist, not marked done |
 | `empty` | No entries |
 
@@ -648,7 +649,7 @@ This is still the last thing to build and the first thing to cut. The coverage m
 
 ## Trends
 
-This reverses revision 3's decision to leave history to the Health app. The goal is an overview of nutrition in broad strokes over time, and an app that cannot show one is not doing its job, whatever the Health app also draws. The earlier reasoning — that trends would duplicate data this app does not own — is answered by reading them from the place that does own them.
+History is not left to the Health app. The goal is an overview of nutrition in broad strokes over time, and an app that cannot show one is not doing its job, whatever the Health app also draws. The objection — that trends would duplicate data this app does not own — is answered by reading them from the place that does own them.
 
 ### Where the numbers come from
 
@@ -683,7 +684,7 @@ All eight, each as daily points under a seven-day rolling mean, over a month or 
 | Protein, saturated fat | A few items carry most of a day | Noisier. Readable over a month, not over three days |
 | Fiber, sugar, sodium | One item can be a third of a day | Noisiest. Read the trend only, never a single day |
 
-This reverses an earlier judgement in this plan, which had promoted fiber into the headline and demoted carbohydrates and fat out of it. The variance argument says the opposite: carbohydrates and fat are among the *best* behaved of the eight under a bucket, and fiber among the worst. Keeping the noisiest figure large while hiding two of the steadiest was backwards.
+That variance is also what settles the headline set: carbohydrates and fat are among the *best* behaved of the eight under a bucket, and fiber among the worst, so keeping the noisiest figure large while hiding two of the steadiest would be backwards.
 
 **That table is documentation, not screen furniture.** It belongs in this plan and in a design note, not printed beside the charts, and the line between the two is worth stating because it decides more than this screen: **a chart says what it measures, and never how much to trust it.** What it measures is a fact about the data — grams of total sugars, including those naturally present — and belongs on screen permanently. How much to trust it is an interpretation of the user's own numbers, and an app that annotates which of someone's figures to believe is one step from telling them what to do about it, which is the line this whole design is drawn to stay behind. So the sugar caveat is on the screen and the variance ranking is not.
 
@@ -716,7 +717,7 @@ The targets to design against, and which path each one governs, because measurin
 
 Typing a sentence for the first time cannot be a five-second path and is not meant to be: twenty-five characters is around six seconds of thumb before anything else happens. The five-second target is about the second time and every time after, which is where nearly all logging happens.
 
-The second principle, new in revision 4 and the one that constrains the first: **the user must always be able to tell what they asserted from what the app inferred.** Speed is bought by inferring amounts, recalling phrases and proposing days, and every one of those is a place where the app could quietly put a number into Health that nobody stood behind. Each is marked, each is one tap from correction, and none of them writes anything without that tap.
+The second principle, and the one that constrains the first: **the user must always be able to tell what they asserted from what the app inferred.** Speed is bought by inferring amounts, recalling phrases and proposing days, and every one of those is a place where the app could quietly put a number into Health that nobody stood behind. Each is marked, each is one tap from correction, and none of them writes anything without that tap.
 
 ### Screens
 
@@ -735,7 +736,7 @@ The second principle, new in revision 4 and the one that constrains the first: *
 
 Four tabs now: Today, Shape, Library, Settings, and the composer is on every one of them — it is the app's one verb and does not belong to a single tab. Each tab applies the field to its own content as a bottom inset, sharing one `ComposerModel`; an inset on the tab view itself belongs to the tab bar's chrome, where it drew over the bar, took keystrokes as tab selection and re-laid-out the tab on every character.
 
-Add and Quantity are sheets over whatever is showing. Sign-off is **presented with a navigation stack of its own** rather than pushed, which is a change from revision 4 and for the reason revision 4 gave: signing off a meal means changing a food and choosing a weight, and both want a screen on top of the sign-off screen — which the screen underneath cannot provide, since whatever presented a sheet owns the next presentation. A sheet carrying its own stack has the property pushing had, which is being the topmost thing, and unlike pushing it can come up over any of the four tabs.
+Add and Quantity are sheets over whatever is showing. Sign-off is **presented with a navigation stack of its own** rather than pushed, and the reason is the one that argued for pushing in the first place: signing off a meal means changing a food and choosing a weight, and both want a screen on top of the sign-off screen — which the screen underneath cannot provide, since whatever presented a sheet owns the next presentation. A sheet carrying its own stack has the property pushing had, which is being the topmost thing, and unlike pushing it can come up over any of the four tabs.
 
 ### The fast path
 
@@ -760,7 +761,7 @@ Before anything has been typed, a focused field offers the two lines this person
 
 A routine day costs less than that. The baseline proposes each slot it has a default for, and accepting is one tap per slot or one for the day.
 
-What survives from revision 3: the repeat action on every entry, copy yesterday, and the Add sheet with recents before any typing, for when the user would rather point than type. The quantity sheet's prefill is now the first rung of the amount reference ladder rather than a special case.
+Also kept: the repeat action on every entry, copy yesterday, and the Add sheet with recents before any typing, for when the user would rather point than type. The quantity sheet's prefill is the first rung of the amount reference ladder rather than a special case.
 
 ### Quantity entry
 
@@ -774,7 +775,7 @@ Timestamp defaults to now, with the meal slot inferred from time of day and edit
 
 Four figures are the headline, the user chooses which four, and the default is energy, protein, carbohydrates and fat. The other four sit in a secondary row, still always visible and never behind a tap.
 
-The headline is a space constraint and nothing more. Four large figures is what a phone's width holds at the type sizes people actually use, and that is the only reason there is a choice to make. Which four a person wants is not a decision this app is in a position to make for them: someone watching carbohydrates and someone watching fiber are both using it correctly, and a fixed set would simply be wrong for one of them. An earlier revision of this plan fixed the set at energy, protein and fiber and justified it as the figures "a person can act on", which was a judgement about what the user ought to care about dressed up as a layout constraint. The layout constraint is real; the judgement was not ours to make.
+The headline is a space constraint and nothing more. Four large figures is what a phone's width holds at the type sizes people actually use, and that is the only reason there is a choice to make. Which four a person wants is not a decision this app is in a position to make for them: someone watching carbohydrates and someone watching fiber are both using it correctly, and a fixed set would simply be wrong for one of them. The layout constraint is real; which figures a person ought to care about is not a judgement this app makes, and a fixed set justified as the figures "a person can act on" would be making it while calling it a layout constraint.
 
 A day's totals say how complete they are. A partial day shows its total and the fact that it is partial, in text, with no implication of a shortfall against anything.
 
@@ -840,7 +841,7 @@ The model is asked only for what a description or a photo can tell it: which foo
 
 On iOS 26 the same model exists without vision, so the module degrades to a typed description rather than disappearing. See the implementation section for how the two tiers share one prompt and one confirmation screen.
 
-What is left of this as a module, after revision 5, is the opt-in, the availability gate and the photo path that ends in its own draft screen, reached from the Add screen. The typed tier left for the composer, and the composer then grew a camera of its own: a button inside the text field that attaches a picture to the same prompt, because a picture of a plate and a sentence about it answer the same question and the model takes either. Visual search — this app's foods inside the system camera's results — was removed rather than shipped, for the same reason: it was a third way to reach one resolution path.
+What this is as a module is the opt-in, the availability gate and the photo path that ends in its own draft screen, reached from the Add screen. The typed tier belongs to the composer, and the composer has a camera of its own: a button inside the text field that attaches a picture to the same prompt, because a picture of a plate and a sentence about it answer the same question and the model takes either. Visual search — this app's foods inside the system camera's results — is not built, for the same reason: it would be a third way to reach one resolution path.
 
 That leaves two ways to photograph a meal, with the same prompt behind both and a different screen after it: the module's draft, which can keep the photo with the entries, and the composer's sign-off, which cannot. That is a loose end rather than a design. The sign-off screen is where every other input lands, and the draft screen's one real advantage is the kept photo.
 
@@ -893,28 +894,26 @@ Review will open the app on a device that may have no network and no Apple Intel
 
 ## Build order
 
-Ordered by dependency, not by visibility. The first two milestones carry the most risk.
+Ordered by dependency, not by visibility. The first two steps carry the most risk; each
+later one is useful on its own; and the riskiest thing — auto-matching a food the model
+named well enough to log it without being asked — is proved before anything is built on top
+of it. What each step delivers, and where it stands, is in `docs/MILESTONES.md`.
 
-1. **Data pipeline.** A standalone script producing `foods.sqlite` and `sources.json` from FDC. No app code. Single source, so the risk is the FDC file format and the Foundation versus SR Legacy overlap, not cross-source deduplication.
-2. **Log to Health end-to-end.** Search a bundled food, enter grams, write the food correlation, see it in the Health app. Proves the write path and the correlation grouping. Ends with the device checks below.
-3. **Reconciliation.** Observer queries, anchored queries, per-sample deletion handling, restore affordance. Tedious to retrofit once entries exist, so it comes before features.
-4. **Recipes.** Ingredient rows, servings, snapshot on log.
-5. **Barcode.** Scanner, lookup, cache, attribution, manual fallback.
-6. **AI estimation.** Availability gate, image prompt, generable struct, editable draft.
-7. **Internationalization.** Localised UI, and the user's language ranked first in search. The sources themselves are already bundled.
-
-Revision 4 adds the following. They are ordered so that each one is useful on its own, and so that the riskiest thing — auto-matching a food the model named well enough to log it without being asked — is proved before anything is built on top of it.
-
-8. **The matcher and its deterministic defences.** Confidence scoring on `SearchRelevance`, the two thresholds, a rewritten `popularity` list against real Ciqual and BLS names, and the `is_ingredient` flag in the pipeline with the demotion that reads it. No UI and no model. The gate is a fixture set of real typed lines with their expected matches, including the ingredient-form traps, because every later milestone assumes this one works.
-9. **Phrase memory.** `Phrase` and `PhraseItem`, the normalisation function, recall before search, amounts from history. Testable without a model at all: a phrase is recorded and recalled whatever produced it.
-10. **The composer, the estimator and the sign-off screen.** The estimator first, since nothing new resolves without one: Apple Intelligence where it answers, an endpoint of the user's own where it does not. Then the validation call and the three verdicts it returns. Keyboard dictation comes free with the text field. The screen has to make a validated row, an unvalidated one and a rejected one tell themselves apart without colour-coding any of them as good or bad, and it has to take a food the model never named. This is the milestone the redesign is for.
-11. **Buckets and coverage.** Portion buckets with the reference ladder, `DayRecord`, marking a day complete, and partial-day totals on Today.
-12. **Trends.** Statistics-collection queries per nutrient, the three charts, the coverage strip, the range switcher.
-13. **Baseline days.** `BaselinePhrase`, proposals on Today, accept and deviate.
-14. **Widget and Siri.** Top phrases on the home and Lock Screen, an App Intent for a spoken line. The widget reads a small snapshot the app writes into an App Group and a tap deep-links into the app to log, rather than sharing the SwiftData store: a widget extension is the wrong place to write to Health, sharing the store would mean the whole model layer in both targets, and putting the store in an App Group would move its container and oblige a migration. It shows lines to tap and no figure about a day, because a widget that fits three numbers is read as a score.
-15. **Sampling.** Cadence setting, day nomination, means over in-sample complete days.
-
-Steps 1 to 4 were the shippable app under revision 3. Under revision 4 the shippable app is 1 to 4 plus 8 to 12: the matcher, the memory, the composer, coverage and the charts. Steps 13 to 15 are additive, and 15 is the first thing to cut.
+1. **Data pipeline.** No app code at all, and nothing else can start until it produces a database.
+2. **Log to Health end-to-end.** Proves the write path and the correlation grouping, which everything above it assumes. Closed by the device checks in `docs/MILESTONES.md`.
+3. **Reconciliation.** Tedious to retrofit once entries exist, so it comes before features.
+4. **Recipes.**
+5. **Barcode.**
+6. **AI estimation.**
+7. **Internationalization.**
+8. **The matcher and its deterministic defences.** No UI and no model, and every later step assumes this one works.
+9. **Phrase memory.** Testable without a model at all, so it comes before the model path.
+10. **The composer, the estimator and the sign-off screen.** The estimator first, since nothing new resolves without one.
+11. **Buckets and coverage.**
+12. **Trends.**
+13. **Baseline days.**
+14. **Widget and Siri.**
+15. **Sampling.**
 
 ### Internationalization notes
 
@@ -925,48 +924,28 @@ Kept here so the v1 pipeline does not paint itself into a corner.
 - Ciqual publishes values as strings with markers such as `<` and `traces`; both are stored as zero with `is_estimated` set, so a sum never silently omits them.
 - Cross-source overlap is settled at build time by name: the first source to claim a normalised name keeps it, in the order the sources are listed. Across languages there is almost nothing to settle, which is why Ciqual and the BLS coexist without a curation pass.
 
-### Milestone 2 device checks
-
-Each is a behaviour this plan assumes but Apple does not document. Run them on a real device before milestone 3 starts, and record the outcome here.
-
-- Re-saving nine objects with bumped sync versions replaces them in place and leaves exactly one correlation.
-- Deleting the correlation alone leaves the samples behind, so the batched delete is required.
-- Deleting one nutrient in the Health app surfaces one deleted object with the expected sync identifier in its metadata.
-- Background delivery for dietary types fires at `.immediate`, or note the actual minimum frequency.
-- How the Health app displays the food correlation, and whether `HKMetadataKeyFoodType` appears anywhere a user can see.
-- A partial authorization set (energy denied, the rest allowed) produces a correlation that Health accepts.
-
 ## Open risks
 
-**The Longevity target is partly invisible.** Apple has not documented which nutrient types the Longevity nutrition category consumes. The redesigned Health app entered the iOS 27.2 developer beta on 16 September 2026, excluded from the initial public release, with a broader rollout later in 2026 in US English only. Writing the full eight-nutrient set with proper food correlations is the best available hedge; revisit once the feature ships publicly.
+Risks that are properties of the design. What has been measured, what has been settled and
+what nobody has looked at yet are in `docs/OPEN-QUESTIONS.md`.
 
-**Health app rendering of correlations is unverified.** The correlation is the right structure to write regardless, but no UX copy may promise a "meal" in Health until the milestone 2 check confirms it.
+**The Longevity target is partly invisible.** Apple has not documented which nutrient types the Longevity nutrition category consumes. The redesigned Health app entered the iOS 27.2 developer beta on 16 September 2026, excluded from the initial public release, with a broader rollout later in 2026 in US English only. Writing the full eight-nutrient set with proper food correlations is the best available hedge; revisit once the feature ships publicly.
 
 **Apple Intelligence availability varies.** Region, device and OS gating means the photo tier will be unavailable for a large share of a worldwide audience: everyone on iOS 26, everyone without a supported device, and everyone in a region or language Apple Intelligence does not yet cover. The text tier narrows this but does not close it. The module must read as optional rather than broken, and the UI should name the actual reason rather than hiding the feature.
 
 **The bundle holds no branded products.** Ciqual, the BLS and FDC are composition tables of generic foods; none of them has ever held a Kinder Bueno or a bottle of Coca-Cola, and no permissively licensed table does. A branded product reaches the app from Open Food Facts, by barcode or by name, or is typed once and kept in the Library. Both ways out are opt-in and both are online, so the app is honest rather than complete when they are off.
 
-**Nutrient identifiers are unverified against the current FDC files.** The column mapping table is from the published FDC identifier list; the pipeline's first run confirms it and fails loudly otherwise.
-
-**The curated popularity list is FDC-shaped.** It ranks foods by their FDC descriptions, so with FDC out of the build it matches nothing and search falls back to relevance alone. Rewriting it against the Ciqual and BLS names is a sitting's work once their real names are in front of us.
-
 **Open Food Facts data quality is uneven.** Crowdsourced records vary by market and completeness. The manual-entry fallback is what keeps that from becoming a user-facing failure.
 
-The risks revision 4 adds, worst first.
-
-**Auto-matching is the whole bet, and it is now measured rather than assumed.** Bare-noun queries resolve correctly on 21 of 21 cases against the real 7,140-row table, against roughly 2 before four faults were found by running it. That is a floor, not a result: those are the easy cases, every one is a single word, and the honest test is a fixture set of real typed *lines*. What the exercise established is less the score than the method — the faults were invisible to reasoning and obvious to data, and two of them were in places nobody would have looked, the scorer disagreeing with the retriever about what a word is and a clamp quietly making every strong match identical.
-
-Every saving here comes from resolving a named food to a database row without asking. If that lands wrong often enough to need checking every time, the sign-off screen becomes the search screen it replaced and the redesign has bought nothing. The honest failure mode is not a wrong match, which the user corrects once and the phrase remembers; it is a *plausible* wrong match that nobody notices — oat biscuits for oats, coffee powder for coffee — which is why there is a validation step, an `is_ingredient` flag and a confidence band rather than a single score. The gate is a fixture set of real typed lines including the ingredient-form traps, not a code review.
+**Auto-matching is the whole bet.** Every saving here comes from resolving a named food to a database row without asking. If that lands wrong often enough to need checking every time, the sign-off screen becomes the search screen it replaced and the whole design has bought nothing. The honest failure mode is not a wrong match, which the user corrects once and the phrase remembers; it is a *plausible* wrong match that nobody notices — oat biscuits for oats, coffee powder for coffee — which is why there is a validation step, an `is_ingredient` flag and a confidence band rather than a single score. The gate is a fixture set of real typed lines including the ingredient-form traps, not a code review.
 
 **Validation is the second bet, and it is the model judging its own domain.** A reranker that confidently picks the wrong row is worse than no reranker, because it converts a marked row into a settled one. Two mitigations are structural rather than hopeful: it can only choose from ids the retriever supplied, so it cannot invent a food; and it returns a verdict, so "unsure" is an available answer and the sheet can act on it. What remains open is calibration — whether "certain" is actually certain often enough to auto-accept — and that is measured against the same fixture set, per verdict, before the threshold for auto-accepting is set at all.
 
 **Validation costs a round trip on the one path that is allowed to be slow.** A model call per line adds a second or two to logging something new, against a twenty-second target, which is affordable. It must never touch the repeat path, and the recall rungs are specified to skip it for that reason. If that ordering is ever lost, the five-second target goes with it.
 
-**The no-Apple-Intelligence path is now measurably worse, not merely plainer.** Before, a device without the model lost a photo feature. Now it loses the validator, so its matches are less trustworthy and more rows need a glance. The `is_ingredient` flag is what keeps that gap from being dangerous rather than just inconvenient, which makes a build-time flag load-bearing for correctness on a large share of devices. It deserves an audit pass against the real Ciqual and BLS categories rather than a pattern list written once.
+**The no-Apple-Intelligence path is measurably worse, not merely plainer.** A device without the model loses the validator, so its matches are less trustworthy and more rows need a glance. The `is_ingredient` flag is what keeps that gap from being dangerous rather than just inconvenient, which makes a build-time flag load-bearing for correctness on a large share of devices. It deserves an audit pass against the real Ciqual and BLS categories rather than a pattern list written once.
 
-**The popularity prior is settled, and it had to be stronger than a prior should be.** The list is rewritten against the real BLS names, and all of it matches. What the real data showed is that a prior cannot be a tie-breaker here: a derivative is often the *better* text match for a bare noun, because "Milk chocolate" really does start with "milk" while the table calls the drink "Whole milk, 3.5 % fat". No text scoring separates those correctly. So the prior is worth more than the gap between two match tiers, and it is mostly a flat floor for being on the list at all rather than a function of position. The licence for that is what the list holds: around seventy-five foods, each curated as *the* form a person means by its bare name, so the prior can only ever promote something somebody chose deliberately. A curated entry that is the wrong answer to a bare noun is therefore a bug in the list, and "Milk chocolate" was removed for being one.
-
-**Splitting a named dish means the model composes a recipe, which is a bigger claim than choosing among rows.** This bargain was refused in revision 4 and is made in revision 5, because refusing it meant "spaghetti bolognese" matching a prepacked row whose figures describe a packet, or nothing at all. The model now says what the dish is made of *and* in what proportion, and neither is something it can know about this particular plate. Two things hold it: every number still comes from the database, per food, so the invention is confined to which foods and how much; and the parts arrive as separate rows, each named, each with an editable amount, each removable. A single composite row hid all of that behind one name. Whether people actually correct the proportions, or sign off five rows they did not read, is the part only use will answer.
+**Splitting a named dish means the model composes a recipe, which is a bigger claim than choosing among rows.** The bargain is made because refusing it meant "spaghetti bolognese" matching a prepacked row whose figures describe a packet, or nothing at all. The model now says what the dish is made of *and* in what proportion, and neither is something it can know about this particular plate. Two things hold it: every number still comes from the database, per food, so the invention is confined to which foods and how much; and the parts arrive as separate rows, each named, each with an editable amount, each removable. A single composite row hid all of that behind one name. Whether people actually correct the proportions, or sign off five rows they did not read, is the part only use will answer.
 
 **A model holding the search is a bigger bet than a model choosing from a shortlist, and it is unmeasured.** The shortlist path's failure mode is bounded: the model picks a wrong row from six, and the sign-off screen catches it. A model that decides what to search for can also decide to stop searching, search for the wrong thing twice, or answer 0 for a food the tables hold under a word it did not try — and none of those is visible in the answer. What bounds it structurally is the candidate pool, which still makes an invented food impossible, and the round limit, which makes a model that will not answer cost a fixed number of requests rather than a bill. What is not bounded is quality, and the honest gate is the same fixture set of real typed lines the matcher needs: resolved rows per line, against the shortlist path on the same lines. Until that exists this provider is plausible rather than better.
 
@@ -978,11 +957,7 @@ Every saving here comes from resolving a named food to a database row without as
 
 **Inferred amounts put unasserted numbers near Health.** Buckets, recalled amounts and baseline proposals all mean the app has a figure the user did not type. The rule that nothing is written without a tap is what keeps this sound, and it is a rule that a future convenience feature will be tempted to break. It is stated as non-negotiable in the baseline section for that reason.
 
-**A chart is where grading creeps in.** Reversing the no-trends decision puts the app one colour choice away from the interpretation it has carefully avoided, and a reference line is one product decision away from a target, which is one away from a verdict. The constraints are written down in the Trends section; they need enforcing in review, not just in the plan.
-
-**Four tabs and a composer is a bigger surface.** Revision 3 kept three tabs partly to keep the fast path fast. Trends is a fourth, and the composer adds a persistent control to the busiest screen in the app. The counter-argument is that the composer *replaces* the Add sheet as the default path rather than joining it, so the common case gets shorter even as the surface grows. Worth re-checking against the yardstick once it is drawn.
-
-**The twenty-second target is measured on a population selected against it.** Drawing the journeys exposed this and it is worth stating carefully, because it makes a reassuring number untrustworthy. Logging something new clears twenty seconds comfortably *when the database words the food the way the user does*. But a food whose wording matched would have been resolved by the matcher and would never have reached that journey in the first place, so the cases that actually arrive there are exactly the ones where the wording did not match — and those need a search, possibly a second screen of it, and land at or over the target. The measurement is not wrong; the thing being measured is selected against. The fix is not a design change: it is instrumentation on real lines, counting how often an item reaches the search at all, which is another reason the matcher is the critical path.
+**A chart is where grading creeps in.** Drawing trends at all puts the app one colour choice away from the interpretation it has carefully avoided, and a reference line is one product decision away from a target, which is one away from a verdict. The constraints are written down in the Trends section; they need enforcing in review, not just in the plan.
 
 **With no model at all, the primary input does not work, and the sentence saying so must not read as the user's fault.** The parser used to cover this case badly; deleting it makes the case plain. The composer says that no model is set up to read a line and names what does work — search, and the scanner — which is a description of a configuration rather than advice about how to type. It is still the weakest point in the design, because a device with Apple Intelligence off and no endpoint set has a text field at the bottom of Today that cannot answer, and the honest fix is probably to say so where the field is rather than after a line has been sent.
 
@@ -1005,9 +980,3 @@ Every saving here comes from resolving a named food to a database row without as
 - [Apple Newsroom: redesigned Health app and Longevity](https://www.apple.com/newsroom/2026/09/apple-advances-health-and-fitness-capabilities-using-apple-intelligence/)
 - [iOS 27.2 beta Health app details](https://www.macrumors.com/2026/09/16/ios-27-2-beta-health-app/)
 - [What's new in the Foundation Models framework, WWDC 2026](https://developer.apple.com/videos/play/wwdc2026/241)
-
-## Camera
-
-Visual search is not built. The camera belongs to the primary input instead: the
-composer's text field takes a picture and attaches it to the model prompt, so one
-path leads from a plate to a logged line.

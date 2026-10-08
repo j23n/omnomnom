@@ -14,12 +14,14 @@ fixed or written down as a deviation in `DESIGN.md`.
 2. **Three schema additions have not been migrated against a real store.** `LogEntry.wording`,
    `LogEntry.guessed` and `DayRecord.skippedSlotNames` all have defaults, so SwiftData's
    lightweight migration should take them, but nobody has watched it happen.
-3. **Nothing that touches a `ModelContext` has a test.** The pure parts are covered —
-   roughly a hundred new assertions over the split of a line, the undo's wording, the mark,
-   the tray, the headline, the run and the loose ends. What is untested is every path that
-   writes: `undo`, `settle`, `replaceFood`, `logUsual`, `logTray`, and the loose-ends
-   reading. `ComposerModel.submit` is untested for the same reason — it needs a live
-   `LineResolver`.
+3. **The write paths that touch a `ModelContext` have no test.** Reading one is covered:
+   `BaselinePhraseTests`, `LineResolverTests`, `LineResolverToolsTests`, `PhotoTests`,
+   `PhraseTests` and `TagTests` each build an in-memory container from `StoreSchema` and
+   assert against it. So are the pure parts — roughly a hundred new assertions over the
+   split of a line, the undo's wording, the mark, the tray, the headline, the run and the
+   loose ends. What is untested is every path that *writes*: `undo`, `settle`,
+   `replaceFood`, `logUsual`, `logTray`, and the loose-ends reading. `ComposerModel.submit`
+   is untested for the same reason — it needs a live `LineResolver`.
 
 ## Decisions somebody should take
 
@@ -114,3 +116,61 @@ list.
 23. iPad layout, dark mode, and the largest accessibility type sizes. None of them fits in a
     390-wide frame, and all three are most likely to break on the mark's 46 pt core and its
     four-segment ring. `DESIGN.md` says the same under "Not yet drawn".
+
+## Measured, settled or still to check
+
+Moved here from the plan's open risks, which now carries only the risks that are properties
+of the design. These are statements about what has been measured, what has been settled and
+what nobody has looked at yet, which is this file's job rather than the plan's.
+
+24. **Health app rendering of correlations is unverified.** The correlation is the right
+    structure to write regardless, but no UX copy may promise a "meal" in Health until the
+    milestone 2 device check confirms it. That check is listed, with its outcome, under
+    "Milestone 2 › Device checks" in `MILESTONES.md`.
+25. **Nutrient identifiers are unverified against the current FDC files.** The column
+    mapping table is from the published FDC identifier list; the pipeline's first run
+    confirms it and fails loudly otherwise.
+26. **The curated popularity list is FDC-shaped.** It ranks foods by their FDC
+    descriptions, so with FDC out of the build it matches nothing and search falls back to
+    relevance alone. Rewriting it against the Ciqual and BLS names is a sitting's work once
+    their real names are in front of us.
+27. **Items 26 and 28 disagree and one of them is stale.** 26 says the list is FDC-shaped
+    and matches nothing; 28 says it has been rewritten against the real BLS names and all of
+    it matches. Both were carried in the plan at once. Whichever is current, the other
+    should go — reading `Tools/fooddb` settles it.
+28. **The popularity prior is settled, and it had to be stronger than a prior should be.**
+    The list is rewritten against the real BLS names, and all of it matches. What the real
+    data showed is that a prior cannot be a tie-breaker here: a derivative is often the
+    *better* text match for a bare noun, because "Milk chocolate" really does start with
+    "milk" while the table calls the drink "Whole milk, 3.5 % fat". No text scoring separates
+    those correctly. So the prior is worth more than the gap between two match tiers, and it
+    is mostly a flat floor for being on the list at all rather than a function of position.
+    The licence for that is what the list holds: around seventy-five foods, each curated as
+    *the* form a person means by its bare name, so the prior can only ever promote something
+    somebody chose deliberately. A curated entry that is the wrong answer to a bare noun is
+    therefore a bug in the list, and "Milk chocolate" was removed for being one.
+29. **Auto-matching is measured rather than assumed, but only on the easy cases.** Bare-noun
+    queries resolve correctly on 21 of 21 cases against the real 7,140-row table, against
+    roughly 2 before four faults were found by running it. That is a floor, not a result:
+    those are the easy cases, every one is a single word, and the honest test is a fixture
+    set of real typed *lines*. What the exercise established is less the score than the
+    method — the faults were invisible to reasoning and obvious to data, and two of them
+    were in places nobody would have looked, the scorer disagreeing with the retriever about
+    what a word is and a clamp quietly making every strong match identical. Why
+    auto-matching is the bet at all stays in the plan.
+30. **Four tabs and a composer is a bigger surface.** Three tabs kept the fast path fast.
+    Trends is a fourth, and the composer adds a persistent control to the busiest screen in
+    the app. The counter-argument is that the composer *replaces* the Add sheet as the
+    default path rather than joining it, so the common case gets shorter even as the surface
+    grows. Worth re-checking against the yardstick once it is drawn.
+31. **The twenty-second target is measured on a population selected against it.** Drawing
+    the journeys exposed this and it is worth stating carefully, because it makes a
+    reassuring number untrustworthy. Logging something new clears twenty seconds comfortably
+    *when the database words the food the way the user does*. But a food whose wording
+    matched would have been resolved by the matcher and would never have reached that
+    journey in the first place, so the cases that actually arrive there are exactly the ones
+    where the wording did not match — and those need a search, possibly a second screen of
+    it, and land at or over the target. The measurement is not wrong; the thing being
+    measured is selected against. The fix is not a design change: it is instrumentation on
+    real lines, counting how often an item reaches the search at all, which is another
+    reason the matcher is the critical path.

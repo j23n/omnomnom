@@ -1,6 +1,6 @@
 # Omnomnom
 
-An offline iOS nutrition tracker whose only job is to be a good entry mask for Apple Health. Search a bundled food, type the grams, and the eight dietary nutrients go to Health as one food correlation. No scores, no advice, no account.
+An offline iOS nutrition tracker whose only job is to be a good entry mask for Apple Health. Type or speak one line, check what it resolved to, and the eight dietary nutrients go to Health as one food correlation. Searching a food and setting an amount by hand is still there behind it. No scores, no advice, no account.
 
 `PLAN.md` is the technical plan, `docs/MILESTONES.md` the build status log.
 
