@@ -94,9 +94,6 @@ nonisolated struct EstimateDraft: Hashable, Sendable {
         EstimateConversion.totals(of: rows.compactMap(\.item))
     }
 
-    /// The amount a row the user adds starts at, in the food's own unit.
-    static let defaultAmount = 100.0
-
     mutating func remove(id: UUID) {
         rows.removeAll { $0.id == id }
     }
@@ -105,6 +102,6 @@ nonisolated struct EstimateDraft: Hashable, Sendable {
     /// of one food, which a recipe would read as servings.
     mutating func add(_ choice: FoodChoice) {
         guard !choice.isRecipe else { return }
-        rows.append(EstimateDraftRow(choice: choice, amount: Self.defaultAmount))
+        rows.append(EstimateDraftRow(choice: choice, amount: Formatters.defaultAmount))
     }
 }

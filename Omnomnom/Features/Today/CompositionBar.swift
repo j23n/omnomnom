@@ -118,10 +118,6 @@ private let typicalDay = Nutrition(
     .padding()
 }
 
-#Preview("Nothing logged", traits: .sizeThatFitsLayout) {
-    CompositionBar(composition: .empty).padding()
-}
-
 #Preview("Accessibility 5", traits: .sizeThatFitsLayout) {
     VStack(alignment: .leading, spacing: 14) {
         CompositionBar(composition: MacroComposition(of: typicalDay))

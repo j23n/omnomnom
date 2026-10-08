@@ -297,7 +297,7 @@ struct FoodSearchView: View {
         let row = ResolvedRow(
             name: choice.name,
             choice: choice,
-            amount: choice.lastAmount ?? (choice.isRecipe ? 1 : EntryLogger.defaultAmount),
+            amount: choice.lastAmount ?? (choice.isRecipe ? 1 : Formatters.defaultAmount),
             baseAmount: choice.lastAmount,
             origin: .chosen,
             confidence: .settled

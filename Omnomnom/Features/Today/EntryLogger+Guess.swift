@@ -83,13 +83,9 @@ extension EntryLogger {
             return choice.lastAmount ?? 1
         }
         if entry.servings != nil {
-            return choice.lastAmount ?? Self.defaultAmount
+            return choice.lastAmount ?? Formatters.defaultAmount
         }
         let logged = entry.rawAmount.amount(in: entry.measure)
-        return logged > 0 ? logged : (choice.lastAmount ?? Self.defaultAmount)
+        return logged > 0 ? logged : (choice.lastAmount ?? Formatters.defaultAmount)
     }
-
-    /// What a food with no history behind it starts at. The draft screens each keep their
-    /// own; this is the logger's, for the correction that has no number to read off the row.
-    static let defaultAmount = 100.0
 }

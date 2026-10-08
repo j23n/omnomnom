@@ -34,8 +34,6 @@ nonisolated struct RecipeDraft: Hashable, Sendable {
     /// Tag names as typed. Resolved to `Tag` rows when the editor saves.
     var tags: [String] = []
 
-    /// The amount a freshly added ingredient starts with, in its own unit; edited inline.
-    static let defaultAmount = 100.0
     static let minimumServings = 0.5
     static let maximumServings = 100.0
 
@@ -71,7 +69,7 @@ nonisolated struct RecipeDraft: Hashable, Sendable {
             && ingredients.allSatisfy { $0.amount != nil }
     }
 
-    /// Appends a food at `defaultAmount`, in the food's own unit. A recipe is ignored:
+    /// Appends a food at `Formatters.defaultAmount`, in the food's own unit. A recipe is ignored:
     /// recipes do not nest.
     mutating func add(_ choice: FoodChoice) {
         guard !choice.isRecipe else { return }
@@ -81,7 +79,7 @@ nonisolated struct RecipeDraft: Hashable, Sendable {
             name: choice.name,
             per100g: choice.perUnit,
             measure: choice.measure,
-            amountText: Formatters.fieldText(Self.defaultAmount)
+            amountText: Formatters.fieldText(Formatters.defaultAmount)
         ))
     }
 }

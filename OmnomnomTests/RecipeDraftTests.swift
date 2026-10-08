@@ -10,7 +10,7 @@ struct RecipeDraftTests {
         var draft = RecipeDraft()
         draft.add(oats)
         #expect(draft.ingredients.count == 1)
-        #expect(draft.ingredients[0].amount == RecipeDraft.defaultAmount)
+        #expect(draft.ingredients[0].amount == Formatters.defaultAmount)
         #expect(draft.ingredients[0].name == "Oats")
         #expect(draft.ingredients[0].source == .bundled(id: 1))
         #expect(draft.ingredients[0].measure == .mass)

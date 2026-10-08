@@ -129,7 +129,7 @@ struct EstimateDraftRecipeTests {
         #expect(draft.rows.count == 2)
         #expect(draft.rows[1].name == "Bread, rye")
         #expect(draft.rows[1].choice == bread)
-        #expect(draft.rows[1].amount == EstimateDraft.defaultAmount)
+        #expect(draft.rows[1].amount == Formatters.defaultAmount)
         #expect(draft.hasUnmatchedRows == false)
     }
 

@@ -111,14 +111,14 @@ struct GuessedMatchTests {
         #expect(EntryLogger.amount(replacing: row, with: choice("Oat flakes", last: 45)) == 45)
         #expect(
             EntryLogger.amount(replacing: row, with: choice("Oat flakes"))
-                == EntryLogger.defaultAmount
+                == Formatters.defaultAmount
         )
     }
 
     @Test func anEntryWithNoAmountAtAllFallsBackRatherThanLoggingNothing() {
         #expect(
             EntryLogger.amount(replacing: entry(amount: 0), with: choice("Oat flakes"))
-                == EntryLogger.defaultAmount
+                == Formatters.defaultAmount
         )
     }
 }

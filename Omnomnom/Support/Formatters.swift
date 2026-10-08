@@ -43,6 +43,11 @@ nonisolated enum Formatters {
 
     /// Smallest and largest amount the field accepts, counted in the food's own unit.
     /// These are bounds on an amount, not on a mass: millilitres share them.
+    /// What an amount starts at when there is no history to read one off: a food added
+    /// to a draft, a recipe ingredient, a row on the sign-off screen, a correction with
+    /// no number behind it. One value because it was the same 100 in all four.
+    static let defaultAmount = 100.0
+
     static let minimumAmount = 0.1
     static let maximumAmount = 5000.0
 

@@ -153,7 +153,7 @@ struct ResolutionScreen: View {
         updated.confidence = .settled
         updated.implausible = false
         if updated.amount == 0 {
-            updated.amount = choice.lastAmount ?? Self.defaultAmount
+            updated.amount = choice.lastAmount ?? Formatters.defaultAmount
         }
         updated.baseAmount = choice.lastAmount
         // Whatever matched this row before, the food on it is now one the user named, and
@@ -168,7 +168,7 @@ struct ResolutionScreen: View {
     /// Settled, with nothing to check: a food someone searched for and tapped is as sure
     /// as this screen gets. The amount is what they last had of it, which is also what
     /// gives the steps something to measure from; a food they have never had starts at
-    /// `defaultAmount` with no steps offered, and is edited by typing.
+    /// `Formatters.defaultAmount` with no steps offered, and is edited by typing.
     ///
     /// The search screen stays open afterwards, so the row count grows behind it and
     /// nothing here needs closing.
@@ -176,7 +176,7 @@ struct ResolutionScreen: View {
         onAdd(ResolvedRow(
             name: choice.name,
             choice: choice,
-            amount: choice.lastAmount ?? Self.defaultAmount,
+            amount: choice.lastAmount ?? Formatters.defaultAmount,
             baseAmount: choice.lastAmount,
             origin: .chosen,
             confidence: .settled
@@ -190,8 +190,6 @@ struct ResolutionScreen: View {
     /// which is the better answer where a field is the whole screen. Here the amount is
     /// one control on a row among several, and a row showing nothing where every other
     /// row shows a figure reads as broken rather than as a question.
-    private static let defaultAmount = 100.0
-
     private var footer: some View {
         VStack(spacing: 8) {
             if let note = attention {
