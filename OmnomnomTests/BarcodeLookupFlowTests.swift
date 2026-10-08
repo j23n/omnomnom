@@ -66,6 +66,6 @@ struct BarcodeLookupFlowTests {
 
     @Test func skippedLookupSaysTheModuleIsOff() {
         let step = BarcodeLookupFlow.step(code: code, cached: nil, lookup: nil)
-        #expect(step == .manual(barcode: code, prefillName: nil, measure: .mass, reason: "Barcode lookup is off"))
+        #expect(step == .manual(barcode: code, prefillName: nil, measure: .mass, reason: "Product lookup is off"))
     }
 }
