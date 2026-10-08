@@ -80,7 +80,7 @@ final class ComposerModel {
             guard !Task.isCancelled, let self else { return }
             isResolving = false
             if resolved.isEmpty {
-                banner = Self.nothingFound(hasEstimator: resolver.estimator != nil)
+                banner = Self.nothingFound(canRead: resolver.canReadALine)
                 return
             }
             resolution = resolved
@@ -113,8 +113,8 @@ final class ComposerModel {
     /// Two situations the user cannot tell apart from an empty sheet, and only one of them
     /// is about what they wrote. Saying "nothing looked like a food" to someone whose phone
     /// will never answer sends them back to rewrite a line that was fine.
-    static func nothingFound(hasEstimator: Bool) -> String {
-        hasEstimator
+    static func nothingFound(canRead: Bool) -> String {
+        canRead
             ? "Nothing in that looked like a food."
             : "No model is set up to read that. Choose one in Settings, or add food by searching."
     }

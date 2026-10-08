@@ -69,19 +69,35 @@ struct LineResolver {
     /// endpoint of the user's own will answer, in which case nothing new can be resolved
     /// and only a line logged before comes back.
     let estimator: (any MealEstimating)?
+    /// A model that searches this device for itself, which replaces the three rungs below
+    /// the estimator rather than joining them. Non-nil only for a provider that can, and
+    /// never at the same time as `estimator`: whichever one is there is the path. See
+    /// `LineResolver+Tools`.
+    let driver: (any LineDriving)?
 
     init(
         context: ModelContext,
         repository: any FoodSearching,
         validator: (any MatchValidating)? = nil,
         products: ((String) async -> ProductMatch?)? = nil,
-        estimator: (any MealEstimating)? = nil
+        estimator: (any MealEstimating)? = nil,
+        driver: (any LineDriving)? = nil
     ) {
         self.context = context
         self.repository = repository
         self.estimator = estimator
         self.validator = validator
         self.products = products
+        self.driver = driver
+    }
+
+    /// Whether anything at all can read a line the app has not seen before.
+    ///
+    /// Asked rather than inferred from the estimator, because there are two kinds of model
+    /// now and a composer that checked for only one of them would tell a user with Claude
+    /// configured that no model is set up.
+    var canReadALine: Bool {
+        driver != nil || estimator != nil
     }
 
     /// The four rungs as the app wires them, from the two opt-ins that govern them.
@@ -105,12 +121,19 @@ struct LineResolver {
         estimationEnabled: Bool,
         productSearchEnabled: Bool
     ) -> LineResolver {
-        LineResolver(
+        // The searches a driving model may call. Built whether or not one is configured,
+        // because it costs nothing and `Estimators.driver` is the single place that reads
+        // which provider was chosen.
+        let searcher = AppLineSearch.app(
+            repository: repository, productSearchEnabled: productSearchEnabled
+        )
+        return LineResolver(
             context: context,
             repository: repository,
             validator: estimationEnabled ? FoundationMatchValidator() : nil,
             products: productSearchEnabled ? { await ProductRung.best(for: $0, in: context) } : nil,
-            estimator: Estimators.current()
+            estimator: Estimators.current(),
+            driver: Estimators.driver(searching: searcher)
         )
     }
 
@@ -140,6 +163,11 @@ struct LineResolver {
     func resolve(_ input: EstimationInput, line: String) async -> LineResolution {
         if case .text = input, let recalled = recallWholeLine(line) {
             return recalled
+        }
+        // A model that searches for itself answers the whole line, so the rungs below are
+        // not tried after it: the shortlist it chose from is the one it asked for.
+        if let driver {
+            return await resolve(input, line: line, driving: driver)
         }
         guard let estimate = await estimate(input) else {
             return LineResolution(line: line, rows: [], wasChecked: false)
@@ -436,7 +464,11 @@ struct LineResolver {
     ///
     /// The amount is untouched. The reference is what this person usually has; the amount
     /// is what the model says was eaten today, and those are different questions.
-    private func remembered(_ choice: FoodChoice) -> FoodChoice {
+    ///
+    /// Internal rather than private so the driving path in `LineResolver+Tools` can fill in
+    /// the same history for a row it chose. Both paths owe a row its reference, and two
+    /// copies of this lookup would be two places for it to go missing.
+    func remembered(_ choice: FoodChoice) -> FoodChoice {
         guard let id = choice.bundledID else { return choice }
         do {
             guard let food = try Food.bundled(id: id, in: context) else { return choice }

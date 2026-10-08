@@ -134,6 +134,8 @@ struct SettingsView: View {
         switch provider {
         case .onDevice:
             "Estimates are produced on this device by Apple Intelligence. Nothing is sent anywhere. They are rough and you confirm every value before it is logged."
+        case .anthropic:
+            "Lines are resolved by Claude, so the meal you type is sent to Anthropic. It searches the food database for you, and the rows it reads travel back with the conversation. Estimates are rough and you confirm every value before it is logged."
         case .remote:
             "Estimates are produced by the endpoint you entered, so the meal you type is sent to it. They are rough and you confirm every value before it is logged."
         }

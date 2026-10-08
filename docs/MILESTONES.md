@@ -1221,3 +1221,69 @@ Tests: twelve on the pill, including that zero is a figure and not a gap — fet
 fibre and the table says so with a 0, which makes it a complete row — and four on which of
 the two sources answers, plus three on a product's score being on the same scale as a table
 row's.
+
+## A model that holds the search
+
+Two changes, and the second is what the first was in the way of.
+
+**The validator was undoing the product rung.** Inclusion in the validation prompt was
+decided by the table shortlist, which `LineResolver` stores for every item whichever source
+then won the row. That was harmless while Open Food Facts only rescued a dead end — a
+product appeared only where the tables were empty, and the shortlist was empty with it. Once
+the rung competed, a product that beat the tables on score was handed to the model as an
+item whose candidates were the table rows it had just beaten, and both answers available to
+the model threw it away: an id moved the row onto a table row, and 0 — the honest answer for
+a food that is not on the list — emptied the row and blocked the log. `check` now skips a row
+the product rung won, which is what `RowOrigin` already said happened, reading "Matched by
+name, Open Food Facts" with no checked branch at all. The product row is left out of the
+count as well as the prompt, so a line of one table row and one product still counts as
+checked rather than tripping the all-or-nothing rule.
+
+Every product test had built the resolver with `validator` at its `nil` default, which is why
+nothing caught it.
+
+**Claude is a third provider, and it holds the search.** The ladder exists because the model
+naming the foods cannot see the database: `lookupTerm` is a guess at the wording a
+composition table uses, the prompt spends five lines describing that corpus, the head-phrase
+subsets recover from the guess being wrong, and validation is a second request spent checking
+what a retriever did with it. A model that can call a tool searches instead, reads what came
+back, and searches again under different wording when nothing fits.
+
+So `LineDriving` is a separate seam from `MealEstimating` rather than a third endpoint behind
+it. `AnthropicLineResolver` runs the loop — ask, run the searches on this device, send the
+rows back, until it answers or five rounds are up — and the two searches are the app's own:
+FTS5 through `FoodMatcher`, and Open Food Facts behind the opt-in it already had. The database
+stays on the phone; what travels is the terms it chose and the rows they returned, which
+Settings says in as many words.
+
+`LineCandidatePool` is where the can't-invent-a-food invariant moved to. The validation prompt
+gets that property from a shortlist fixed in advance; here the model chooses what to search
+for, so the pool numbers every row the searches returned during one request and an id outside
+it reads as "none of these" exactly as 0 does. One counter spans both sources, which is also
+what lets a product be named: a table row id and a barcode share no namespace.
+
+`tablesWin` has nothing to arbitrate on this path — rows of both kinds arrive as candidates in
+one list — and narrowing has nothing to recover from. Phrase memory stays in front of all of
+it, because a repeat under five seconds is worth more than any of this.
+
+Two caps on what certainty can buy, and both are deliberate rather than defensive. An
+ingredient or dry form never settles unasked even on `certain`: the model is told which
+candidates carry that marker and told they are rarely what was eaten, so choosing one is a
+deliberate act and worth more than a score — but coffee powder settled at a portion weight is
+a hundredfold energy error landing silently in a trend. And a product never settles, for the
+reason it never did: the model can confirm which product this is, but not whether a stranger
+typed the figures in correctly.
+
+`temperature` is rejected on the current models, so this is the one path without the
+determinism greedy sampling gives the others. Phrase memory is what actually keeps a repeat
+stable, and it answers before any model is asked.
+
+Tests: two on the validator fix, covering a product that wins beside a checked table row and
+a verdict of 0 that can no longer empty one; twenty-three on the wire format, including that
+no temperature or thinking field is sent, that the schema carries no numeric bounds strict
+mode would reject, that the product search is declared only behind its opt-in, and that a
+reply's own turn goes back untouched down to a reasoning block's signature; eight on the loop,
+driven by a scripted transport; four on the pool and its prompt lines; and twelve on what an
+answered line becomes on the sheet.
+
+Unbuilt. Written without a Swift toolchain, so nothing here has been compiled or run.

@@ -25,6 +25,9 @@ struct EstimationProviderView: View {
     @AppStorage(RemoteEstimatorSettings.baseURLKey) private var baseURL = ""
     @AppStorage(RemoteEstimatorSettings.modelKey) private var model = ""
     @AppStorage(RemoteEstimatorSettings.sendsPhotosKey) private var sendsPhotos = false
+    @AppStorage(AnthropicSettings.baseURLKey) private var claudeBaseURL = ""
+    @AppStorage(AnthropicSettings.modelKey) private var claudeModel = ""
+    @AppStorage(AnthropicSettings.sendsPhotosKey) private var claudeSendsPhotos = false
     @Environment(\.scenePhase) private var scenePhase
     @State private var availability: EstimationAvailability?
     /// What is typed into the secure field, and nothing else. Never a key read back out of
@@ -41,6 +44,17 @@ struct EstimationProviderView: View {
 
     private var remote: RemoteEstimatorSettings {
         RemoteEstimatorSettings(baseURL: baseURL, model: model, sendsPhotos: sendsPhotos)
+    }
+
+    /// What makes the availability and the stored key worth reading again: coming back to
+    /// the screen, and changing which provider is selected, since the two keep separate
+    /// keys. A string rather than a pair type, because that is all `task(id:)` wants.
+    private var readingID: String {
+        "\(provider.rawValue)-\(String(describing: scenePhase))"
+    }
+
+    private var claude: AnthropicSettings {
+        AnthropicSettings(baseURL: claudeBaseURL, model: claudeModel, sendsPhotos: claudeSendsPhotos)
     }
 
     init(availability: EstimationAvailability? = nil, keyStored: Bool? = nil) {
@@ -61,16 +75,17 @@ struct EstimationProviderView: View {
             }
             switch provider {
             case .onDevice: onDeviceSection
+            case .anthropic: claudeSections
             case .remote: remoteSections
             }
         }
         .navigationTitle("Estimates from")
-        // Apple Intelligence is turned on in iOS Settings, and a key can be removed from
-        // the keychain by another screen of this app, so both are read again on every
-        // return rather than once when the screen is built.
-        .task(id: scenePhase) {
+        // Apple Intelligence is turned on in iOS Settings, a key can be removed from the
+        // keychain by another screen, and the two providers keep separate keys — so the
+        // question is asked again about whichever one is selected rather than once.
+        .task(id: readingID) {
             availability = fixedAvailability ?? EstimationAvailability.current()
-            hasStoredKey = fixedKeyStored ?? EstimationKeychain.hasKey
+            hasStoredKey = fixedKeyStored ?? provider.keySlot.map(EstimationKeychain.hasKey) ?? false
         }
     }
 
@@ -83,6 +98,62 @@ struct EstimationProviderView: View {
                 Text("Apple Intelligence runs the model on this iPhone. Nothing is sent anywhere and it works with no network at all.")
             }
         }
+    }
+
+    /// Claude, which is the one provider that searches this app's own database for itself.
+    /// Both fields default, so the only thing this screen asks for is a key.
+    @ViewBuilder
+    private var claudeSections: some View {
+        Section {
+            TextField(AnthropicPayload.defaultModel, text: $claudeModel)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .accessibilityLabel("Model name")
+        } header: {
+            Text("Model")
+        } footer: {
+            Text(Self.claudeModelFooter)
+        }
+        Section {
+            if hasStoredKey {
+                LabeledContent("Key", value: "Stored")
+                Button("Remove key", role: .destructive) { removeKey() }
+            }
+            SecureField(hasStoredKey ? "Replace the key" : "Key", text: $keyEntry)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.done)
+                .onSubmit { storeKey() }
+            if !keyEntry.isEmpty {
+                Button("Save key") { storeKey() }
+            }
+        } header: {
+            Text("Authentication")
+        } footer: {
+            Text(Self.keyFooter)
+        }
+        Section {
+            Toggle("Send photos", isOn: $claudeSendsPhotos)
+        } footer: {
+            Text(Self.claudePhotoFooter)
+        }
+        Section {
+            Text(claudeReadiness)
+        } footer: {
+            Text(Self.claudeDisclosure)
+        }
+    }
+
+    /// Whether Claude is set up, and what is missing when it is not. The address is not
+    /// asked for at all — it defaults — so a key is the only thing that can be absent.
+    private var claudeReadiness: String {
+        guard let url = claude.messagesURL else {
+            return "That address cannot be used. Clear the field to use \(AnthropicPayload.defaultBaseURL)."
+        }
+        guard hasStoredKey else {
+            return "Not set up yet. Add a key from your Anthropic account."
+        }
+        return "Ready. Lines are resolved by \(claude.resolved.model) at \(url.absoluteString)."
     }
 
     @ViewBuilder
@@ -160,15 +231,18 @@ struct EstimationProviderView: View {
     private func storeKey() {
         let typed = keyEntry
         keyEntry = ""
-        guard !typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        EstimationKeychain.store(typed)
-        hasStoredKey = EstimationKeychain.hasKey
+        guard let slot = provider.keySlot,
+              !typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return }
+        EstimationKeychain.store(typed, in: slot)
+        hasStoredKey = EstimationKeychain.hasKey(slot)
         // Never the key, not even its length: this log is read by whoever has the device.
         AppLog.estimation.info("remote estimator key stored")
     }
 
     private func removeKey() {
-        EstimationKeychain.remove()
+        guard let slot = provider.keySlot else { return }
+        EstimationKeychain.remove(slot)
         keyEntry = ""
         hasStoredKey = false
         AppLog.estimation.info("remote estimator key removed")
@@ -193,6 +267,36 @@ struct EstimationProviderView: View {
         it to stop sending one.
         """
 
+    /// Claude's own disclosure. It differs from the endpoint's in one way that is worth a
+    /// sentence of its own: this provider reads the food database, so rows of it travel
+    /// back as part of the conversation. They are the app's own reference data rather than
+    /// anything about this person, and saying so is cheaper than letting someone discover
+    /// that a request carries more than what they typed.
+    private static let claudeDisclosure = """
+        Claude is the one part of this app that sends what you write somewhere. The meal \
+        you type on Today goes to Anthropic with your key, each time a line is resolved — \
+        and the photo too, while Send photos is on.
+
+        It also searches this app's food database for you, which is what makes it good at \
+        this. The database stays on the device; what travels is the search terms it chooses \
+        and the rows that came back, which are the app's own reference data and say nothing \
+        about you. With product search on, those terms reach Open Food Facts as well.
+
+        Nothing else travels: your log and Health stay on this device.
+        """
+
+    private static let claudeModelFooter = """
+        Leave it empty for \(AnthropicPayload.defaultModel). A plain field rather than a \
+        list, because model names move faster than this app ships — if your account has a \
+        newer one, type it.
+        """
+
+    private static let claudePhotoFooter = """
+        Off to begin with, and a separate choice from the text: a photo of a meal carries \
+        whatever else was in the frame. A photo only arises when Meal estimation is on, \
+        which is where the camera is.
+        """
+
     private static let photoFooter = """
         Off to begin with, and a separate choice from the text: a photo of a meal carries \
         whatever else was in the frame, and many OpenAI-compatible servers cannot read an \
@@ -214,9 +318,15 @@ private nonisolated enum EstimationProviderPreviewDefaults {
             + ".url\(baseURL.isEmpty).model\(model.isEmpty).photos\(sendsPhotos)"
         guard let defaults = UserDefaults(suiteName: name) else { return .standard }
         defaults.set(provider.rawValue, forKey: EstimationProvider.key)
-        defaults.set(baseURL, forKey: RemoteEstimatorSettings.baseURLKey)
-        defaults.set(model, forKey: RemoteEstimatorSettings.modelKey)
-        defaults.set(sendsPhotos, forKey: RemoteEstimatorSettings.sendsPhotosKey)
+        if provider == .anthropic {
+            defaults.set(baseURL, forKey: AnthropicSettings.baseURLKey)
+            defaults.set(model, forKey: AnthropicSettings.modelKey)
+            defaults.set(sendsPhotos, forKey: AnthropicSettings.sendsPhotosKey)
+        } else {
+            defaults.set(baseURL, forKey: RemoteEstimatorSettings.baseURLKey)
+            defaults.set(model, forKey: RemoteEstimatorSettings.modelKey)
+            defaults.set(sendsPhotos, forKey: RemoteEstimatorSettings.sendsPhotosKey)
+        }
         return defaults
     }
 }
@@ -233,6 +343,22 @@ private nonisolated enum EstimationProviderPreviewDefaults {
         EstimationProviderView(availability: .appleIntelligenceNotEnabled, keyStored: false)
     }
     .defaultAppStorage(EstimationProviderPreviewDefaults.make(provider: .onDevice))
+}
+
+#Preview("Claude, needs a key") {
+    NavigationStack {
+        EstimationProviderView(availability: .deviceNotEligible, keyStored: false)
+    }
+    .defaultAppStorage(EstimationProviderPreviewDefaults.make(provider: .anthropic))
+}
+
+#Preview("Claude, ready") {
+    NavigationStack {
+        EstimationProviderView(availability: .deviceNotEligible, keyStored: true)
+    }
+    .defaultAppStorage(EstimationProviderPreviewDefaults.make(
+        provider: .anthropic, model: "claude-opus-5-5", sendsPhotos: true
+    ))
 }
 
 #Preview("Endpoint, incomplete") {

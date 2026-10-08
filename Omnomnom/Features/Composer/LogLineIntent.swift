@@ -31,13 +31,24 @@ struct LogLineIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let context = ModelContext(container)
-        // No validator here on purpose. The model tier belongs behind its opt-in and
+        // No validator here on purpose. The second pass belongs behind its opt-in and
         // behind a screen that can show what it decided; an intent that silently asked a
         // model and logged the answer would be the one place nobody could see it work.
         // The same model the composer uses. Without one a spoken line resolves to nothing
         // and the dialog says so, rather than Siri reporting success over an empty log.
+        //
+        // The driving provider is passed through rather than left out, which is not the
+        // same concession: it resolves a line in one request and its rows carry the same
+        // confidences, so leaving it out would not make the intent more cautious — it
+        // would make a spoken line stop working for anyone who chose that provider. Only
+        // settled rows are logged either way, and everything else goes to the composer.
+        let searcher = AppLineSearch.app(
+            repository: repository,
+            productSearchEnabled: UserDefaults.standard.bool(forKey: BarcodeModule.productSearchKey)
+        )
         let resolver = LineResolver(
-            context: context, repository: repository, estimator: Estimators.current()
+            context: context, repository: repository, estimator: Estimators.current(),
+            driver: Estimators.driver(searching: searcher)
         )
         let resolution = await resolver.resolve(line)
 

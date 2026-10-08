@@ -479,7 +479,7 @@ One exception, and it is the case the rung was built for: a bundled match found 
 
 What makes this safe is the sign-off screen. Every line is read before any of it is written, so a product winning where it should not have costs one tap on a screen the user is already looking at.
 
-Two things it deliberately does not do. It does not go through validation: the validator chooses among rows the bundled tables returned, so a product has never been through it, and a product row is `probable` at best — logged, marked for a glance, never settled unasked, which is the right standing for a stranger's entry nothing has checked. And it does not ask about every candidate: the row reads the best hit only, and each further one would be a second request abroad for something nothing looks at. A hit whose name and brand do not hold every word of the term is not a candidate at all, which is the rule the bundled index applies by construction.
+Two things it deliberately does not do. It does not go through validation, and that now has to be enforced rather than assumed. Inclusion in the validation prompt was decided by the table shortlist, which is stored for every item whichever source then won the row — so once the rung competed rather than rescued, a product that beat the tables on score was handed to the model as an item whose candidates were the table rows it had just beaten, and both answers available to the model threw it away: an id moved the row onto a table row, and 0, the honest answer for a food that is not on the list, emptied the row and blocked the log. `LineResolver.check` therefore skips a row the product rung won. A product row is `probable` at best — logged, marked for a glance, never settled unasked, which is the right standing for a stranger's entry nothing has checked. And it does not ask about every candidate: the row reads the best hit only, and each further one would be a second request abroad for something nothing looks at. A hit whose name and brand do not hold every word of the term is not a candidate at all, which is the rule the bundled index applies by construction.
 
 It stays strictly opt-in. With the opt-in off nothing may be asked at all, and an unmatched item goes straight to the user, which is where it went before. What the opt-in now costs is stated where it is given: a line you send is looked up abroad food by food, not only where the tables draw a blank.
 
@@ -506,13 +506,16 @@ This is deliberately not a library of saved recipes. Nothing is created, nothing
 
 **Where a named meal is still warranted.** `Recipe` keeps its original job: a dish cooked in a batch and eaten in portions, where the servings divisor is the point. It is no longer the mechanism for repetition, and nothing creates one automatically. Naming is for things the user wants to see by name, on the widget or in a Siri phrase, not for things the app needs in order to remember.
 
-### One estimator, two providers
+### One estimator, three providers, and one of them holds the search
 
-`MealEstimate` is the output shape and `EstimationInput` is the input: what was typed, or a photograph with whatever words came alongside it. One prompt, one schema, one matcher behind it, and two providers that can answer.
+`MealEstimate` is the output shape and `EstimationInput` is the input: what was typed, or a photograph with whatever words came alongside it. One prompt, one schema, one matcher behind it.
+
+Two of the three providers answer that question. The third answers a larger one, and the difference is the whole of why it is a separate seam rather than a third endpoint.
 
 | Provider | Needs | Why it exists |
 | --- | --- | --- |
 | On device | Apple Intelligence available | The default. Costs nothing, works offline, sends nothing anywhere |
+| Claude | A key the user supplies; the address and the model both default | Holds the search itself, which removes the guess at the table's wording and the second pass that checked it. See below |
 | An endpoint | A base URL, a model name and a key the user supplies | Apple Intelligence is absent on older hardware, in some regions and whenever it is switched off — and a larger model is plainly better at breaking a named dish into its parts |
 
 The endpoint is OpenAI-compatible chat completions, which is what self-hosted servers and commercial APIs both speak, so one implementation reaches both. Photos are a second switch rather than part of the opt-in: plenty of such servers cannot read an image at all, and a picture of a kitchen is a larger disclosure than a sentence about lunch. The key goes to the keychain, device-only, because `UserDefaults` is readable from a backup.
@@ -521,7 +524,31 @@ The endpoint is OpenAI-compatible chat completions, which is what self-hosted se
 
 **The meal, and the time that follows it.** The model says which meal this is, because oats described at nine in the evening are a breakfast whatever the clock says, and the timestamp then follows the slot rather than the moment of typing — eight in the morning for a breakfast, never a time that has not happened yet. Both are shown on the sign-off screen and both are editable; nothing is logged into a meal the user did not see.
 
-**Neither provider is asked for a nutrient value, ever.** The model says *which* foods; the database says what is in them. That is the line the whole design rests on, and it is why a remote provider is a privacy decision rather than a correctness one: a worse model gives worse food names, not wrong numbers.
+**No provider is asked for a nutrient value, ever.** The model says *which* foods; the database says what is in them. That is the line the whole design rests on, and it is why a remote provider is a privacy decision rather than a correctness one: a worse model gives worse food names, not wrong numbers.
+
+### A provider that holds the search
+
+The ladder above exists because the model naming the foods cannot see the database. `lookupTerm` is a guess at the wording a composition table uses; the five lines of prompt describing generic, unbranded, cooked-or-raw wording are a description of a corpus; `LineResolver.search`'s head-phrase subsets are a recovery from that guess being wrong; and the validation pass is a second request spent checking what a retriever did with it. All four are the same workaround.
+
+A model that can call a tool does not guess. It searches, reads the rows that came back, and searches again under different wording when nothing fits. So for a provider that supports tool use the pipeline is one conversation, held on the device:
+
+| Step | Where it runs |
+| --- | --- |
+| Read the line or the photo, decide what to look for | The model |
+| `search_foods(term)` — FTS5 over `foods.sqlite`, through `FoodMatcher` | This device |
+| `search_products(term)` — Open Food Facts by name, behind its own opt-in | This device, then abroad |
+| Choose a row per food, by id, with a weight and a certainty | The model |
+| Redeem the ids, fetch the chosen product by barcode, build the rows | This device |
+
+The database never leaves the phone. What travels is the search terms the model chose and the rows that came back, which are the app's own reference data and say nothing about the user — stated in Settings, because a request carrying more than what was typed is the kind of thing someone should be told rather than discover.
+
+**The invariant survives the loop, by a different mechanism.** The validation prompt cannot invent a food because the shortlist is fixed in advance. Here the model chooses what to search for, so the shortlist is not known beforehand — but what came back is. `LineCandidatePool` numbers every row the searches returned during one request, and an id outside it reads as "none of these" exactly as 0 does. One counter spans both sources, which is also what lets a product be named at all: a table row id and a barcode share no namespace.
+
+**Two rules the loop deletes and one it keeps.** Narrowing goes: searching again is a cheaper and more honest recovery than dropping words from a term, and it is the model's to decide. The arbitration between the two retrievers goes with it — `tablesWin` is a score comparison standing in for a judgment about which row describes the food, and rows of both kinds now arrive as candidates in one list for the model to choose among. What stays is phrase memory: a whole line logged before comes back before anything is asked, which is what keeps a repeat under five seconds.
+
+**Two caps on what the model's certainty can buy.** An ingredient or dry form never settles unasked, even on `certain` — the model is told which candidates are marked as one and told they are rarely what was eaten, so choosing one is deliberate and worth more than a score, but coffee powder settled at a portion weight is a hundredfold energy error landing silently in a trend. And a product never settles, for the reason it never did: the model can confirm *which* product this is, having read the name, the brand and the energy, but not whether a stranger typed the figures in correctly, and it is the figures that reach Health.
+
+**What it costs.** The conversation is replayed on every round trip, so a line is a handful of requests rather than two, bounded at five. One search runs at a time, so a line naming five branded foods is five requests abroad in series — the larger round trip is already gone, since a product is fetched by barcode once for the row that won rather than once per term named, but running the searches concurrently is a measurable change still to make. And `temperature` is rejected on the current models, so the same line can resolve two ways on consecutive days; what actually keeps a repeat stable is phrase memory, which answers before any model is asked.
 
 ### Matching, and why it is the hard part
 
@@ -843,15 +870,18 @@ Skip Open Food Facts product images entirely: they are CC BY-SA and may carry pa
 
 ### Privacy and regulatory
 
-Three things can leave the device, each behind its own opt-in, because a number off a packet, a sentence about lunch and a photograph of a kitchen are not the same disclosure.
+Four things can leave the device, each behind its own opt-in, because a number off a packet, a sentence about lunch and a photograph of a kitchen are not the same disclosure.
 
 | What leaves | When | Where it goes |
 | --- | --- | --- |
 | A barcode | The scanner is on | Open Food Facts, French-hosted |
 | A typed query | Product search is on | Open Food Facts |
 | What was typed, and the photo if a second switch is on | The model provider is set to the user's own endpoint | Whatever that endpoint is |
+| The same, plus the search terms the model chose and the database rows they returned | The model provider is set to Claude | Anthropic |
 
-The third is revision 5's addition and the one to be careful about. On device is the default and sends nothing anywhere; the endpoint exists because Apple Intelligence is absent on older hardware, in some regions and whenever it is switched off. Choosing it means choosing to send what you type to a server you named, and the setting says exactly that rather than calling it a cloud feature. The key goes to the keychain, device-only, never to `UserDefaults`; nothing logs the key, the request body or the user's text.
+The last two are the ones to be careful about. On device is the default and sends nothing anywhere; the other two exist because Apple Intelligence is absent on older hardware, in some regions and whenever it is switched off. Choosing one means choosing to send what you type to a named host, and the setting says exactly that rather than calling it a cloud feature. Each key goes to the keychain under its own account, device-only, never to `UserDefaults`; nothing logs a key, a request body or the user's text.
+
+The fourth row carries one thing the third does not, and it is worth saying rather than letting someone find out: that provider searches the food database, so rows of it travel back as part of the conversation. They are the app's own reference data rather than anything about this person — but a request that carries more than what was typed is a disclosure to describe, which the Settings copy does.
 
 With the default settings the app sends nothing at all, which keeps the GDPR position short and the App Store privacy labels nearly empty. Fill in the privacy manifest to match, and note that an endpoint the user supplies is the user's own processor rather than this app's.
 
@@ -937,6 +967,12 @@ Every saving here comes from resolving a named food to a database row without as
 **The popularity prior is settled, and it had to be stronger than a prior should be.** The list is rewritten against the real BLS names, and all of it matches. What the real data showed is that a prior cannot be a tie-breaker here: a derivative is often the *better* text match for a bare noun, because "Milk chocolate" really does start with "milk" while the table calls the drink "Whole milk, 3.5 % fat". No text scoring separates those correctly. So the prior is worth more than the gap between two match tiers, and it is mostly a flat floor for being on the list at all rather than a function of position. The licence for that is what the list holds: around seventy-five foods, each curated as *the* form a person means by its bare name, so the prior can only ever promote something somebody chose deliberately. A curated entry that is the wrong answer to a bare noun is therefore a bug in the list, and "Milk chocolate" was removed for being one.
 
 **Splitting a named dish means the model composes a recipe, which is a bigger claim than choosing among rows.** This bargain was refused in revision 4 and is made in revision 5, because refusing it meant "spaghetti bolognese" matching a prepacked row whose figures describe a packet, or nothing at all. The model now says what the dish is made of *and* in what proportion, and neither is something it can know about this particular plate. Two things hold it: every number still comes from the database, per food, so the invention is confined to which foods and how much; and the parts arrive as separate rows, each named, each with an editable amount, each removable. A single composite row hid all of that behind one name. Whether people actually correct the proportions, or sign off five rows they did not read, is the part only use will answer.
+
+**A model holding the search is a bigger bet than a model choosing from a shortlist, and it is unmeasured.** The shortlist path's failure mode is bounded: the model picks a wrong row from six, and the sign-off screen catches it. A model that decides what to search for can also decide to stop searching, search for the wrong thing twice, or answer 0 for a food the tables hold under a word it did not try — and none of those is visible in the answer. What bounds it structurally is the candidate pool, which still makes an invented food impossible, and the round limit, which makes a model that will not answer cost a fixed number of requests rather than a bill. What is not bounded is quality, and the honest gate is the same fixture set of real typed lines the matcher needs: resolved rows per line, against the shortlist path on the same lines. Until that exists this provider is plausible rather than better.
+
+**The loop replays the conversation, so a long line costs more than it looks.** Every round trip resends what came before, tool results included, and the tool results are rows of the food database. A line naming six foods that each need two searches is a conversation several thousand tokens long by the end. That is pennies rather than a problem, but it is the mechanism to watch if cost ever looks wrong, and it is why the results are a line of text per row rather than JSON.
+
+**Searches run one at a time, which is the one latency regression.** The rung this path replaces made two requests abroad per term named; this one makes at most one, for the row that won, which is a clear improvement. But within a turn the searches are serial, so a line of five branded foods is five Open Food Facts requests in series where a concurrent version would be one wait. Kept serial because numbering the pool in a fixed order is what makes the same line resolve the same way twice, and because the fix is measurable on its own rather than entangled with this.
 
 **Phrase normalisation can over-recall.** Sorting tokens and dropping fillers is what makes recall survive retyping, and it also makes "chicken with rice" and "rice with chicken" the same phrase, which is correct, while risking that two genuinely different meals collapse into one. The mitigation is that a recalled phrase is visible and correctable and that correcting it rewrites the record, so a collision is self-healing. Whether it is *noticed* is the open part.
 
