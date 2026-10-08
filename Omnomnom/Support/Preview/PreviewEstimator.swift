@@ -1,13 +1,11 @@
 #if DEBUG
 import Foundation
 
-/// An estimator for previews: waits a moment, then answers with a fixed breakfast.
+/// An estimator for previews: waits two seconds, then answers with a fixed breakfast.
 /// Never creates a language model session.
 nonisolated struct PreviewMealEstimator: MealEstimating {
-    var delay: Duration = .seconds(2)
-
     func estimate(_ input: EstimationInput) async throws -> MealEstimate {
-        try await Task.sleep(for: delay)
+        try await Task.sleep(for: .seconds(2))
         return PreviewEstimates.breakfast
     }
 }

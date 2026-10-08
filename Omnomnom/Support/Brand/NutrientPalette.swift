@@ -15,6 +15,15 @@ import SwiftUI
 /// whatever the legend says. Worst separation in the set below is 11.1 under protanopia
 /// and 18.8 under normal vision, and all three clear 3:1 against white and against the
 /// grouped-list background.
+///
+/// Dark mode is deliberately absent.
+///
+/// Measured, not overlooked: the dark lightness band is narrow enough that tangerine
+/// and the fat hue cannot be got 15 apart under normal vision inside it, and a
+/// separation that small is not something a legend or a direct label can rescue. The
+/// honest options are a different third hue or two hues and a neutral, and both are
+/// decisions for the dark-mode pass rather than guesses to make here. Until then these
+/// values are used in both appearances and are too heavy in the dark one.
 nonisolated enum NutrientPalette {
     /// Protein.
     static let protein = Color(red: 0.180, green: 0.373, blue: 0.639)
@@ -39,16 +48,6 @@ nonisolated enum NutrientPalette {
         default: missing
         }
     }
-
-    /// Dark mode is deliberately absent.
-    ///
-    /// Measured, not overlooked: the dark lightness band is narrow enough that tangerine
-    /// and the fat hue cannot be got 15 apart under normal vision inside it, and a
-    /// separation that small is not something a legend or a direct label can rescue. The
-    /// honest options are a different third hue or two hues and a neutral, and both are
-    /// decisions for the dark-mode pass rather than guesses to make here. Until then these
-    /// values are used in both appearances and are too heavy in the dark one.
-    static let darkModeIsUnresolved = true
 }
 
 /// Diagonal hatching, for the part of a figure that no row has a value for.

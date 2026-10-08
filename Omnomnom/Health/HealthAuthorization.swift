@@ -14,7 +14,7 @@ nonisolated struct HealthAuthorization: Hashable, Sendable {
         return HealthAuthorization(isAvailable: true, authorized: await health.authorizedNutrients())
     }
 
-    func isAuthorized(_ nutrient: Nutrient) -> Bool {
+    private func isAuthorized(_ nutrient: Nutrient) -> Bool {
         authorized.contains(nutrient)
     }
 

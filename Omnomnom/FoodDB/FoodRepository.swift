@@ -16,10 +16,10 @@ nonisolated struct FoodRepository: Sendable {
         self.sourcesURL = sourcesURL
     }
 
-    /// Opens the database and manifest shipped in `bundle`, logging what is missing.
-    static func bundled(in bundle: Bundle = .main) -> FoodRepository {
-        let sourcesURL = bundle.url(forResource: "sources", withExtension: "json")
-        guard let databaseURL = bundle.url(forResource: "foods", withExtension: "sqlite") else {
+    /// Opens the database and manifest shipped in the main bundle, logging what is missing.
+    static func bundled() -> FoodRepository {
+        let sourcesURL = Bundle.main.url(forResource: "sources", withExtension: "json")
+        guard let databaseURL = Bundle.main.url(forResource: "foods", withExtension: "sqlite") else {
             AppLog.foodDB.error("foods.sqlite is not in the bundle; run Tools/fooddb before building")
             return FoodRepository(database: nil, sourcesURL: sourcesURL)
         }
@@ -34,10 +34,6 @@ nonisolated struct FoodRepository: Sendable {
 
     func search(_ text: String) async throws -> [BundledFood] {
         try await open().search(text)
-    }
-
-    func food(id: Int) async throws -> BundledFood? {
-        try await open().food(id: id)
     }
 
     func portions(for foodID: Int) async throws -> [Portion] {

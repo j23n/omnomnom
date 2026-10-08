@@ -4,7 +4,6 @@ import os
 nonisolated enum AppLog {
     static let subsystem = "com.j23n.omnomnom"
 
-    static let app = Logger(subsystem: subsystem, category: "app")
     static let barcode = Logger(subsystem: subsystem, category: "barcode")
     static let estimation = Logger(subsystem: subsystem, category: "estimation")
     static let foodDB = Logger(subsystem: subsystem, category: "fooddb")

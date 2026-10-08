@@ -287,7 +287,7 @@ private struct LooseEndsPreview: View {
         prepare(entries)
         return LooseEndsView(day: .now, dayTitle: "Today")
             .modelContainer(container)
-            .environment(\.foodRepository, PreviewRepository.make())
+            .environment(\.foodRepository, FoodRepository.bundled())
     }
 }
 

@@ -63,11 +63,6 @@ enum PreviewStore {
         entries(in: container).first { $0.healthState == state }
     }
 
-    /// The first entry the seed holds, if any.
-    static func firstEntry(in container: ModelContainer) -> LogEntry? {
-        entries(in: container).first
-    }
-
     /// Recipes by name.
     static func recipes(in container: ModelContainer) -> [Recipe] {
         let descriptor = FetchDescriptor<Recipe>(sortBy: [SortDescriptor(\Recipe.name)])

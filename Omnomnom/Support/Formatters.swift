@@ -9,7 +9,7 @@ nonisolated enum Formatters {
     }
 
     /// The number alone, with the precision that suits the unit.
-    static func number(_ value: Double, unit: NutrientUnit) -> String {
+    private static func number(_ value: Double, unit: NutrientUnit) -> String {
         switch unit {
         case .kilocalorie, .milligram:
             value.formatted(.number.precision(.fractionLength(0)))

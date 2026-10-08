@@ -185,7 +185,7 @@ private let typicalDay = Nutrition(
 }
 
 #Preview("Dark", traits: .sizeThatFitsLayout) {
-    // Deliberately unresolved: see NutrientPalette.darkModeIsUnresolved.
+    // Deliberately unresolved: see NutrientPalette.
     DayMarkView(
         answers: DayAnswers(logged: [.breakfast, .lunch], skipped: [.snack]),
         composition: MacroComposition(of: typicalDay),

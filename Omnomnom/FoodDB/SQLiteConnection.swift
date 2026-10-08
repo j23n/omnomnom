@@ -1,6 +1,22 @@
 import Foundation
 import SQLite3
 
+/// Failures from the SQLite C API, carrying `sqlite3_errmsg` where available.
+nonisolated enum SQLiteError: Error, Equatable, Sendable, LocalizedError {
+    case open(String)
+    case prepare(String)
+    case bind(String)
+    case step(String)
+
+    private var message: String {
+        switch self {
+        case .open(let m), .prepare(let m), .bind(let m), .step(let m): m
+        }
+    }
+
+    var errorDescription: String? { message }
+}
+
 /// Owns one read-only `sqlite3` handle and its prepared statements.
 ///
 /// Not thread-safe and not `Sendable`: it lives inside `SQLiteDatabase` and never
@@ -83,7 +99,7 @@ nonisolated final class SQLiteConnection {
 
     // MARK: Column readers
 
-    func columnIsNull(_ statement: OpaquePointer, _ index: Int32) -> Bool {
+    private func columnIsNull(_ statement: OpaquePointer, _ index: Int32) -> Bool {
         sqlite3_column_type(statement, index) == SQLITE_NULL
     }
 
