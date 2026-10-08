@@ -224,10 +224,7 @@ nonisolated enum RemoteEstimatePayload {
                     ]),
                 ]),
             ]),
-            "meal": JSONSchema.choice(
-                of: ["breakfast", "lunch", "dinner", "snack"],
-                "Which meal these foods belong to, judged from the foods themselves and not from the time of day"
-            ),
+            "meal": JSONSchema.mealField,
             "note": JSONSchema.field(
                 "string",
                 "One short sentence on what was assumed, and whether the estimate is uncertain"

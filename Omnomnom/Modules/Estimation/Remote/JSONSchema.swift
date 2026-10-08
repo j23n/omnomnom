@@ -16,6 +16,14 @@ nonisolated enum JSONSchema {
         .object(["type": .string(type), "description": .string(description)])
     }
 
+    /// Which meal the foods belong to. Both schemas ask for this, with the same four
+    /// words and the same sentence, because it is the same question — and a sentence sent
+    /// to two models should not be able to drift between them.
+    static let mealField = choice(
+        of: ["breakfast", "lunch", "dinner", "snack"],
+        "Which meal these foods belong to, judged from the foods themselves and not from the time of day"
+    )
+
     /// A string leaf narrowed to a fixed set of words. `enum` is the schema's own spelling
     /// and a Swift keyword, which is the whole reason the struct form needed `CodingKeys`.
     static func choice(of allowed: [String], _ description: String) -> JSONValue {
