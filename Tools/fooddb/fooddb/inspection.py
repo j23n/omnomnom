@@ -12,7 +12,7 @@ from pathlib import Path
 
 from . import bls, ciqual
 from .errors import FooddbError
-from .table import TABLE_SUFFIXES, Table, find_table, read_table
+from .table import Table, find_table, read_table
 
 _SAMPLE_ROWS = 3
 _SAMPLE_VALUES = 60
@@ -110,6 +110,3 @@ def _bls_lines(table: Table) -> list[str]:
         lines.append(f"        {row.values}")
     return lines
 
-
-def suffixes() -> str:
-    return ", ".join(TABLE_SUFFIXES)

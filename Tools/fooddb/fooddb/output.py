@@ -179,8 +179,7 @@ def sources_manifest(versions: Mapping[str, str]) -> list[dict[str, object]]:
         ]
         if not datasets:
             continue
-        own = {dataset_id: versions[dataset_id] for dataset_id, _ in source.datasets
-               if dataset_id in versions}
+        own = {str(entry["id"]): str(entry["version"]) for entry in datasets}
         manifest.append({
             "id": source.id,
             "name": source.name,

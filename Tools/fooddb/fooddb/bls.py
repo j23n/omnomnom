@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import logging
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -321,11 +321,3 @@ def names_for(row: BlsRow) -> tuple[str, str, Sequence[str]]:
     if row.name_en:
         return row.name_en, NAME_LOCALE_EN, [row.name_de]
     return row.name_de, NAME_LOCALE_DE, []
-
-
-def units_summary(columns: Mapping[str, ValueColumn]) -> str:
-    """One line per mapped column, for the inspect report."""
-    return "\n".join(
-        f"    {column}: {source.header!r} in {source.published_unit!r} (x{source.factor:g})"
-        for column, source in columns.items()
-    )

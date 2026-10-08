@@ -43,13 +43,13 @@ DEFAULT_OUTPUT = (
 )
 
 
-def coverage(distance: float, edge: float) -> float:
+def coverage(distance: float) -> float:
     """How much of a pixel a circle covers, from its signed distance in pixels.
 
-    Negative distances are inside. The transition is a smoothstep across `edge`
-    pixels centred on the outline.
+    Negative distances are inside. The transition is a smoothstep across
+    `EDGE_PIXELS` pixels centred on the outline.
     """
-    t = 0.5 - distance / edge
+    t = 0.5 - distance / EDGE_PIXELS
     if t <= 0.0:
         return 0.0
     if t >= 1.0:
@@ -57,13 +57,13 @@ def coverage(distance: float, edge: float) -> float:
     return t * t * (3.0 - 2.0 * t)
 
 
-def mark_coverage(x: float, y: float, size: int, edge: float) -> float:
+def mark_coverage(x: float, y: float, size: int) -> float:
     """Coverage of the mark at pixel centre (x, y): disc minus bite, plus crumbs."""
 
     def circle(c: Circle) -> float:
         cx, cy, r = c
         d = math.hypot(x - cx * size, y - cy * size) - r * size
-        return coverage(d, edge)
+        return coverage(d)
 
     inside = min(circle(DISC), 1.0 - circle(BITE))
     for crumb in CRUMBS:
@@ -71,12 +71,12 @@ def mark_coverage(x: float, y: float, size: int, edge: float) -> float:
     return inside
 
 
-def render(size: int, edge: float = EDGE_PIXELS) -> List[bytes]:
+def render(size: int) -> List[bytes]:
     """Rows of packed RGB bytes for a `size` by `size` icon."""
     circles = (DISC, BITE, *CRUMBS)
     # Rows and columns no circle reaches are plain background; skipping them keeps the
     # per-pixel loop to the part of the square that can change.
-    reach = edge
+    reach = EDGE_PIXELS
     top = min((cy - r) * size for _, cy, r in circles) - reach
     bottom = max((cy + r) * size for _, cy, r in circles) + reach
     left = min((cx - r) * size for cx, _, r in circles) - reach
@@ -95,7 +95,7 @@ def render(size: int, edge: float = EDGE_PIXELS) -> List[bytes]:
             x = i + 0.5
             if x < left or x > right:
                 continue
-            a = mark_coverage(x, y, size, edge)
+            a = mark_coverage(x, y, size)
             if a <= 0.0:
                 continue
             offset = i * 3

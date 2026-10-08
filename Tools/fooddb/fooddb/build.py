@@ -199,14 +199,11 @@ def load_ciqual_bundle(bundle: Bundle, summary: BuildSummary) -> list[FoodRow]:
     ciqual.validate_units(ciqual.read_constituent_units(files["const"]))
     foods = ciqual.read_foods(files["foods"])
     composition = ciqual.read_composition(files["compo"])
-    prefer_english = any(food.name_eng.strip() for food in foods)
-    if not prefer_english:
-        log.warning("%s: this export has no English names; French names will be shown", source)
-    groups = ciqual.read_groups(files["groups"], prefer_english)
+    groups = ciqual.read_groups(files["groups"])
     rows: list[FoodRow] = []
     no_energy = blank = 0
     for food in foods:
-        name, locale, _ = ciqual.names_for(food, prefer_english)
+        name, locale, _ = ciqual.names_for(food)
         if not name or locale != NAME_LOCALE_SHIPPED:
             blank += 1
             log.debug("dropping %s %s: no English name", source, food.code)
@@ -369,10 +366,7 @@ def assemble(
     summary = BuildSummary()
     rows: list[FoodRow] = []
     for bundle in bundles:
-        loader = LOADERS.get(bundle.source)
-        if loader is None:
-            raise InputError(f"no reader for source {bundle.source!r}")
-        rows.extend(loader(bundle, summary))
+        rows.extend(LOADERS[bundle.source](bundle, summary))
     rows = dedup(rows, summary)
     rows = apply_popularity(rows, read_popular(popular_path), summary)
     rows = apply_ingredient_flags(rows, summary)

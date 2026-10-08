@@ -364,8 +364,3 @@ def reasons(name: str, alt_names: tuple[str, ...] = ()) -> frozenset[str]:
     return frozenset(
         rule.name for rule in RULES if _fires(rule, folded, words, head_words)
     )
-
-
-def is_ingredient(name: str, alt_names: tuple[str, ...] = ()) -> bool:
-    """Whether the row is an ingredient or a dry form rather than a portion."""
-    return bool(reasons(name, alt_names))

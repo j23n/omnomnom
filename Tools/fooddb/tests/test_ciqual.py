@@ -89,12 +89,12 @@ class NameTests(unittest.TestCase):
         return ciqual.CiqualFood(**fields)
 
     def test_english_shown_french_indexed(self) -> None:
-        name, locale, others = ciqual.names_for(self.food(), prefer_english=True)
+        name, locale, others = ciqual.names_for(self.food())
         self.assertEqual((name, locale), ("Apple, raw", "en"))
         self.assertEqual(others, ["Pomme, crue", "Apple raw", "Pomme crue"])
 
     def test_falls_back_to_french(self) -> None:
-        name, locale, others = ciqual.names_for(self.food(name_eng=""), prefer_english=True)
+        name, locale, others = ciqual.names_for(self.food(name_eng=""))
         self.assertEqual((name, locale), ("Pomme, crue", "fr"))
         self.assertNotIn("", others)
 

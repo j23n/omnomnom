@@ -11,7 +11,7 @@ from pathlib import Path
 from . import bls, ciqual
 from . import download as dl
 from .build import DEFAULT_POPULAR, assemble
-from .bundles import SOURCE_ORDER, Bundle
+from .bundles import Bundle
 from .errors import FooddbError, InputError
 from .fdc import find_bundles
 from .inspection import describe
@@ -35,8 +35,6 @@ def build_parser() -> argparse.ArgumentParser:
         "--dest", type=Path, default=DEFAULT_DOWNLOADS,
         help=f"download directory (default {DEFAULT_DOWNLOADS})",
     )
-    fetch.add_argument("--foundation-url", default=dl.DEFAULT_FOUNDATION_URL)
-    fetch.add_argument("--sr-legacy-url", default=dl.DEFAULT_SR_LEGACY_URL)
     fetch.add_argument("--force", action="store_true", help="re-download even if the zip exists")
 
     build = commands.add_parser(
@@ -67,24 +65,20 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def run_download(args: argparse.Namespace) -> int:
-    pins = {
-        "foundation": _pin_for(args.foundation_url, dl.PINS["foundation"]),
-        "sr_legacy": _pin_for(args.sr_legacy_url, dl.PINS["sr_legacy"]),
-    }
-    extracted = dl.download_all(args.dest, pins, force=args.force)
+    extracted = dl.download_all(args.dest, dl.PINS, force=args.force)
     for key, path in extracted.items():
         print(f"{key}: {path}")
     print(f"Next: python3 -m fooddb build --fdc {args.dest}")
     return 0
 
 
-def _pin_for(url: str, default: dl.Pin) -> dl.Pin:
-    """Keep pinned size/hash only when the URL is the pinned one."""
-    return default if url == default.url else dl.Pin(url)
-
-
 def collect_bundles(args: argparse.Namespace) -> list[Bundle]:
-    """Locate every source the command line names, in the order rows are assembled."""
+    """Locate every source the command line names, in the order rows are assembled.
+
+    The order the sources are appended in below is also the order dedup keeps:
+    the first source to claim a name wins. Only sources actually passed to the
+    build appear.
+    """
     bundles: list[Bundle] = []
     if args.ciqual is not None:
         bundles.append(ciqual.find_bundle(args.ciqual))
@@ -97,8 +91,7 @@ def collect_bundles(args: argparse.Namespace) -> list[Bundle]:
             "name at least one source: --ciqual, --bls or --fdc "
             "(see Tools/fooddb/README.md for where to download each)"
         )
-    order = {source: index for index, source in enumerate(SOURCE_ORDER)}
-    return sorted(bundles, key=lambda bundle: order.get(bundle.source, len(order)))
+    return bundles
 
 
 def run_build(args: argparse.Namespace) -> int:

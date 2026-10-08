@@ -198,7 +198,7 @@ def read_foods(path: Path) -> list[CiqualFood]:
     return foods
 
 
-def read_groups(path: Path, prefer_english: bool) -> dict[str, str]:
+def read_groups(path: Path) -> dict[str, str]:
     """Sub-group code -> its name, falling back to the group when there is no sub-group."""
     names: dict[str, str] = {}
     for row in _elements(path, "ALIM_GRP"):
@@ -209,8 +209,7 @@ def read_groups(path: Path, prefer_english: bool) -> dict[str, str]:
             code = row.get(code_field, "").strip()
             if not code:
                 continue
-            ordered = name_fields if prefer_english else tuple(reversed(name_fields))
-            name = next((row.get(field, "").strip() for field in ordered
+            name = next((row.get(field, "").strip() for field in name_fields
                          if row.get(field, "").strip()), "")
             if name:
                 names.setdefault(code, name)
@@ -275,11 +274,11 @@ def map_nutrients(
     return mapped, estimated
 
 
-def names_for(food: CiqualFood, prefer_english: bool) -> tuple[str, str, Sequence[str]]:
+def names_for(food: CiqualFood) -> tuple[str, str, Sequence[str]]:
     """(display name, locale, other names to index for search)."""
     english = " ".join(food.name_eng.split())
     french = " ".join(food.name_fr.split())
-    if prefer_english and english:
+    if english:
         primary, locale, others = english, NAME_LOCALE_EN, [french]
     else:
         primary, locale, others = french, NAME_LOCALE_FR, [english]

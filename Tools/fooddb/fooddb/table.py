@@ -55,14 +55,6 @@ class Table:
     def where(self) -> str:
         return f"{self.path}" if self.sheet is None else f"{self.path} [{self.sheet}]"
 
-    def require(self, columns: Sequence[str]) -> None:
-        missing = [column for column in columns if column not in self.headers]
-        if missing:
-            raise InputError(
-                f"{self.where}: missing columns {', '.join(missing)}. "
-                f"Columns present: {', '.join(self.headers) or '(none)'}"
-            )
-
     def index(self, column: str) -> int:
         """Where a column sits, for reading a wide table without a dict per row.
 

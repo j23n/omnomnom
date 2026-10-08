@@ -11,10 +11,6 @@ SR_LEGACY = "fdc_sr_legacy"
 CIQUAL = "ciqual"
 BLS = "bls"
 
-# The order rows are assembled in, which is also the order dedup keeps: the first
-# source to claim a name wins. Only sources actually passed to the build appear.
-SOURCE_ORDER: tuple[str, ...] = (CIQUAL, BLS, FOUNDATION, SR_LEGACY)
-
 _DATE_RE = re.compile(r"\d{4}(?:-\d{2}(?:-\d{2})?)?")
 
 

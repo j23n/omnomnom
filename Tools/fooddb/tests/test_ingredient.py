@@ -33,7 +33,7 @@ class NotAPortionTests(unittest.TestCase):
 
     def assertFlagged(self, name: str, rule: str, alt: tuple[str, ...] = ()) -> None:
         why = ingredient.reasons(name, alt)
-        self.assertTrue(ingredient.is_ingredient(name, alt), f"{name!r} not flagged")
+        self.assertTrue(why, f"{name!r} not flagged")
         self.assertIn(rule, why, f"{name!r} flagged as {sorted(why)}, expected {rule}")
 
     def test_coffee_powder(self) -> None:
@@ -85,19 +85,20 @@ class GermanCompoundTests(unittest.TestCase):
     """BLS rows display German, and compounds have no word boundary to find."""
 
     def test_compound_powder_is_reached_by_fragment(self) -> None:
-        self.assertTrue(ingredient.is_ingredient("Milchpulver, entrahmt"))
-        self.assertIn("powder", ingredient.reasons("Milchpulver, entrahmt"))
+        why = ingredient.reasons("Milchpulver, entrahmt")
+        self.assertTrue(why)
+        self.assertIn("powder", why)
 
     def test_compound_concentrate(self) -> None:
-        self.assertTrue(ingredient.is_ingredient("Tomatenkonzentrat"))
+        self.assertTrue(ingredient.reasons("Tomatenkonzentrat"))
 
     def test_english_alt_name_reaches_a_german_row(self) -> None:
         # BLS 4.0 publishes an English name beside the German one, which is what
         # keeps the English rules doing most of the work across both bundles.
-        self.assertTrue(ingredient.is_ingredient("Rapsöl", ("Rapeseed oil",)))
+        self.assertTrue(ingredient.reasons("Rapsöl", ("Rapeseed oil",)))
 
     def test_raw_animal_in_german(self) -> None:
-        self.assertTrue(ingredient.is_ingredient("Hähnchenbrust roh"))
+        self.assertTrue(ingredient.reasons("Hähnchenbrust roh"))
 
 
 class FoodTests(unittest.TestCase):
@@ -241,13 +242,11 @@ class RealDatabaseTests(unittest.TestCase):
     """
 
     def assertPortion(self, name: str) -> None:
-        self.assertFalse(
-            ingredient.is_ingredient(name),
-            f"{name!r} wrongly flagged as {sorted(ingredient.reasons(name))}",
-        )
+        why = ingredient.reasons(name)
+        self.assertFalse(why, f"{name!r} wrongly flagged as {sorted(why)}")
 
     def assertNotPortion(self, name: str) -> None:
-        self.assertTrue(ingredient.is_ingredient(name), f"{name!r} not flagged")
+        self.assertTrue(ingredient.reasons(name), f"{name!r} not flagged")
 
     def test_the_bls_names_every_cooked_vegetable_with_fat_and_salt(self) -> None:
         # The largest false-positive class there was: "salt" alone flagged most of the
@@ -336,13 +335,11 @@ class RealCiqualNameTests(unittest.TestCase):
     """
 
     def assertPortion(self, name: str, *alt: str) -> None:
-        self.assertFalse(
-            ingredient.is_ingredient(name, tuple(alt)),
-            f"{name!r} wrongly flagged as {sorted(ingredient.reasons(name, tuple(alt)))}",
-        )
+        why = ingredient.reasons(name, tuple(alt))
+        self.assertFalse(why, f"{name!r} wrongly flagged as {sorted(why)}")
 
     def assertNotPortion(self, name: str, *alt: str) -> None:
-        self.assertTrue(ingredient.is_ingredient(name, tuple(alt)), f"{name!r} not flagged")
+        self.assertTrue(ingredient.reasons(name, tuple(alt)), f"{name!r} not flagged")
 
     def test_juice_from_concentrate_is_a_glass_of_juice(self) -> None:
         # The costliest false positive the French table held: Ciqual names every
