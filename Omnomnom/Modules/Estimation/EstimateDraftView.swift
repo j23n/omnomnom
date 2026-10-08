@@ -99,12 +99,7 @@ struct EstimateDraftView: View {
                 .disabled(!draft.canBecomeRecipe)
             }
             Section {
-                Picker("Meal", selection: $mealSlot) {
-                    ForEach(MealSlot.allCases, id: \.self) { slot in
-                        Text(slot.displayName).tag(slot)
-                    }
-                }
-                DatePicker("Time", selection: $timestamp, displayedComponents: [.date, .hourAndMinute])
+                MealTimeFields(mealSlot: $mealSlot, timestamp: $timestamp)
                 if photo != nil {
                     Toggle(isOn: $keepsPhoto) {
                         HStack(spacing: 12) {

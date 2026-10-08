@@ -140,12 +140,7 @@ struct EntryEditorView: View {
                 amountSection
                 nutritionSection
                 Section {
-                    Picker("Meal", selection: $mealSlot) {
-                        ForEach(MealSlot.allCases, id: \.self) { slot in
-                            Text(slot.displayName).tag(slot)
-                        }
-                    }
-                    DatePicker("Time", selection: $timestamp, displayedComponents: [.date, .hourAndMinute])
+                    MealTimeFields(mealSlot: $mealSlot, timestamp: $timestamp)
                 }
                 healthSection
                 Section {
