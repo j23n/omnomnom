@@ -1,14 +1,14 @@
 import Foundation
 
-/// What the food search screen knows about the product half of a search: whether it is
-/// switched on at all, whether a request is in flight, what came back, and what went
-/// wrong. A value type, so the screen holds one piece of state rather than four.
+/// What the food search screen knows about the product half of a search: whether a
+/// request is in flight, what came back, and what went wrong. A value type, so the screen
+/// holds one piece of state rather than three. Whether the module is switched on is the
+/// screen's own `@AppStorage` to read, not something to carry a second copy of here.
 ///
 /// The records are turned into `SearchResult` rows where they are shown, so a product
 /// ends up in the same ordered list as everything else rather than in a section of
 /// its own.
 nonisolated struct ProductResults: Hashable, Sendable {
-    var isEnabled = false
     var isSearching = false
     var records: [ProductRecord] = []
     var errorMessage: String?

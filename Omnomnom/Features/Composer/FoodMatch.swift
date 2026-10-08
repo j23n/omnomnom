@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Three values rather than a number on screen, because the only thing the interface
 /// has to decide is whether to ask. The number stays here where it can be tuned.
-nonisolated enum MatchConfidence: String, Hashable, Sendable, CaseIterable {
+nonisolated enum MatchConfidence: String, Hashable, Sendable {
     /// Good enough to log without asking.
     case settled
     /// Logged, and marked for a glance. The user can change it in one tap.

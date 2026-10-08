@@ -6,7 +6,7 @@ import SwiftUI
 /// logged before, most recent first, then the recipes and custom foods never logged, so
 /// a new recipe is one tap away.
 ///
-/// Rows are the same `SearchResultRow` the results use, without the provenance pill:
+/// Rows are the same `PickableResultRow` the results use, without the provenance pill:
 /// the headings already say that everything here is yours or something you have eaten,
 /// so a pill on every row would label a list that cannot vary. Relevance is not
 /// consulted either — these are ordered by when they were last eaten, which is a better

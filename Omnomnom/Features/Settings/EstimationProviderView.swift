@@ -114,29 +114,8 @@ struct EstimationProviderView: View {
         } footer: {
             Text(Self.claudeModelFooter)
         }
-        Section {
-            if hasStoredKey {
-                LabeledContent("Key", value: "Stored")
-                Button("Remove key", role: .destructive) { removeKey() }
-            }
-            SecureField(hasStoredKey ? "Replace the key" : "Key", text: $keyEntry)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .submitLabel(.done)
-                .onSubmit { storeKey() }
-            if !keyEntry.isEmpty {
-                Button("Save key") { storeKey() }
-            }
-        } header: {
-            Text("Authentication")
-        } footer: {
-            Text(Self.keyFooter)
-        }
-        Section {
-            Toggle("Send photos", isOn: $claudeSendsPhotos)
-        } footer: {
-            Text(Self.claudePhotoFooter)
-        }
+        keySection
+        photoSection(isOn: $claudeSendsPhotos, footer: Self.claudePhotoFooter)
         Section {
             Text(claudeReadiness)
         } footer: {
@@ -173,6 +152,17 @@ struct EstimationProviderView: View {
         } footer: {
             Text(Self.disclosure)
         }
+        keySection
+        photoSection(isOn: $sendsPhotos, footer: Self.photoFooter)
+        Section {
+            Text(readiness)
+        }
+    }
+
+    /// The key Section, shown unchanged by both remote providers: `keySlot` and the
+    /// keychain calls it reaches are already about whichever provider is selected, so
+    /// there is nothing here for an arm to pass in.
+    private var keySection: some View {
         Section {
             if hasStoredKey {
                 LabeledContent("Key", value: "Stored")
@@ -191,13 +181,16 @@ struct EstimationProviderView: View {
         } footer: {
             Text(Self.keyFooter)
         }
+    }
+
+    /// The photo toggle. The two providers differ only in which setting it writes and
+    /// which footer explains it — a photo of a meal carries whatever else was in frame
+    /// either way.
+    private func photoSection(isOn: Binding<Bool>, footer: String) -> some View {
         Section {
-            Toggle("Send photos", isOn: $sendsPhotos)
+            Toggle("Send photos", isOn: isOn)
         } footer: {
-            Text(Self.photoFooter)
-        }
-        Section {
-            Text(readiness)
+            Text(footer)
         }
     }
 

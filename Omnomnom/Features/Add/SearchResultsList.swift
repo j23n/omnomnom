@@ -92,14 +92,14 @@ struct SearchResultsList: View {
 #Preview("Both groups") {
     SearchResultsList(
         sections: PreviewStore.searchSections, databaseError: nil,
-        products: ProductResults(isEnabled: true), modules: nil, onSelect: { _ in }
+        products: ProductResults(), modules: nil, onSelect: { _ in }
     )
 }
 
 #Preview("Nothing of the user's own") {
     SearchResultsList(
         sections: SearchResults.Sections(others: PreviewStore.searchSections.others),
-        databaseError: nil, products: ProductResults(isEnabled: true),
+        databaseError: nil, products: ProductResults(),
         modules: nil, onSelect: { _ in }
     )
 }
@@ -107,14 +107,14 @@ struct SearchResultsList: View {
 #Preview("Products still coming") {
     SearchResultsList(
         sections: PreviewStore.searchSections, databaseError: nil,
-        products: ProductResults(isEnabled: true, isSearching: true), modules: nil, onSelect: { _ in }
+        products: ProductResults(isSearching: true), modules: nil, onSelect: { _ in }
     )
 }
 
 #Preview("Products unavailable") {
     SearchResultsList(
         sections: PreviewStore.searchSections, databaseError: nil,
-        products: ProductResults(isEnabled: true, errorMessage: "Open Food Facts could not be reached."),
+        products: ProductResults(errorMessage: "Open Food Facts could not be reached."),
         modules: nil, onSelect: { _ in }
     )
 }
@@ -145,14 +145,14 @@ struct SearchResultsList: View {
 #Preview("iPad width", traits: .fixedLayout(width: 1024, height: 768)) {
     SearchResultsList(
         sections: PreviewStore.searchSections, databaseError: nil,
-        products: ProductResults(isEnabled: true), modules: nil, onSelect: { _ in }
+        products: ProductResults(), modules: nil, onSelect: { _ in }
     )
 }
 
 #Preview("Accessibility 5") {
     SearchResultsList(
         sections: PreviewStore.searchSections, databaseError: nil,
-        products: ProductResults(isEnabled: true), modules: nil, onSelect: { _ in }
+        products: ProductResults(), modules: nil, onSelect: { _ in }
     )
     .environment(\.dynamicTypeSize, .accessibility5)
 }

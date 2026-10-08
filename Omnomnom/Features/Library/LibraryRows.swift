@@ -16,6 +16,40 @@ enum LibraryEditor: Identifiable {
     }
 }
 
+/// One Library row, whichever kind of item it stands for: the photo, the name, one quiet
+/// line of figures, the tags, and a chevron, reading as a single button. The two kinds
+/// differ only in the caption they compute and in what the row opens, so both are passed
+/// in rather than branched on here.
+struct LibraryRow: View {
+    let photo: Data?
+    let name: String
+    let caption: String
+    let tags: [Tag]?
+    let hint: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            PhotoThumbnail(data: photo, size: 44)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name)
+                ValueText(caption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TagLine(tags: tags)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
+        }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint(hint)
+    }
+}
+
 /// Name, servings and energy per serving of one recipe, with its photo when it has one
 /// and its tags when it carries any. The row opens the recipe editor, so it carries a
 /// chevron and reads as a button.
@@ -31,25 +65,10 @@ struct RecipeRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            PhotoThumbnail(data: recipe.photo?.data, size: 44)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(recipe.name)
-                ValueText(caption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                TagLine(tags: recipe.tags)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Image(systemName: "chevron.right")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.tertiary)
-                .accessibilityHidden(true)
-        }
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityHint("Opens the recipe")
+        LibraryRow(
+            photo: recipe.photo?.data, name: recipe.name, caption: caption,
+            tags: recipe.tags, hint: "Opens the recipe"
+        )
     }
 }
 
@@ -71,25 +90,10 @@ struct CustomFoodRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            PhotoThumbnail(data: food.photo?.data, size: 44)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(food.name)
-                ValueText(caption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                TagLine(tags: food.tags)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Image(systemName: "chevron.right")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.tertiary)
-                .accessibilityHidden(true)
-        }
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityHint("Opens the food")
+        LibraryRow(
+            photo: food.photo?.data, name: food.name, caption: caption,
+            tags: food.tags, hint: "Opens the food"
+        )
     }
 }
 

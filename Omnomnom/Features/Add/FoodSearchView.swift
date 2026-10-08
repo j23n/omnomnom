@@ -125,7 +125,7 @@ struct FoodSearchView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                FoodSearchField(text: $searchText, prompt: "Search foods", isFocused: $fieldFocused)
+                FoodSearchField(text: $searchText, isFocused: $fieldFocused)
                 if isSearching {
                     SearchResultsList(
                         sections: sections, databaseError: databaseError,
@@ -434,7 +434,6 @@ struct FoodSearchView: View {
     /// Last query's products are cleared first: they are not results for this query,
     /// and showing Kinder Bueno under a search for cola is worse than showing nothing.
     private func searchProducts(_ text: String) async {
-        products.isEnabled = productSearchEnabled
         guard productSearchEnabled, ProductResults.isWorthSearching(text) else {
             products.clear()
             return

@@ -58,7 +58,7 @@ struct RecipeWriter {
                 ingredient.recipe = recipe
                 ingredient.food = try food(for: row)
             }
-            recipe.tags = try draft.tags.compactMap { try Tag.named($0, in: context) }
+            recipe.tags = try Tag.resolve(draft.tags, in: context)
             try Tag.removeOrphans(in: context)
             try context.save()
         } catch {
@@ -94,5 +94,19 @@ nonisolated enum RecipeWriteError: Error, Equatable, Sendable, LocalizedError {
         switch self {
         case .invalidDraft: "The recipe needs a name, at least one ingredient, and an amount on every row."
         }
+    }
+}
+
+extension Tag {
+    /// The tags for a set of typed names, creating the ones that are new and dropping
+    /// the blanks, in the shape both Library editors want.
+    ///
+    /// Beside the editors rather than beside `Tag`, because the orphan sweep that
+    /// follows it is not part of it: the sweep has to run *after* the resolved tags have
+    /// been attached to something, or a tag created a line earlier still looks abandoned
+    /// and is deleted again. Callers keep it in the same `do` block, so a throw from
+    /// either half rolls back the whole save.
+    static func resolve(_ names: [String], in context: ModelContext) throws -> [Tag] {
+        try names.compactMap { try Tag.named($0, in: context) }
     }
 }

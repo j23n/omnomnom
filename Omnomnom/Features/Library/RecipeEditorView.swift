@@ -69,31 +69,14 @@ struct RecipeEditorView: View {
                 Section("Per serving") {
                     NutritionPreview(nutrition: draft.perServing)
                 }
-                if hasLoggedEntries {
-                    Section {
-                        Text("Previously logged servings are unchanged.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                if let saveError {
-                    Section {
-                        Text(saveError)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                EditorNotes(
+                    loggedNote: hasLoggedEntries ? "Previously logged servings are unchanged." : nil,
+                    saveError: saveError
+                )
             }
-            .navigationTitle(recipe == nil ? "New recipe" : "Edit recipe")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { save() }
-                        .disabled(!draft.isValid)
-                }
-            }
+            .editorToolbar(
+                title: recipe == nil ? "New recipe" : "Edit recipe", isValid: draft.isValid
+            ) { save() }
             .fullScreenCover(isPresented: $isPicking) {
                 FoodSearchView(mode: .pick(multiple: true, onPick: { draft.add($0) }))
             }
@@ -107,6 +90,38 @@ struct RecipeEditorView: View {
         } catch {
             AppLog.store.error("recipe save failed: \(error.localizedDescription, privacy: .public)")
             saveError = "Could not save: \(error.localizedDescription)"
+        }
+    }
+}
+
+/// One ingredient in the builder: name and its energy, with the amount field inline in
+/// the food's own unit, grams or millilitres.
+struct IngredientRow: View {
+    @Binding var ingredient: IngredientDraft
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(ingredient.name)
+                Text(Formatters.amount(ingredient.energy, unit: .kilocalorie))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            TextField("0", text: $ingredient.amountText)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: 80)
+                .foregroundStyle(ingredient.amount == nil ? Color.red : Color.primary)
+                .accessibilityLabel("\(ingredient.measure.displayName) of \(ingredient.name)")
+                .accessibilityValue(
+                    ingredient.amountText.isEmpty
+                        ? "no amount"
+                        : "\(ingredient.amountText) \(ingredient.measure.spokenName)"
+                )
+            Text(ingredient.measure.unitSymbol)
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
         }
     }
 }

@@ -110,31 +110,12 @@ struct CustomFoodEditorView: View {
                 }
                 PhotoPickerSection(photo: $draft.photo, footer: "Shown on every entry logged from this food.")
                 TagSection(tags: $draft.tags)
-                if hasLoggedEntries {
-                    Section {
-                        Text("Previously logged entries are unchanged.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                if let saveError {
-                    Section {
-                        Text(saveError)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                EditorNotes(
+                    loggedNote: hasLoggedEntries ? "Previously logged entries are unchanged." : nil,
+                    saveError: saveError
+                )
             }
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { save() }
-                        .disabled(!draft.isValid)
-                }
-            }
+            .editorToolbar(title: title, isValid: draft.isValid) { save() }
         }
     }
 
@@ -171,7 +152,7 @@ struct CustomFoodEditorView: View {
         }
         saved.photo = Photo.replacing(saved.photo, with: draft.photo, in: context)
         do {
-            saved.tags = try draft.tags.compactMap { try Tag.named($0, in: context) }
+            saved.tags = try Tag.resolve(draft.tags, in: context)
             try Tag.removeOrphans(in: context)
             try context.save()
             onSaved?(saved)
@@ -180,6 +161,40 @@ struct CustomFoodEditorView: View {
             context.rollback()
             AppLog.store.error("custom food save failed: \(error.localizedDescription, privacy: .public)")
             saveError = "Could not save: \(error.localizedDescription)"
+        }
+    }
+}
+
+/// One per-100 field of the food editor with its unit; energy is marked as required
+/// in the placeholder, and text that does not parse turns red. VoiceOver names the
+/// reference the draft is currently on, "per 100 grams" or "per 100 millilitres".
+struct NutrientField: View {
+    let nutrient: Nutrient
+    @Binding var draft: CustomFoodDraft
+
+    private var text: Binding<String> {
+        Binding(
+            get: { draft.text(for: nutrient) },
+            set: { draft.setText($0, for: nutrient) }
+        )
+    }
+
+    var body: some View {
+        LabeledContent {
+            HStack(spacing: 4) {
+                TextField(nutrient == .energy ? "required" : "unknown", text: text)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.trailing)
+                    .foregroundStyle(draft.isInvalid(nutrient) ? Color.red : Color.primary)
+                    .accessibilityLabel(
+                        "\(nutrient.displayName) per 100 \(draft.measure.spokenName), in \(nutrient.unit.symbol)"
+                    )
+                Text(nutrient.unit.symbol)
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+            }
+        } label: {
+            Text(nutrient.displayName)
         }
     }
 }

@@ -8,7 +8,6 @@ import SwiftUI
 /// from the first frame and the keyboard is the only thing that moves.
 struct FoodSearchField: View {
     @Binding var text: String
-    let prompt: String
     @FocusState.Binding var isFocused: Bool
 
     var body: some View {
@@ -16,13 +15,13 @@ struct FoodSearchField: View {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
-            TextField(prompt, text: $text)
+            TextField("Search foods", text: $text)
                 .textFieldStyle(.plain)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .submitLabel(.search)
                 .focused($isFocused)
-                .accessibilityLabel(prompt)
+                .accessibilityLabel("Search foods")
             if !text.isEmpty {
                 Button {
                     text = ""
@@ -54,7 +53,7 @@ private struct FoodSearchFieldPreview: View {
     }
 
     var body: some View {
-        FoodSearchField(text: $text, prompt: "Search foods", isFocused: $focused)
+        FoodSearchField(text: $text, isFocused: $focused)
     }
 }
 
