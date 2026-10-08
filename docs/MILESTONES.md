@@ -1330,3 +1330,60 @@ driven by a scripted transport; four on the pool and its prompt lines; and twelv
 answered line becomes on the sheet.
 
 Unbuilt. Written without a Swift toolchain, so nothing here has been compiled or run.
+
+## A pass over what the app had stopped needing
+
+Not a milestone: a sweep for machinery the app had outgrown, done by reading rather than by
+building, because there is still no Swift toolchain here. Swift went from 32,255 lines to
+31,683 and from 438 top-level types to 417, four files fewer; the Python pipeline lost 90
+lines with its 184 tests green after every change.
+
+**The largest single thing was the two request schemas.** Both remote paths described their
+bodies as trees of single-use `Encodable` structs — nineteen types between them whose only
+job was to emit a constant. The schema is a constant, so the types restated the JSON one
+level further from it, and every key the spec spells with an underscore or reserves as a
+Swift keyword needed a `CodingKeys` of its own. `JSONValue` already carried the blocks of a
+replayed turn and now carries these; the leaf shapes, which are the only part that repeated,
+are shared. `AnthropicPayload` went from thirteen top-level types to three.
+
+**Two copies had already drifted, which is the argument for not having two.** `fetch` was
+byte-identical in both estimators and the `URLError` mapping differed by one case, so a base
+URL typed as `http` got a clear sentence on one path and "the request failed" on the other.
+The nutrient cell was written twice and only one copy spelled its figure out for VoiceOver,
+so the same number read as "Prot 12 g" on one screen and "Protein, 12 grams" on the other.
+Both now have one copy, and the better behaviour is the one that survived.
+
+**Two features were finished, tested and never called.** `BaselinePhrase` could work out
+which line to offer from use counts, and the only caller outside its tests seeds a preview.
+`AmountBucket` could read a size word in three languages, and the line parser rewrites
+"half" to 0.5 before any size-word lookup could see it, so the two could not have agreed
+anyway. `EntryOrigin` offered `photo` and `repeated`, which nothing writes.
+
+**Several things were left alone on purpose.** `Food` and `RecipeIngredient` really do repeat
+nineteen lines of per-100 pack and unpack, and a protocol with eight requirements is not an
+improvement on that — the duplication is the cheaper of the two. Fourteen redundant
+`import DeveloperToolsSupport` lines stay, because the case for removing them rests on
+sibling files compiling without it and nothing here has ever compiled. `MealEstimator+Photo`
+stays its own file, which is what its own header asks for: it is the only caller of the
+iOS 27 image-prompt API, and keeping that contained is worth more than ten lines.
+`ForeignMealsSection` stays out of `DayHealthSummary`, because that type is SwiftUI-free by a
+convention that marks the HealthKit boundary at a glance.
+
+**Four claims in `PLAN.md` were wrong.** It said `DayRecord` holds sample membership, which
+the same section denied twenty-six lines later; listed three day states where there are four;
+described `origin` as recording a photograph or a repeat; and gave Trends as charting three
+nutrients where it charts all eight. One passage said the tool-using loop deletes narrowing
+and the two-retriever arbitration, which reads as permission to delete code that is live for
+the other providers and covered by ten tests. The plan now states the design and the log
+carries the history, which is what `CLAUDE.md` asked for all along.
+
+One test was failing before any of this: it expected "Barcode lookup is off" where the flow
+returns "Product lookup is off". The flow is right — a lookup is allowed when either module
+toggle is on, so the sentence cannot name one of them.
+
+Unbuilt. Every claim rests on grep, on a brace-and-paren scanner over all 269 Swift files,
+and on the Python suite. The first build is still the thing to do next, and these are the
+changes to look at first: `WidgetPhrase` now relies on the synthesised memberwise init,
+`WidgetSnapshot.init` lost a parameter, `PickableResultRow`'s memberwise init is synthesised
+where it used to be written out, and the library editors' toolbar reads `dismiss` from inside
+a `ViewModifier` rather than from the view that presents them.
