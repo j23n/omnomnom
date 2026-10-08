@@ -105,7 +105,7 @@ final class AnthropicLineResolver: LineDriving {
         let request = AnthropicPayload.request(url: url, key: key, body: body)
         let host = Self.host(of: url)
         let started = Date()
-        let (data, response) = try await fetch(request, host: host)
+        let (data, response) = try await transport.fetch(request, host: host)
         let milliseconds = Int(Date().timeIntervalSince(started) * 1000)
         AppLog.estimation.info(
             "\(host, privacy: .public) answered \(response.statusCode) in \(milliseconds) ms, round \(round)"
@@ -119,19 +119,6 @@ final class AnthropicLineResolver: LineDriving {
             throw EstimationError.failed("the answer was too large to read.")
         }
         return data
-    }
-
-    private func fetch(_ request: URLRequest, host: String) async throws -> (Data, HTTPURLResponse) {
-        do {
-            return try await transport.send(request)
-        } catch {
-            // The code and nothing else: a URL error's description carries the address it
-            // was given, and an address a user pasted can have a credential in it.
-            AppLog.estimation.error(
-                "\(host, privacy: .public) did not answer: \((error as? URLError)?.code.rawValue ?? 0)"
-            )
-            throw Self.mapped(error, host: host)
-        }
     }
 
     /// Runs what the model asked for and keeps the rows, in the order it asked.
@@ -177,29 +164,8 @@ final class AnthropicLineResolver: LineDriving {
         return blocks
     }
 
-    /// What the log calls the endpoint. The host alone: a path can hold a key.
+    /// What the log and the sentences call this path's endpoint.
     private nonisolated static func host(of url: URL) -> String {
-        url.host() ?? "the API"
-    }
-
-    /// Transport failures in the user's terms, which is the same vocabulary the
-    /// OpenAI-compatible path uses — each of these is a different thing to go and fix.
-    private nonisolated static func mapped(_ error: any Error, host: String) -> EstimationError {
-        guard let error = error as? URLError else { return EstimationError.map(error) }
-        switch error.code {
-        case .cancelled:
-            return .cancelled
-        case .timedOut:
-            return .failed("\(host) did not answer in time. Try again.")
-        case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed:
-            return .failed("there is no connection to \(host) right now.")
-        case .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed:
-            return .failed("\(host) could not be reached. Check the address in Settings.")
-        case .secureConnectionFailed, .serverCertificateUntrusted, .serverCertificateHasBadDate,
-             .serverCertificateNotYetValid, .serverCertificateHasUnknownRoot:
-            return .failed("the connection to \(host) is not trusted.")
-        default:
-            return .failed("the request to \(host) failed.")
-        }
+        TransportFailure.host(of: url, fallback: "the API")
     }
 }

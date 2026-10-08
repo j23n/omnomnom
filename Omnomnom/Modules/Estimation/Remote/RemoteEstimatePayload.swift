@@ -125,27 +125,115 @@ nonisolated enum RemoteEstimatePayload {
 
     /// The JSON body of one chat-completions request.
     static func body(model: String, mode: RemoteEstimateMode, content: RemoteEstimateContent) throws -> Data {
-        let spoken: MessageContent
+        let spoken: JSONValue
         switch content {
         case .text(let text):
-            spoken = .text(text)
+            spoken = .string(text)
         case .textAndImage(let text, let dataURL):
-            spoken = .parts([.text(text), .imageURL(dataURL)])
+            // The shape OpenAI's vision requests use and every compatible server copied:
+            // the content field becomes a list of parts as soon as an image is involved.
+            spoken = .array([
+                .object(["type": .string("text"), "text": .string(text)]),
+                .object([
+                    "type": .string("image_url"),
+                    "image_url": .object(["url": .string(dataURL)]),
+                ]),
+            ])
         }
-        let user = ChatMessage(role: "user", content: spoken)
-        let temperature: Double? = mode == .strict ? 0 : nil
-        let request = ChatCompletionRequest(
-            model: model.trimmingCharacters(in: .whitespacesAndNewlines),
-            messages: [ChatMessage(role: "system", content: .text(systemMessage(for: mode))), user],
-            temperature: temperature,
-            responseFormat: ResponseFormatBody(mode: mode)
-        )
+        var request: [String: JSONValue] = [
+            "model": .string(model.trimmingCharacters(in: .whitespacesAndNewlines)),
+            "messages": .array([
+                .object([
+                    "role": .string("system"), "content": .string(systemMessage(for: mode)),
+                ]),
+                .object(["role": .string("user"), "content": spoken]),
+            ]),
+            "response_format": responseFormat(for: mode),
+        ]
+        // An absent temperature is an absent key rather than a null, which more than one
+        // server rejects, and only the strict attempt sends one at all.
+        if mode == .strict { request["temperature"] = .double(0) }
         do {
-            return try JSONEncoder().encode(request)
+            return try JSONEncoder().encode(JSONValue.object(request))
         } catch {
             throw EstimationError.failed("the request could not be built.")
         }
     }
+
+    /// How much of the answer's shape the request states, which is what the two modes
+    /// differ by. The strict attempt sends the schema; the plain one asks only for JSON
+    /// and says the shape in words in the system message instead.
+    static func responseFormat(for mode: RemoteEstimateMode) -> JSONValue {
+        switch mode {
+        case .plain:
+            .object(["type": .string("json_object")])
+        case .strict:
+            .object([
+                "type": .string("json_schema"),
+                "json_schema": .object([
+                    "name": .string(schemaName),
+                    // Strict so a server that honours it cannot hand back extra keys or
+                    // leave one out. Servers that do not understand the flag ignore it.
+                    "strict": .bool(true),
+                    "schema": mealEstimateSchema,
+                ]),
+            ])
+        }
+    }
+
+    /// The JSON Schema for `MealEstimate`, written out rather than derived.
+    ///
+    /// `MealEstimate` carries its shape in `@Generable` and `@Guide` macros that only the
+    /// on-device framework reads; there is no runtime description of it to walk, so this is
+    /// the one place where the two backends' idea of the shape can drift apart. The
+    /// descriptions deliberately repeat the `@Guide` wording.
+    ///
+    /// Only the keywords OpenAI's strict mode accepts appear: `maxItems` on the array and a
+    /// `minimum`/`maximum` on the grams are both a 400 there, so those bounds are stated in
+    /// the descriptions and in the prompt, where a model still reads them, and enforced by
+    /// `EstimateConversion` afterwards, where it counts.
+    static let mealEstimateSchema: JSONValue = .object([
+        "type": .string("object"),
+        "additionalProperties": .bool(false),
+        "required": .array([.string("items"), .string("meal"), .string("note")]),
+        "properties": .object([
+            "items": .object([
+                "type": .string("array"),
+                "description": .string(
+                    "Each distinct food or drink in the meal, at most 12 of them"
+                ),
+                "items": .object([
+                    "type": .string("object"),
+                    "additionalProperties": .bool(false),
+                    "required": .array([
+                        .string("name"), .string("lookupTerm"), .string("grams"),
+                    ]),
+                    "properties": .object([
+                        "name": JSONSchema.field(
+                            "string",
+                            "Short plain name of the food or drink, as the person who ate it would say it"
+                        ),
+                        "lookupTerm": JSONSchema.field(
+                            "string",
+                            "The same food in the generic, unbranded wording a nutrition database uses"
+                        ),
+                        "grams": JSONSchema.field(
+                            "number",
+                            "Estimated weight of the portion eaten, in grams, between 1 and 3000"
+                        ),
+                    ]),
+                ]),
+            ]),
+            "meal": JSONSchema.choice(
+                of: ["breakfast", "lunch", "dinner", "snack"],
+                "Which meal these foods belong to, judged from the foods themselves and not from the time of day"
+            ),
+            "note": JSONSchema.field(
+                "string",
+                "One short sentence on what was assumed, and whether the estimate is uncertain"
+            ),
+        ]),
+    ])
 
     /// The POST, with the key when there is one. A great many self-hosted servers want no
     /// key at all, so a missing one sends no header rather than an empty bearer that looks
@@ -273,187 +361,6 @@ nonisolated enum RemoteEstimatePayload {
             return nil
         }
         return String(reply[start...end])
-    }
-}
-
-// MARK: - Request bodies
-
-/// One chat-completions request. Encoded by hand so an absent temperature is an absent
-/// key rather than a null, which more than one server rejects.
-private nonisolated struct ChatCompletionRequest: Encodable {
-    let model: String
-    let messages: [ChatMessage]
-    let temperature: Double?
-    let responseFormat: ResponseFormatBody
-
-    private enum CodingKeys: String, CodingKey {
-        case model
-        case messages
-        case temperature
-        case responseFormat = "response_format"
-    }
-
-    func encode(to encoder: any Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(model, forKey: .model)
-        try container.encode(messages, forKey: .messages)
-        try container.encodeIfPresent(temperature, forKey: .temperature)
-        try container.encode(responseFormat, forKey: .responseFormat)
-    }
-}
-
-private nonisolated struct ChatMessage: Encodable {
-    let role: String
-    let content: MessageContent
-}
-
-/// A message's content, which is a string for text and an array of parts as soon as an
-/// image is involved. Both shapes are the same field, so the field encodes itself.
-private nonisolated enum MessageContent: Encodable {
-    case text(String)
-    case parts([MessagePart])
-
-    func encode(to encoder: any Encoder) throws {
-        var container = encoder.singleValueContainer()
-        switch self {
-        case .text(let text): try container.encode(text)
-        case .parts(let parts): try container.encode(parts)
-        }
-    }
-}
-
-/// One part of a multi-part message, in the shape OpenAI's vision requests use and every
-/// compatible server copied.
-private nonisolated enum MessagePart: Encodable {
-    case text(String)
-    case imageURL(String)
-
-    private enum CodingKeys: String, CodingKey {
-        case type
-        case text
-        case imageURL = "image_url"
-    }
-
-    private enum ImageKeys: String, CodingKey {
-        case url
-    }
-
-    func encode(to encoder: any Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        switch self {
-        case .text(let text):
-            try container.encode("text", forKey: .type)
-            try container.encode(text, forKey: .text)
-        case .imageURL(let url):
-            try container.encode("image_url", forKey: .type)
-            var image = container.nestedContainer(keyedBy: ImageKeys.self, forKey: .imageURL)
-            try image.encode(url, forKey: .url)
-        }
-    }
-}
-
-private nonisolated struct ResponseFormatBody: Encodable {
-    let mode: RemoteEstimateMode
-
-    private enum CodingKeys: String, CodingKey {
-        case type
-        case jsonSchema = "json_schema"
-    }
-
-    func encode(to encoder: any Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        switch mode {
-        case .strict:
-            try container.encode("json_schema", forKey: .type)
-            try container.encode(JSONSchemaBody(), forKey: .jsonSchema)
-        case .plain:
-            try container.encode("json_object", forKey: .type)
-        }
-    }
-}
-
-private nonisolated struct JSONSchemaBody: Encodable {
-    let name = RemoteEstimatePayload.schemaName
-    /// Strict so a server that honours it cannot hand back extra keys or leave one out.
-    /// Servers that do not understand the flag ignore it.
-    let strict = true
-    let schema = MealEstimateSchema()
-}
-
-// MARK: - Schema
-
-/// The JSON Schema for `MealEstimate`, written out rather than derived.
-///
-/// `MealEstimate` carries its shape in `@Generable` and `@Guide` macros that only the
-/// on-device framework reads; there is no runtime description of it to walk, so this is
-/// the one place where the two backends' idea of the shape can drift apart. The
-/// descriptions deliberately repeat the `@Guide` wording.
-///
-/// Only the keywords OpenAI's strict mode accepts appear: `maxItems` on the array and a
-/// `minimum`/`maximum` on the grams are both a 400 there, so those bounds are stated in
-/// the descriptions and in the prompt, where a model still reads them, and enforced by
-/// `EstimateConversion` afterwards, where it counts.
-private nonisolated struct MealEstimateSchema: Encodable {
-    let type = "object"
-    let additionalProperties = false
-    let required = ["items", "meal", "note"]
-    let properties = MealEstimateProperties()
-}
-
-private nonisolated struct MealEstimateProperties: Encodable {
-    let items = ItemsSchema()
-    let meal = MealSchema()
-    let note = StringSchema(
-        description: "One short sentence on what was assumed, and whether the estimate is uncertain"
-    )
-}
-
-private nonisolated struct ItemsSchema: Encodable {
-    let type = "array"
-    let description = "Each distinct food or drink in the meal, at most 12 of them"
-    let items = ItemSchema()
-}
-
-private nonisolated struct ItemSchema: Encodable {
-    let type = "object"
-    let additionalProperties = false
-    let required = ["name", "lookupTerm", "grams"]
-    let properties = ItemProperties()
-}
-
-private nonisolated struct ItemProperties: Encodable {
-    let name = StringSchema(
-        description: "Short plain name of the food or drink, as the person who ate it would say it"
-    )
-    let lookupTerm = StringSchema(
-        description: "The same food in the generic, unbranded wording a nutrition database uses"
-    )
-    let grams = NumberSchema(
-        description: "Estimated weight of the portion eaten, in grams, between 1 and 3000"
-    )
-}
-
-private nonisolated struct StringSchema: Encodable {
-    let type = "string"
-    let description: String
-}
-
-private nonisolated struct NumberSchema: Encodable {
-    let type = "number"
-    let description: String
-}
-
-private nonisolated struct MealSchema: Encodable {
-    let type = "string"
-    let description = """
-        Which meal these foods belong to, judged from the foods themselves and not from the time of day
-        """
-    let allowed = ["breakfast", "lunch", "dinner", "snack"]
-
-    private enum CodingKeys: String, CodingKey {
-        case type
-        case description
-        case allowed = "enum"
     }
 }
 

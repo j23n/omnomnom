@@ -142,14 +142,23 @@ nonisolated enum AnthropicPayload {
         guard !named.isEmpty else {
             throw EstimationError.unavailable("Add the model to ask for in Settings, or clear the field to use \(defaultModel).")
         }
-        let request = RequestBody(
-            model: named,
-            maxTokens: maximumTokens,
-            system: LinePrompt.instructions,
-            messages: messages,
-            tools: tools(searchesProducts: searchesProducts),
-            outputConfig: OutputConfig()
-        )
+        // Deliberately absent: `thinking`, which is on by default and cannot be switched
+        // off on the current models, so sending anything for it is at best a no-op and at
+        // worst a 400; and `temperature`, which is rejected outright.
+        let request: JSONValue = .object([
+            "model": .string(named),
+            "max_tokens": .int(maximumTokens),
+            "system": .string(LinePrompt.instructions),
+            "messages": .array(messages.map(\.json)),
+            "tools": .array(tools(searchesProducts: searchesProducts)),
+            "output_config": .object([
+                "effort": .string(effort),
+                "format": .object([
+                    "type": .string("json_schema"),
+                    "schema": answerSchema,
+                ]),
+            ]),
+        ])
         do {
             return try JSONEncoder().encode(request)
         } catch {
@@ -173,17 +182,17 @@ nonisolated enum AnthropicPayload {
     }
 
     /// The tools, in a fixed order so the request prefix is stable between rounds.
-    static func tools(searchesProducts: Bool) -> [ToolDefinition] {
+    static func tools(searchesProducts: Bool) -> [JSONValue] {
         var tools = [
-            ToolDefinition(
-                name: foodTool, description: LinePrompt.foodToolDescription,
+            tool(
+                named: foodTool, description: LinePrompt.foodToolDescription,
                 term: "A food to look for, in whatever wording you want to try"
             )
         ]
         if searchesProducts {
             tools.append(
-                ToolDefinition(
-                    name: productTool, description: LinePrompt.productToolDescription,
+                tool(
+                    named: productTool, description: LinePrompt.productToolDescription,
                     term: "A product name or brand to look for"
                 )
             )
@@ -300,7 +309,7 @@ nonisolated enum AnthropicPayload {
 
 /// One turn of the conversation. `content` is always a list of blocks, which is what makes
 /// the model's own turn replayable: the blocks it sent go back exactly as they arrived.
-nonisolated struct AnthropicMessage: Hashable, Sendable, Encodable {
+nonisolated struct AnthropicMessage: Hashable, Sendable {
     let role: String
     let content: [JSONValue]
 
@@ -311,162 +320,98 @@ nonisolated struct AnthropicMessage: Hashable, Sendable, Encodable {
     static func assistant(_ content: [JSONValue]) -> AnthropicMessage {
         AnthropicMessage(role: "assistant", content: content)
     }
+
+    /// The turn as it is sent. The blocks are already `JSONValue`, so the whole request
+    /// body is one value and needs no `Encodable` type of its own.
+    var json: JSONValue {
+        .object(["role": .string(role), "content": .array(content)])
+    }
 }
 
 /// One tool, as the request declares it. `strict` keeps the arguments schema-valid, which
 /// is what makes reading `input.term` safe without a fallback for every shape.
-nonisolated struct ToolDefinition: Hashable, Sendable, Encodable {
-    let name: String
-    let description: String
-    let strict = true
-    let inputSchema: TermSchema
-
-    init(name: String, description: String, term: String) {
-        self.name = name
-        self.description = description
-        inputSchema = TermSchema(term: term)
-    }
-
-    private enum CodingKeys: String, CodingKey {
-        case name
-        case description
-        case strict
-        case inputSchema = "input_schema"
-    }
-}
-
-/// The one argument every search takes.
-nonisolated struct TermSchema: Hashable, Sendable, Encodable {
-    let type = "object"
-    let additionalProperties = false
-    let required = ["term"]
-    let properties: Properties
-
-    init(term: String) {
-        properties = Properties(term: SchemaField(type: "string", description: term))
-    }
-
-    nonisolated struct Properties: Hashable, Sendable, Encodable {
-        let term: SchemaField
-    }
-}
-
-private nonisolated struct RequestBody: Encodable {
-    let model: String
-    let maxTokens: Int
-    let system: String
-    let messages: [AnthropicMessage]
-    let tools: [ToolDefinition]
-    let outputConfig: OutputConfig
-
-    private enum CodingKeys: String, CodingKey {
-        case model
-        case maxTokens = "max_tokens"
-        case system
-        case messages
-        case tools
-        case outputConfig = "output_config"
-    }
-}
-
-/// Effort and the answer's schema, which live in the same field.
 ///
-/// Deliberately absent: `thinking`, which is on by default and cannot be switched off on
-/// the current models, so sending anything for it is at best a no-op and at worst a 400;
-/// and `temperature`, which is rejected outright.
-private nonisolated struct OutputConfig: Encodable {
-    let effort = AnthropicPayload.effort
-    let format = AnswerFormat()
-}
-
-private nonisolated struct AnswerFormat: Encodable {
-    let type = "json_schema"
-    let schema = AnswerSchema()
-}
-
-// MARK: - Answer schema
-
-/// The schema for `ResolvedLine`, written out rather than derived.
-///
-/// Only the keywords strict mode accepts appear: a `minimum` or `maximum` on the grams and
-/// a `maxItems` on the array are each rejected, so those bounds are stated in the
-/// descriptions, where a model still reads them, and enforced afterwards by
-/// `EstimateConversion`, where it counts. The same constraint the OpenAI-compatible schema
-/// works under, for the same reason.
-private nonisolated struct AnswerSchema: Encodable {
-    let type = "object"
-    let additionalProperties = false
-    let required = ["items", "meal", "note"]
-    let properties = AnswerProperties()
-}
-
-private nonisolated struct AnswerProperties: Encodable {
-    let items = ItemsSchema()
-    // Spelled out rather than read off the type: neither `EstimatedMeal` nor
-    // `VerdictCertainty` is `CaseIterable`, both being generable enums that nothing has
-    // needed to enumerate before. Same bargain the OpenAI-compatible schema makes, and the
-    // same place to look when a case is added.
-    let meal = EnumSchema(
-        allowed: ["breakfast", "lunch", "dinner", "snack"],
-        description: "Which meal these foods belong to, judged from the foods themselves and not from the time of day"
-    )
-    let note = SchemaField(
-        type: "string",
-        description: "One short sentence on what you assumed, and whether you are unsure"
-    )
-}
-
-private nonisolated struct ItemsSchema: Encodable {
-    let type = "array"
-    let description = "One entry per distinct food or drink in the meal, at most 12 of them"
-    let items = ItemSchema()
-}
-
-private nonisolated struct ItemSchema: Encodable {
-    let type = "object"
-    let additionalProperties = false
-    let required = ["name", "candidate", "grams", "certainty", "implausible"]
-    let properties = ItemProperties()
-}
-
-private nonisolated struct ItemProperties: Encodable {
-    let name = SchemaField(
-        type: "string",
-        description: "Short plain name of the food, as the person who ate it would say it"
-    )
-    let candidate = SchemaField(
-        type: "integer",
-        description: "The id of the chosen candidate row, or 0 when neither search holds this food"
-    )
-    let grams = SchemaField(
-        type: "number",
-        description: "Weight of the portion eaten, in grams, between 1 and 3000"
-    )
-    let certainty = EnumSchema(
-        allowed: ["certain", "probable", "unsure"],
-        description: "How sure the choice of row is"
-    )
-    let implausible = SchemaField(
-        type: "boolean",
-        description: "True only when the amount eaten and the chosen food do not go together"
-    )
-}
-
-nonisolated struct SchemaField: Hashable, Sendable, Encodable {
-    let type: String
-    let description: String
-}
-
-private nonisolated struct EnumSchema: Encodable {
-    let type = "string"
-    let allowed: [String]
-    let description: String
-
-    private enum CodingKeys: String, CodingKey {
-        case type
-        case allowed = "enum"
-        case description
+/// Every search takes the one argument.
+extension AnthropicPayload {
+    static func tool(named name: String, description: String, term: String) -> JSONValue {
+        .object([
+            "name": .string(name),
+            "description": .string(description),
+            "strict": .bool(true),
+            "input_schema": .object([
+                "type": .string("object"),
+                "additionalProperties": .bool(false),
+                "required": .array([.string("term")]),
+                "properties": .object(["term": JSONSchema.field("string", term)]),
+            ]),
+        ])
     }
+
+    /// The schema for `ResolvedLine`, written out rather than derived, in the shape it is
+    /// sent as. Nested dictionaries rather than a tree of single-use `Encodable` structs:
+    /// the schema is a constant, so the types only restated the JSON a level further from
+    /// it, and the keys strict mode spells with an underscore needed a `CodingKeys` each.
+    ///
+    /// Only the keywords strict mode accepts appear: a `minimum` or `maximum` on the grams
+    /// and a `maxItems` on the array are each rejected, so those bounds are stated in the
+    /// descriptions, where a model still reads them, and enforced afterwards by
+    /// `EstimateConversion`, where it counts. The same constraint the OpenAI-compatible
+    /// schema works under, for the same reason.
+    ///
+    /// The two enumerations are spelled out rather than read off the type: neither
+    /// `EstimatedMeal` nor `VerdictCertainty` is `CaseIterable`, both being generable enums
+    /// that nothing has needed to enumerate before. Same bargain the OpenAI-compatible
+    /// schema makes, and the same place to look when a case is added.
+    static let answerSchema: JSONValue = .object([
+        "type": .string("object"),
+        "additionalProperties": .bool(false),
+        "required": .array([.string("items"), .string("meal"), .string("note")]),
+        "properties": .object([
+            "items": .object([
+                "type": .string("array"),
+                "description": .string(
+                    "One entry per distinct food or drink in the meal, at most 12 of them"
+                ),
+                "items": .object([
+                    "type": .string("object"),
+                    "additionalProperties": .bool(false),
+                    "required": .array([
+                        .string("name"), .string("candidate"), .string("grams"),
+                        .string("certainty"), .string("implausible"),
+                    ]),
+                    "properties": .object([
+                        "name": JSONSchema.field(
+                            "string",
+                            "Short plain name of the food, as the person who ate it would say it"
+                        ),
+                        "candidate": JSONSchema.field(
+                            "integer",
+                            "The id of the chosen candidate row, or 0 when neither search holds this food"
+                        ),
+                        "grams": JSONSchema.field(
+                            "number",
+                            "Weight of the portion eaten, in grams, between 1 and 3000"
+                        ),
+                        "certainty": JSONSchema.choice(
+                            of: ["certain", "probable", "unsure"],
+                            "How sure the choice of row is"
+                        ),
+                        "implausible": JSONSchema.field(
+                            "boolean",
+                            "True only when the amount eaten and the chosen food do not go together"
+                        ),
+                    ]),
+                ]),
+            ]),
+            "meal": JSONSchema.choice(
+                of: ["breakfast", "lunch", "dinner", "snack"],
+                "Which meal these foods belong to, judged from the foods themselves and not from the time of day"
+            ),
+            "note": JSONSchema.field(
+                "string", "One short sentence on what you assumed, and whether you are unsure"
+            ),
+        ]),
+    ])
 }
 
 // MARK: - Response bodies
