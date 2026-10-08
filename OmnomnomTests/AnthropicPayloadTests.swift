@@ -52,6 +52,15 @@ struct AnthropicPayloadTests {
         #expect(messages.first?["role"] as? String == "user")
     }
 
+    @Test func anEmptyModelIsRefusedBeforeItReachesTheAPI() {
+        // The second defence. A caller that forgets to resolve the settings gets a sentence
+        // naming the field, rather than a 400 the user cannot connect to anything they
+        // typed into a screen whose footer said the field could be left empty.
+        #expect(throws: EstimationError.self) {
+            try AnthropicPayload.body(model: "   ", messages: [.user([])], searchesProducts: false)
+        }
+    }
+
     @Test func nothingIsSentForTemperatureOrThinking() throws {
         // Both are rejected on the current models: temperature outright, and thinking
         // cannot be switched off, so anything sent for it is at best a no-op. The other

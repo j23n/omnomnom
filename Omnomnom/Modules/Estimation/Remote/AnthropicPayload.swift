@@ -131,11 +131,19 @@ nonisolated enum AnthropicPayload {
 
     /// The JSON body of one request. `messages` is the whole conversation so far: the API
     /// keeps nothing between calls, so a tool loop resends what it has.
+    /// Throws rather than sending an empty model, which is the second defence against the
+    /// mistake that `AnthropicLineResolver.init` now prevents: a caller that forgets to
+    /// resolve the settings gets a sentence naming the field instead of a 400 the user
+    /// cannot connect to anything they typed.
     static func body(
         model: String, messages: [AnthropicMessage], searchesProducts: Bool
     ) throws -> Data {
+        let named = model.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !named.isEmpty else {
+            throw EstimationError.unavailable("Add the model to ask for in Settings, or clear the field to use \(defaultModel).")
+        }
         let request = RequestBody(
-            model: model.trimmingCharacters(in: .whitespacesAndNewlines),
+            model: named,
             maxTokens: maximumTokens,
             system: LinePrompt.instructions,
             messages: messages,

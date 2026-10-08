@@ -46,13 +46,21 @@ final class AnthropicLineResolver: LineDriving {
     private let transport: any HTTPTransport
     private let searcher: any LineSearching
 
+    /// `settings` is resolved here rather than at each use, which is the fix for a bug
+    /// worth remembering. Both its fields default — the address and the model — and
+    /// `resolved` existed to say so; but `messagesURL` called it internally while the model
+    /// was read raw, so an empty Model field went out as `"model": ""` and the API answered
+    /// *400: model string should have at least 1 character*. The Settings footer promising
+    /// the default was telling the truth about the intent and not about the code. Filling
+    /// the defaults in once, at the boundary, is what makes that class of mistake
+    /// impossible rather than fixed.
     init(
         settings: AnthropicSettings,
         key: String?,
         searcher: any LineSearching,
         transport: any HTTPTransport = URLSessionTransport(timeout: AnthropicPayload.timeout)
     ) {
-        self.settings = settings
+        self.settings = settings.resolved
         self.key = key
         self.searcher = searcher
         self.transport = transport

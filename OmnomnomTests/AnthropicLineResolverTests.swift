@@ -234,6 +234,36 @@ struct AnthropicLineResolverTests {
         #expect(rounds == AnthropicPayload.maximumRounds)
     }
 
+    @Test func anEmptyModelFieldSendsTheDefaultRatherThanAnEmptyString() async throws {
+        // The bug this path shipped with. Both settings fields default and `resolved`
+        // existed to fill them in, but only the address went through it — the model was
+        // read raw, so an empty field went out as "model": "" and the API answered
+        // *400: model string should have at least 1 character*. The footer under the field
+        // promised the default and the request did not honour it.
+        let searcher = FakeLineSearch()
+        let transport = ScriptedTransport([answerReply(candidate: 0)])
+        let subject = AnthropicLineResolver(
+            settings: AnthropicSettings(), key: "sk-test", searcher: searcher, transport: transport
+        )
+        _ = try await subject.resolve(.text("spaghetti"))
+
+        let body = try json(await transport.bodies[0])
+        #expect(body["model"] as? String == AnthropicPayload.defaultModel)
+        #expect(body["max_tokens"] as? Int == AnthropicPayload.maximumTokens)
+    }
+
+    @Test func aModelTypedWithStrayWhitespaceStillReachesTheAPIWhole() async throws {
+        let searcher = FakeLineSearch()
+        let transport = ScriptedTransport([answerReply(candidate: 0)])
+        let subject = AnthropicLineResolver(
+            settings: AnthropicSettings(model: "  claude-sonnet-5-5  "), key: "sk-test",
+            searcher: searcher, transport: transport
+        )
+        _ = try await subject.resolve(.text("spaghetti"))
+        let body = try json(await transport.bodies[0])
+        #expect(body["model"] as? String == "claude-sonnet-5-5")
+    }
+
     @Test func anUnconfiguredProviderSaysWhatIsMissingRatherThanFailing() async throws {
         let searcher = FakeLineSearch()
         let subject = AnthropicLineResolver(
