@@ -220,7 +220,7 @@ struct LooseEndsView: View {
         case .logged(let line):
             composer.show(logged: line)
         case .gone:
-            composer.banner = UsualOutcome.gone.message
+            composer.banner = UsualOutcome.goneMessage
         }
     }
 

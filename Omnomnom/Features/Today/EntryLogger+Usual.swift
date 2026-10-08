@@ -7,13 +7,9 @@ nonisolated enum UsualOutcome: Sendable {
     /// One of the foods the line names no longer exists, so nothing was written.
     case gone
 
-    /// What to tell the user, which is a sentence either way.
-    var message: String {
-        switch self {
-        case .logged(let line): line.message
-        case .gone: "That meal can't be logged any more: one of its foods is gone."
-        }
-    }
+    /// What to tell the user when nothing could be written. A line that *was* written says
+    /// so through `LoggedLine.message`, in the bar that also offers the way back out of it.
+    static let goneMessage = "That meal can't be logged any more: one of its foods is gone."
 }
 
 extension EntryLogger {

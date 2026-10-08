@@ -132,8 +132,12 @@ struct GuessedMatchSheet: View {
         return "You said “\(wording)”"
     }
 
-    /// "125 g · 08:10", the row's own figures, so the answer is given against what is
-    /// actually in the day rather than against a remembered version of it.
+    /// "1.5 servings · 351 g · 08:10": the amount in the units it was logged in, both of
+    /// them for a recipe that mixes them, then the time it was logged.
+    ///
+    /// The row's own figures, so the answer is given against what is actually in the day
+    /// rather than against a remembered version of it. `EntryRow`'s caption is the same
+    /// line, from here, for the same reason.
     static func loggedDetail(of entry: LogEntry) -> String {
         var parts: [String] = []
         if let servings = entry.servings {

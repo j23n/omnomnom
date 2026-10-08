@@ -4,12 +4,16 @@ import SwiftUI
 /// All eight totals, always visible. Energy leads on its own line in the rounded face at
 /// bold weight, the one figure in the app set that way; protein, carbohydrates
 /// and fat follow larger than saturated fat, fiber, sugar and sodium. The grid gives way
-/// to one column when the type size no longer fits it across. With `foreign` set, the
-/// figures include what other sources wrote to Health and a small line says how much of
-/// the energy that is; a report, never a verdict.
+/// to one column when the type size no longer fits it across. With `foreign` set, a small
+/// line says how much of the energy other sources wrote to Health; a report, never a
+/// verdict.
 struct TotalsRow: View {
+    /// What the day comes to, local entries and foreign Health samples together: the same
+    /// figure the mark and the bar above are drawn from, summed once by the day rather than
+    /// again here, so the two cannot drift apart.
     let totals: Nutrition
-    /// Amounts other sources wrote to Health for the day; `nil` when there are none.
+    /// Which part of those totals other sources wrote to Health; `nil` when there are none.
+    /// Read only for the line underneath, since `totals` already holds it.
     var foreign: Nutrition? = nil
 
     /// Which three sit beside energy. A width constraint, chosen by the user, never a
@@ -19,13 +23,9 @@ struct TotalsRow: View {
     private var large: [Nutrient] { HeadlineNutrients.decode(rawHeadline) }
     private var small: [Nutrient] { HeadlineNutrients.secondary(to: large) }
 
-    private var combined: Nutrition {
-        foreign.map { totals + $0 } ?? totals
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            TotalCell(nutrient: .energy, value: combined.energy, font: .system(.largeTitle, design: .rounded, weight: .bold))
+            TotalCell(nutrient: .energy, value: totals.energy, font: .system(.largeTitle, design: .rounded, weight: .bold))
             ViewThatFits(in: .horizontal) {
                 Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 12) {
                     GridRow {
@@ -54,7 +54,7 @@ struct TotalsRow: View {
 
     private func cells(_ nutrients: [Nutrient], font: Font) -> some View {
         ForEach(nutrients, id: \.self) { nutrient in
-            TotalCell(nutrient: nutrient, value: combined[nutrient], font: font)
+            TotalCell(nutrient: nutrient, value: totals[nutrient], font: font)
         }
     }
 
@@ -94,8 +94,11 @@ private struct TotalCell: View {
 }
 
 #Preview("With foreign", traits: .sizeThatFitsLayout) {
-    TotalsRow(totals: PreviewFoods.dayTotals, foreign: PreviewFoods.foreignTotals)
-        .padding()
+    TotalsRow(
+        totals: PreviewFoods.dayTotals + PreviewFoods.foreignTotals,
+        foreign: PreviewFoods.foreignTotals
+    )
+    .padding()
 }
 
 #Preview("Empty day", traits: .sizeThatFitsLayout) {
@@ -104,8 +107,11 @@ private struct TotalCell: View {
 }
 
 #Preview("Accessibility 5", traits: .sizeThatFitsLayout) {
-    TotalsRow(totals: PreviewFoods.dayTotals, foreign: PreviewFoods.foreignTotals)
-        .padding()
-        .environment(\.dynamicTypeSize, .accessibility5)
+    TotalsRow(
+        totals: PreviewFoods.dayTotals + PreviewFoods.foreignTotals,
+        foreign: PreviewFoods.foreignTotals
+    )
+    .padding()
+    .environment(\.dynamicTypeSize, .accessibility5)
 }
 #endif

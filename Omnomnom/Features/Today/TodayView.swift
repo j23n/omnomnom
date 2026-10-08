@@ -7,7 +7,9 @@ import SwiftUI
 ///
 /// The field is not here. It is over the tab bar, where every tab has it, and this screen's
 /// only part in that is telling it which day a line goes into — Today holds the app's one
-/// day selector. What is left at the bottom is this screen's own notices.
+/// day selector. What is left at the bottom is this screen's own notices: the transient
+/// banner for something that just happened on this day — a delete, a repeat, a day copied
+/// from yesterday — and the once-per-launch word that Health is accepting nothing.
 struct TodayView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var context
@@ -72,7 +74,19 @@ struct TodayView: View {
                 // This screen's own notices, above the field: two insets, and the one
                 // applied second is the one nearer the bottom of the screen.
                 .safeAreaInset(edge: .bottom, spacing: 0) {
-                    TodayBottomBar(model: model)
+                    VStack(spacing: 8) {
+                        if model.showsUnauthorizedNotice {
+                            UnauthorizedNoticeView { model.showsUnauthorizedNotice = false }
+                        }
+                        if let banner = model.banner {
+                            BannerView(message: banner) { model.dismissBanner() }
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, model.showsUnauthorizedNotice || model.banner != nil ? 8 : 0)
+                    .readableColumn()
+                    .animation(.default, value: model.banner)
+                    .animation(.default, value: model.showsUnauthorizedNotice)
                 }
                 // The field, pointed at the day being looked at — this is the only screen
                 // where that is not today.

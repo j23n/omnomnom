@@ -30,20 +30,6 @@ struct EntryRow: View {
 
     @State private var isShowingPhoto = false
 
-    /// "1.5 servings · 351 g · 19:15": the amount in the units it was logged in, both
-    /// of them for a recipe that mixes them, then the time it was logged.
-    private var details: String {
-        var parts: [String] = []
-        if let servings = entry.servings {
-            parts.append(Formatters.servings(servings))
-        }
-        if !entry.rawAmount.isEmpty {
-            parts.append(entry.rawAmount.wholeText)
-        }
-        parts.append(entry.timestamp.formatted(date: .omitted, time: .shortened))
-        return parts.joined(separator: " · ")
-    }
-
     var body: some View {
         HStack(spacing: 12) {
             thumbnail
@@ -138,7 +124,9 @@ struct EntryRow: View {
 
     @ViewBuilder
     private var caption: some View {
-        ValueText(details)
+        // The same line the match sheet asks its question against, so the row and the
+        // question can never disagree about what was logged.
+        ValueText(GuessedMatchSheet.loggedDetail(of: entry))
         if entry.isEstimate {
             Badge("Estimated")
         }

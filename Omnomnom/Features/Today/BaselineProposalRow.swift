@@ -61,29 +61,6 @@ struct BaselineProposalRow: View {
     }
 }
 
-/// The one line that accounts for a proposal that is no longer on screen.
-///
-/// Logging into a slot removes that slot's proposal, and the removal is right: a card
-/// proposing lunch next to the lunch the user just typed would be offering to log a meal
-/// they already logged. But a card someone was looking at a second ago that is silently
-/// gone reads as the app losing it rather than as the app agreeing, which is the surprise
-/// the copy rule exists to prevent. So the disappearance gets a sentence, in the secondary
-/// ink, under the meal that caused it rather than next to the proposals that are left —
-/// it is about the meal, and that is where it will be read as an answer.
-///
-/// What it does not say is the point of it. No comparison with what the usual line would
-/// have come to, no remark that the meal was unusual, and no offer to update the baseline.
-/// The baseline follows the data; the data is never asked to follow the baseline.
-struct DisplacedBaselineNote: View {
-    let slot: MealSlot
-
-    var body: some View {
-        Text("Replaced your usual \(slot.displayName.lowercased()).")
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-    }
-}
-
 #if DEBUG
 #Preview("A proposed breakfast", traits: .sizeThatFitsLayout) {
     List {
@@ -102,21 +79,12 @@ struct DisplacedBaselineNote: View {
     }
 }
 
-#Preview("A displaced proposal", traits: .sizeThatFitsLayout) {
-    List {
-        DisplacedBaselineNote(slot: .lunch)
-            .listRowBackground(Color.clear)
-    }
-}
-
 #Preview("Accessibility 5", traits: .sizeThatFitsLayout) {
     List {
         BaselineProposalRow(
             slot: .breakfast, text: "oats with a banana and coffee",
             isAccepting: false, onAccept: {}, onDecline: {}
         )
-        DisplacedBaselineNote(slot: .lunch)
-            .listRowBackground(Color.clear)
     }
     .environment(\.dynamicTypeSize, .accessibility5)
 }

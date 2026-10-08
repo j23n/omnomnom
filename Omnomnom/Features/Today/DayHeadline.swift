@@ -110,7 +110,7 @@ private let typicalDay = Nutrition(
             composition: composition
         )
         CompositionBar(composition: composition)
-        CompositionLegend(composition: composition, nutrition: typicalDay, showsGrams: false)
+        CompositionLegend(composition: composition)
     }
     .padding()
 }

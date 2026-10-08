@@ -8,33 +8,13 @@ import SwiftUI
 /// comparable across days: seven bars stacked up read as drift, seven rings read as
 /// nothing. The ring in `DayMarkView` keeps the job it is best at, which is how much of
 /// something is done.
-///
-/// Optional ticks above it mark the same shares over a longer window — your own usual
-/// month. A comparison to yourself and never to a target: nothing here says a share is
-/// high or low, only that today is not where the month sits.
 struct CompositionBar: View {
     let composition: MacroComposition
-    /// The same figures over a longer window, drawn as ticks. `nil` hides them, which is
-    /// right until there is a month to compare against.
-    var usual: MacroComposition?
-    var height: CGFloat = 24
 
-    private var corner: CGFloat { height / 2 }
     /// The surface showing between bands, so neighbouring colours never touch.
     private var gap: CGFloat { 2 }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if let usual, !usual.isEmpty {
-                ticks(for: usual)
-            }
-            bar
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Self.label(composition))
-    }
-
-    private var bar: some View {
         GeometryReader { proxy in
             let bands = composition.bands
             let available = max(0, proxy.size.width - gap * CGFloat(max(0, bands.count - 1)))
@@ -43,39 +23,13 @@ struct CompositionBar: View {
                     BandFill(nutrient: band.nutrient)
                         .frame(width: available * band.share)
                 }
-                if bands.isEmpty {
-                    Rectangle().fill(.quaternary)
-                }
             }
         }
-        .frame(height: height)
-        .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
-    }
-
-    /// One mark at each boundary between the usual shares, so today's bands can be read
-    /// against them without a second bar competing for the eye.
-    private func ticks(for usual: MacroComposition) -> some View {
-        GeometryReader { proxy in
-            ForEach(Array(Self.boundaries(of: usual).enumerated()), id: \.offset) { pair in
-                Rectangle()
-                    .fill(.tertiary)
-                    .frame(width: 1.5, height: 8)
-                    .offset(x: proxy.size.width * pair.element)
-            }
-        }
-        .frame(height: 8)
-    }
-
-    /// The cumulative shares at which one band gives way to the next, excluding the ends.
-    static func boundaries(of composition: MacroComposition) -> [Double] {
-        var running = 0.0
-        var boundaries: [Double] = []
-        for band in composition.bands {
-            running += band.share
-            boundaries.append(running)
-        }
-        // The last boundary is the right-hand edge, which is not a mark.
-        return boundaries.dropLast().map { min(max($0, 0), 1) }
+        .frame(height: 24)
+        // Half the height, which rounds the ends off completely.
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Self.label(composition))
     }
 
     /// "Carbohydrate 51 per cent, fat 28 per cent, protein 19 per cent, not attributed 2."
@@ -91,17 +45,15 @@ struct CompositionBar: View {
     }
 }
 
-/// The bar's legend: a swatch, a name, the grams and the share.
+/// The bar's legend: a swatch, a name and the share.
 ///
 /// Always present, because identity must never rest on colour alone, and the figures stay
 /// in the text colours — a swatch beside them carries the identity instead.
+///
+/// Shares and no gram figures: the one screen with a legend on it has the totals directly
+/// underneath, and the same number twice on one screen reads as two different numbers.
 struct CompositionLegend: View {
     let composition: MacroComposition
-    /// The amounts the shares were taken from, for the gram figures.
-    let nutrition: Nutrition
-    /// Whether to show those gram figures. Off where the totals are already on the screen
-    /// underneath, which is Today: the same number twice reads as two different numbers.
-    var showsGrams: Bool = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
@@ -112,10 +64,6 @@ struct CompositionLegend: View {
                         .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                     Text(band.nutrient?.displayName ?? "No figure covers it")
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    if showsGrams, let nutrient = band.nutrient, let grams = nutrition[nutrient] {
-                        ValueText(grams, unit: nutrient.unit)
-                            .fontWeight(.semibold)
-                    }
                     Text(Self.share(band.share))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
@@ -155,22 +103,8 @@ struct CompositionLegend: View {
 private let typicalDay = Nutrition(
     energy: 1320, protein: 63, carbohydrates: 168, fatTotal: 41, fiber: 32
 )
-private let usualMonth = Nutrition(
-    energy: 2120, protein: 88, carbohydrates: 241, fatTotal: 76, fiber: 29
-)
 
-#Preview("A day, against the usual month", traits: .sizeThatFitsLayout) {
-    VStack(alignment: .leading, spacing: 14) {
-        CompositionBar(
-            composition: MacroComposition(of: typicalDay),
-            usual: MacroComposition(of: usualMonth)
-        )
-        CompositionLegend(composition: MacroComposition(of: typicalDay), nutrition: typicalDay)
-    }
-    .padding()
-}
-
-#Preview("No month to compare with yet", traits: .sizeThatFitsLayout) {
+#Preview("A typical day", traits: .sizeThatFitsLayout) {
     CompositionBar(composition: MacroComposition(of: typicalDay))
         .padding()
 }
@@ -179,7 +113,7 @@ private let usualMonth = Nutrition(
     let day = Nutrition(energy: 600, protein: 12, carbohydrates: 60, fatTotal: nil)
     return VStack(alignment: .leading, spacing: 14) {
         CompositionBar(composition: MacroComposition(of: day))
-        CompositionLegend(composition: MacroComposition(of: day), nutrition: day)
+        CompositionLegend(composition: MacroComposition(of: day))
     }
     .padding()
 }
@@ -188,17 +122,10 @@ private let usualMonth = Nutrition(
     CompositionBar(composition: .empty).padding()
 }
 
-#Preview("One food", traits: .sizeThatFitsLayout) {
-    // Butter, which is almost all fat: the order of the bands does not follow their size.
-    let butter = Nutrition(energy: 732, protein: 1.2, carbohydrates: 0.6, fatTotal: 80.6)
-    return CompositionBar(composition: MacroComposition(of: butter), height: 12)
-        .padding()
-}
-
 #Preview("Accessibility 5", traits: .sizeThatFitsLayout) {
     VStack(alignment: .leading, spacing: 14) {
         CompositionBar(composition: MacroComposition(of: typicalDay))
-        CompositionLegend(composition: MacroComposition(of: typicalDay), nutrition: typicalDay)
+        CompositionLegend(composition: MacroComposition(of: typicalDay))
     }
     .padding()
     .environment(\.dynamicTypeSize, .accessibility5)

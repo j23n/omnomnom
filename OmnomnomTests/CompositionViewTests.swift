@@ -2,8 +2,8 @@ import Foundation
 import Testing
 @testable import Omnomnom
 
-/// What the mark and the bar say about a day, which is the part of a view worth testing:
-/// the sentences a screen reader reads and the geometry the ticks are placed by.
+/// What the mark, the bar and the legend say about a day, which is the part of a view
+/// worth testing: the sentences a screen reader reads.
 struct CompositionViewTests {
     /// The day the design boards are drawn from.
     private var typicalDay: Nutrition {
@@ -61,25 +61,6 @@ struct CompositionViewTests {
 
     @Test func anEmptyBarSaysNothingIsLogged() {
         #expect(CompositionBar.label(.empty) == "Nothing logged yet.")
-    }
-
-    @Test func ticksSitAtTheBoundariesBetweenBandsAndNotAtTheEnds() {
-        let boundaries = CompositionBar.boundaries(of: composition)
-        #expect(boundaries.count == 3)
-        #expect(abs(boundaries[0] - 0.1909) < 0.001)
-        #expect(abs(boundaries[1] - 0.7000) < 0.001)
-        #expect(abs(boundaries[2] - 0.9795) < 0.001)
-        // The right-hand edge is not a mark.
-        #expect(!boundaries.contains { $0 >= 1 })
-    }
-
-    @Test func aBarWithOneBandHasNoBoundaries() {
-        let single = MacroComposition(of: Nutrition(energy: 400, protein: 100, carbohydrates: 0, fatTotal: 0))
-        #expect(CompositionBar.boundaries(of: single).isEmpty)
-    }
-
-    @Test func anEmptyCompositionHasNoBoundaries() {
-        #expect(CompositionBar.boundaries(of: .empty).isEmpty)
     }
 
     // MARK: - The legend

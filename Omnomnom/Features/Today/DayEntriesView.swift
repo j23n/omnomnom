@@ -89,6 +89,18 @@ struct DayEntriesView: View {
 
     /// Whether this slot's proposal is gone because something else was logged into it.
     ///
+    /// Logging into a slot removes that slot's proposal, and the removal is right: a card
+    /// proposing lunch next to the lunch the user just typed would be offering to log a meal
+    /// they already logged. But a card someone was looking at a second ago that is silently
+    /// gone reads as the app losing it rather than as the app agreeing, which is the surprise
+    /// the copy rule exists to prevent. So the disappearance gets a sentence, in the secondary
+    /// ink, under the meal that caused it rather than next to the proposals that are left — it
+    /// is about the meal, and that is where it will be read as an answer.
+    ///
+    /// What that sentence does not say is the point of it. No comparison with what the usual
+    /// line would have come to, no remark that the meal was unusual, and no offer to update the
+    /// baseline. The baseline follows the data; the data is never asked to follow the baseline.
+    ///
     /// Four cases arrive at the same screen and exactly one of them deserves a word.
     ///
     /// A slot with no usual line, or one whose usual line was declined or can no longer be
@@ -258,17 +270,11 @@ struct DayEntriesView: View {
             if !composition.isEmpty {
                 Section("What today was made of") {
                     CompositionBar(composition: composition)
-                    CompositionLegend(
-                        composition: composition,
-                        nutrition: headlineNutrition,
-                        // The grams are in the totals directly below. The same figure
-                        // twice on one screen reads as two different figures.
-                        showsGrams: false
-                    )
+                    CompositionLegend(composition: composition)
                 }
             }
             Section {
-                TotalsRow(totals: totals, foreign: healthSummary.hasForeign ? healthSummary.foreign : nil)
+                TotalsRow(totals: headlineNutrition, foreign: healthSummary.hasForeign ? healthSummary.foreign : nil)
                 DayCoverageRow(
                     state: dayState,
                     isAsked: cadence.asks(about: interval.start),
@@ -280,12 +286,27 @@ struct DayEntriesView: View {
                 // below and goes above the empty day's prompt: on a routine day it is the
                 // cheaper of the two offers and should not be scrolled to.
                 proposalsSection
+                // The card for a day without entries, under the mark. On today, with
+                // something logged yesterday it offers to copy those entries; any other
+                // day only points at the Add button.
                 Section {
-                    EmptyDayView(
-                        canCopyYesterday: model.isShowingToday && !previousDayEntries.isEmpty,
-                        isCopying: isCopying,
-                        copyYesterday: copyPreviousDay
-                    )
+                    ContentUnavailableView {
+                        Label {
+                            Text("Nothing logged")
+                        } icon: {
+                            BiteMark()
+                                .fill(.tint)
+                                .frame(width: 56, height: 56)
+                        }
+                    } description: {
+                        Text("Use Add food below.")
+                    } actions: {
+                        if model.isShowingToday && !previousDayEntries.isEmpty {
+                            Button("Copy yesterday", action: copyPreviousDay)
+                                .buttonStyle(.bordered)
+                                .disabled(isCopying)
+                        }
+                    }
                     .listRowSeparator(.hidden)
                 }
             } else {
@@ -305,7 +326,9 @@ struct DayEntriesView: View {
                             // its own, so it reads as a footnote to those rows rather
                             // than as another thing on the day.
                             Section {
-                                DisplacedBaselineNote(slot: slot)
+                                Text("Replaced your usual \(slot.displayName.lowercased()).")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
                             }
@@ -585,7 +608,7 @@ extension DayEntriesView {
         case .logged(let line):
             composer.show(logged: line)
         case .gone:
-            model.show(banner: UsualOutcome.gone.message)
+            model.show(banner: UsualOutcome.goneMessage)
         }
     }
 
