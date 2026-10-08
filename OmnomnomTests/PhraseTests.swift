@@ -5,13 +5,6 @@ import Testing
 
 /// Remembering what a line resolved to, against an in-memory store with the app's schema.
 struct PhraseTests {
-    private func makeContext() throws -> ModelContext {
-        let schema = StoreSchema.schema
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [configuration])
-        return ModelContext(container)
-    }
-
     private func food(_ name: String, in context: ModelContext) -> Food {
         let food = Food(name: name, kind: .custom, bundledID: nil, per100g: Nutrition(energy: 100))
         context.insert(food)
@@ -21,7 +14,7 @@ struct PhraseTests {
     // MARK: - The shape of recall
 
     @Test func aLineComesBackWithItsFoodsAndItsAmounts() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let oats = food("Oats", in: context)
         let banana = food("Banana", in: context)
         try Phrase.remember(
@@ -41,7 +34,7 @@ struct PhraseTests {
     }
 
     @Test func itemsComeBackInTheOrderTheyWereLogged() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let items = (1...4).map { index in
             PhraseDraftItem(name: "item \(index)", amount: Double(index), food: food("f\(index)", in: context))
         }
@@ -53,7 +46,7 @@ struct PhraseTests {
 
     @Test func aSingleWordPhraseIsASynonymForAFood() throws {
         // The same table serves the alias case: one word, one item.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let coffee = food("Coffee with milk", in: context)
         try Phrase.remember(
             line: "flat white",
@@ -66,14 +59,14 @@ struct PhraseTests {
     }
 
     @Test func nothingIsRecalledForALineNeverTyped() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         #expect(try Phrase.recall("something nobody has eaten", in: context) == nil)
     }
 
     // MARK: - Writing
 
     @Test func rememberingAgainReplacesRatherThanAccumulates() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let wrong = food("Oat biscuits", in: context)
         let right = food("Oats, rolled", in: context)
         try Phrase.remember(
@@ -91,7 +84,7 @@ struct PhraseTests {
     }
 
     @Test func rememberingKeepsOneRowPerKeyHoweverItIsTyped() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let oats = food("Oats", in: context)
         for line in ["oats and banana", "banana with oats", "Banana, oats"] {
             try Phrase.remember(
@@ -104,7 +97,7 @@ struct PhraseTests {
     }
 
     @Test func useCountAndLastUsedTrackWriting() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let oats = food("Oats", in: context)
         let draft = [PhraseDraftItem(name: "oats", amount: 40, food: oats)]
         let early = Date(timeIntervalSince1970: 1_000)
@@ -116,7 +109,7 @@ struct PhraseTests {
     }
 
     @Test func aLineWithNoKeyIsNotRemembered() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let oats = food("Oats", in: context)
         let written = try Phrase.remember(
             line: "and some of my", items: [PhraseDraftItem(name: "oats", amount: 40, food: oats)], in: context
@@ -126,7 +119,7 @@ struct PhraseTests {
     }
 
     @Test func aPhraseWithNoItemsIsNotRemembered() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         #expect(try Phrase.remember(line: "oats", items: [], in: context) == nil)
         #expect(try Phrase.all(in: context).isEmpty)
     }
@@ -135,7 +128,7 @@ struct PhraseTests {
 
     @Test func aPhraseWhoseFoodWasDeletedIsNotRecalled() throws {
         // Half a meal recalled silently is worse than being asked again.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let oats = food("Oats", in: context)
         let banana = food("Banana", in: context)
         try Phrase.remember(
@@ -153,7 +146,7 @@ struct PhraseTests {
 
     @Test func deletingAFoodDoesNotDeleteThePhrase() throws {
         // Nullify, not cascade: the line survives and can be written over.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let oats = food("Oats", in: context)
         try Phrase.remember(
             line: "oats", items: [PhraseDraftItem(name: "oats", amount: 40, food: oats)], in: context
@@ -172,7 +165,7 @@ struct PhraseTests {
     }
 
     @Test func allIsOrderedByMostRecentlyUsed() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let oats = food("Oats", in: context)
         let draft = [PhraseDraftItem(name: "oats", amount: 40, food: oats)]
         try Phrase.remember(line: "first", items: draft, in: context, now: Date(timeIntervalSince1970: 1_000))
@@ -181,7 +174,7 @@ struct PhraseTests {
     }
 
     @Test func recallingNotesTheUseWithoutRewritingTheItems() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let oats = food("Oats", in: context)
         try Phrase.remember(
             line: "oats", items: [PhraseDraftItem(name: "oats", amount: 40, food: oats)], in: context,

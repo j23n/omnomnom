@@ -1,8 +1,5 @@
-import CoreGraphics
 import Foundation
-import ImageIO
 import Testing
-import UniformTypeIdentifiers
 @testable import Omnomnom
 
 /// The halves of a remote estimate that never touch a network: what is asked for, and what
@@ -20,24 +17,6 @@ struct RemoteEstimatePayloadTests {
     private func sentMessages(in body: Data) throws -> [[String: Any]] {
         let root = try object(body)
         return try #require(root["messages"] as? [[String: Any]])
-    }
-
-    /// A `width` x `height` image with a flat colour, encoded as PNG through ImageIO.
-    private func pngData(width: Int, height: Int) -> Data? {
-        guard let context = CGContext(
-            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
-            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return nil }
-        context.setFillColor(red: 0.8, green: 0.5, blue: 0.2, alpha: 1)
-        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
-        guard let image = context.makeImage() else { return nil }
-        let output = NSMutableData()
-        guard let destination = CGImageDestinationCreateWithData(
-            output as CFMutableData, UTType.png.identifier as CFString, 1, nil
-        ) else { return nil }
-        CGImageDestinationAddImage(destination, image, nil)
-        guard CGImageDestinationFinalize(destination) else { return nil }
-        return output as Data
     }
 
     // MARK: - Request
@@ -125,7 +104,7 @@ struct RemoteEstimatePayloadTests {
     // MARK: - Photos
 
     @Test func thePhotoTravelsAsADataURLOnlyWhenPhotosAreAllowed() throws {
-        let png = try #require(pngData(width: 40, height: 30))
+        let png = try #require(Fixtures.pngData(width: 40, height: 30))
         let allowed = try RemoteEstimatePayload.content(
             for: .photo(png, description: "half of it left"), sendsPhotos: true
         )
@@ -142,7 +121,7 @@ struct RemoteEstimatePayloadTests {
     }
 
     @Test func wordsGoAloneWhenThePhotoMayNotBeSent() throws {
-        let png = try #require(pngData(width: 40, height: 30))
+        let png = try #require(Fixtures.pngData(width: 40, height: 30))
         let refused = try RemoteEstimatePayload.content(
             for: .photo(png, description: "half of it left"), sendsPhotos: false
         )
@@ -156,7 +135,7 @@ struct RemoteEstimatePayloadTests {
     }
 
     @Test func aPhotoWithNoWordsIsRefusedWhenPhotosMayNotBeSent() throws {
-        let png = try #require(pngData(width: 20, height: 20))
+        let png = try #require(Fixtures.pngData(width: 20, height: 20))
         #expect(throws: EstimationError.self) {
             try RemoteEstimatePayload.content(for: .photo(png, description: "   "), sendsPhotos: false)
         }
@@ -172,7 +151,7 @@ struct RemoteEstimatePayloadTests {
     }
 
     @Test func aLargePhotoIsDownscaledBeforeItIsEncoded() throws {
-        let png = try #require(pngData(width: 2400, height: 1800))
+        let png = try #require(Fixtures.pngData(width: 2400, height: 1800))
         let dataURL = try #require(RemoteEstimatePayload.imageDataURL(for: png))
         let encoded = try #require(dataURL.split(separator: ",", maxSplits: 1).last.map(String.init))
         let jpeg = try #require(Data(base64Encoded: encoded))

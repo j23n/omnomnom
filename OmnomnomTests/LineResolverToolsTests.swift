@@ -24,12 +24,6 @@ final class FakeDriver: LineDriving {
 /// The one-call path: what a model that searched for itself turns into on the sheet.
 @MainActor
 struct LineResolverToolsTests {
-    private func makeContext() throws -> ModelContext {
-        let schema = StoreSchema.schema
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        return ModelContext(try ModelContainer(for: schema, configurations: [configuration]))
-    }
-
     private func storedFood(_ name: String, in context: ModelContext) -> Food {
         let food = Food(name: name, kind: .custom, bundledID: nil, per100g: Nutrition(energy: 200))
         context.insert(food)
@@ -73,7 +67,7 @@ struct LineResolverToolsTests {
     }
 
     @Test func aChosenRowCarriesItsOwnValuesAndTheModelsWeight() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let fake = driver(items: [item(candidate: 1)], offering: [match(1, "Oat flakes")])
         let resolution = await resolver(context, fake).resolve("a bowl of oats")
 
@@ -94,7 +88,7 @@ struct LineResolverToolsTests {
     @Test func theLineCountsAsCheckedBecauseTheModelReadTheRows() async throws {
         // More thoroughly than the other path means by it: these are rows the model chose
         // from a list it asked for, rather than rows a retriever chose and it confirmed.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let fake = driver(items: [item(candidate: 1)], offering: [match(1, "Oat flakes")])
         #expect(await resolver(context, fake).resolve("oats").wasChecked)
     }
@@ -103,7 +97,7 @@ struct LineResolverToolsTests {
         // The whole invariant on this path. The model picks what to search for, so the
         // shortlist is not fixed in advance — but what came back is, and an id outside it
         // cannot name a food.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let fake = driver(items: [item(candidate: 4_242)], offering: [match(1, "Oat flakes")])
         let resolution = await resolver(context, fake).resolve("oats")
 
@@ -119,7 +113,7 @@ struct LineResolverToolsTests {
     @Test func zeroIsAnAnswerAndLeavesTheFoodForTheUser() async throws {
         // Correct for a food neither search holds, and better than a row that is nearly
         // right: the user picks or removes it.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let fake = driver(items: [item(candidate: 0, name: "my gran's stollen")], offering: [])
         let resolution = await resolver(context, fake).resolve("my gran's stollen")
 
@@ -135,7 +129,7 @@ struct LineResolverToolsTests {
         // is deliberate and worth more than a score — but coffee powder settled at a
         // portion weight is a hundredfold energy error landing silently in a trend, and
         // one glance is cheap against that.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let fake = driver(
             items: [item(candidate: 1, name: "coffee", grams: 400)],
             offering: [match(1, "Coffee, instant, powder", kcal: 350, ingredient: true)]
@@ -164,7 +158,7 @@ struct LineResolverToolsTests {
     @Test func anItemWithNoWeightIsDroppedRatherThanGivenOne() async throws {
         // The rule the other path already applies: a dropped row is honest and an invented
         // weight is not.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let fake = driver(
             items: [item(candidate: 1, grams: 0), item(candidate: 1, name: "banana", grams: 120)],
             offering: [match(1, "Oat flakes")]
@@ -176,14 +170,14 @@ struct LineResolverToolsTests {
     }
 
     @Test func aWeightBeyondTheFieldsBoundsIsClampedToIt() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let fake = driver(items: [item(candidate: 1, grams: 99_999)], offering: [match(1, "Oat flakes")])
         let resolution = await resolver(context, fake).resolve("oats")
         #expect(resolution.rows.first?.amount == Formatters.maximumAmount)
     }
 
     @Test func aDriverThatFailsLeavesNothingRatherThanThrowing() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let fake = driver(items: [item(candidate: 1)], offering: [match(1, "Oat flakes")])
         fake.failure = .failed("the API was unreachable")
         let resolution = await resolver(context, fake).resolve("oats")
@@ -197,7 +191,7 @@ struct LineResolverToolsTests {
     }
 
     @Test func aRefusedKeyReadsAsSomethingToGoAndFix() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let fake = driver(items: [], offering: [])
         fake.failure = .unavailable("The API refused the key. Check it in Settings.")
         let resolution = await resolver(context, fake).resolve("spaghetti")
@@ -207,7 +201,7 @@ struct LineResolverToolsTests {
     @Test func beingCancelledSaysNothingBecauseThereIsNothingToDo() async throws {
         // The user typed on. The answer is about a line they have moved past, and a
         // banner about it would be noise over the line they are writing now.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let fake = driver(items: [], offering: [])
         fake.failure = .cancelled
         #expect(await resolver(context, fake).resolve("oats").failure == nil)
@@ -215,7 +209,7 @@ struct LineResolverToolsTests {
 
     @Test func aLineLoggedBeforeNeverReachesTheModel() async throws {
         // What keeps a repeat under five seconds, and it is the one rung this path keeps.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let food = storedFood("Oats", in: context)
         try Phrase.remember(
             line: "oats", items: [PhraseDraftItem(name: "oats", amount: 40, food: food)], in: context
@@ -233,7 +227,7 @@ struct LineResolverToolsTests {
     @Test func aPhotoStillGoesToTheModelEvenWhereALineWouldNot() async throws {
         // Recall is keyed on the line, and a picture is not a line. Two different meals
         // photographed with the same words are not the same meal.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let food = storedFood("Oats", in: context)
         try Phrase.remember(
             line: "oats", items: [PhraseDraftItem(name: "oats", amount: 40, food: food)], in: context
@@ -249,7 +243,7 @@ struct LineResolverToolsTests {
     @Test func withADriverTheComposerKnowsALineCanBeRead() async throws {
         // The composer used to ask whether there was an estimator, which is the wrong
         // question now: a user with Claude configured has no estimator and a model.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let fake = driver(items: [], offering: [])
         #expect(resolver(context, fake).canReadALine)
         #expect(!LineResolver(context: context, repository: FakeRepository()).canReadALine)

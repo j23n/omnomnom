@@ -5,12 +5,6 @@ import Testing
 
 /// A line someone eats by default, offered rather than assumed.
 struct BaselinePhraseTests {
-    private func makeContext() throws -> ModelContext {
-        let schema = StoreSchema.schema
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        return ModelContext(try ModelContainer(for: schema, configurations: [configuration]))
-    }
-
     private func phrase(
         _ line: String, in context: ModelContext, uses: Int = 1, slot: MealSlot? = nil
     ) throws -> Phrase {
@@ -27,12 +21,12 @@ struct BaselinePhraseTests {
     }
 
     @Test func aSlotHasNoBaselineUntilOneIsSet() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         #expect(try BaselinePhrase.baseline(for: .breakfast, in: context) == nil)
     }
 
     @Test func settingOneStoresItForThatSlotOnly() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let oats = try phrase("oats and banana", in: context)
         try BaselinePhrase.set(oats, for: .breakfast, in: context)
         #expect(try BaselinePhrase.baseline(for: .breakfast, in: context)?.phrase?.id == oats.id)
@@ -40,7 +34,7 @@ struct BaselinePhraseTests {
     }
 
     @Test func settingAgainReplacesRatherThanAccumulating() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let first = try phrase("oats", in: context)
         let second = try phrase("toast", in: context)
         try BaselinePhrase.set(first, for: .breakfast, in: context)
@@ -50,7 +44,7 @@ struct BaselinePhraseTests {
     }
 
     @Test func aBaselineIsOfferableUntilItIsDeclined() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let oats = try phrase("oats", in: context)
         let baseline = try BaselinePhrase.set(oats, for: .breakfast, in: context)
         #expect(baseline.isOfferable)
@@ -60,7 +54,7 @@ struct BaselinePhraseTests {
 
     @Test func settingAgainUndoesADecline() throws {
         // Asking again is how the user gets the offer back.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let oats = try phrase("oats", in: context)
         let baseline = try BaselinePhrase.set(oats, for: .breakfast, in: context)
         baseline.declinedAt = .now
@@ -69,7 +63,7 @@ struct BaselinePhraseTests {
     }
 
     @Test func aBaselineWhoseFoodWentIsNotOffered() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let oats = try phrase("oats", in: context)
         let baseline = try BaselinePhrase.set(oats, for: .breakfast, in: context)
         for item in oats.orderedItems {
@@ -80,7 +74,7 @@ struct BaselinePhraseTests {
     }
 
     @Test func clearingForgetsItEntirely() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let oats = try phrase("oats", in: context)
         try BaselinePhrase.set(oats, for: .breakfast, in: context)
         try BaselinePhrase.clear(for: .breakfast, in: context)
@@ -88,7 +82,7 @@ struct BaselinePhraseTests {
     }
 
     @Test func rememberingRecordsTheSlotItWasLoggedIn() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let written = try phrase("oats", in: context, slot: .breakfast)
         #expect(written.lastSlot == .breakfast)
     }

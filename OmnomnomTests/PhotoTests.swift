@@ -8,13 +8,6 @@ struct PhotoTests {
     private let bytes = Data([0xFF, 0xD8, 0x01, 0x02, 0x03])
     private let otherBytes = Data([0xFF, 0xD8, 0x09, 0x08])
 
-    private func makeContext() throws -> ModelContext {
-        let schema = StoreSchema.schema
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [configuration])
-        return ModelContext(container)
-    }
-
     private func photoCount(in context: ModelContext) throws -> Int {
         try context.fetchCount(FetchDescriptor<Photo>())
     }
@@ -29,7 +22,7 @@ struct PhotoTests {
     }
 
     @Test func replacingInsertsKeepsAndDeletes() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let recipe = Recipe(name: "Soup", servings: 2)
         context.insert(recipe)
 
@@ -57,7 +50,7 @@ struct PhotoTests {
     }
 
     @Test func deletingARecipeOrFoodTakesItsPhotoAlong() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let recipe = Recipe(name: "Soup", servings: 2)
         context.insert(recipe)
         recipe.photo = Photo.replacing(nil, with: bytes, in: context)
@@ -77,7 +70,7 @@ struct PhotoTests {
     }
 
     @Test func entriesOfOneEstimateShareThePhotoUntilTheLastIsDeleted() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let eggs = entry("Scrambled eggs", in: context)
         let toast = entry("Rye toast", in: context)
         let photo = Photo(data: bytes)
@@ -100,7 +93,7 @@ struct PhotoTests {
     }
 
     @Test func releasingAnEntryWithoutItsOwnPhotoLeavesTheRecipesAlone() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let recipe = Recipe(name: "Soup", servings: 2)
         context.insert(recipe)
         recipe.photo = Photo.replacing(nil, with: bytes, in: context)
@@ -116,7 +109,7 @@ struct PhotoTests {
     }
 
     @Test func displayPhotoPrefersOwnThenRecipeThenFood() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let recipe = Recipe(name: "Soup", servings: 2)
         context.insert(recipe)
         recipe.photo = Photo.replacing(nil, with: bytes, in: context)
@@ -146,7 +139,7 @@ struct PhotoTests {
     }
 
     @Test func recipeWriterRoundTripsThePhoto() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let writer = RecipeWriter(context: context)
         var draft = RecipeDraft()
         draft.name = "Porridge"
@@ -169,7 +162,7 @@ struct PhotoTests {
     }
 
     @Test func foodChoiceCarriesTheFoodsPhoto() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let food = Food(name: "Granola", kind: .custom, bundledID: nil, per100g: Nutrition(energy: 450))
         context.insert(food)
         #expect(food.choice?.photo == nil)

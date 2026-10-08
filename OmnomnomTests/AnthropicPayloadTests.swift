@@ -1,30 +1,9 @@
-import CoreGraphics
 import Foundation
-import ImageIO
 import Testing
-import UniformTypeIdentifiers
 @testable import Omnomnom
 
 /// The request this app sends and the reading of what comes back, both without a network.
 struct AnthropicPayloadTests {
-    /// A `width` x `height` image with a flat colour, encoded as PNG through ImageIO.
-    private func pngData(width: Int, height: Int) -> Data? {
-        guard let context = CGContext(
-            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
-            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return nil }
-        context.setFillColor(red: 0.2, green: 0.6, blue: 0.3, alpha: 1)
-        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
-        guard let image = context.makeImage() else { return nil }
-        let output = NSMutableData()
-        guard let destination = CGImageDestinationCreateWithData(
-            output as CFMutableData, UTType.png.identifier as CFString, 1, nil
-        ) else { return nil }
-        CGImageDestinationAddImage(destination, image, nil)
-        guard CGImageDestinationFinalize(destination) else { return nil }
-        return output as Data
-    }
-
     private func body(
         messages: [AnthropicMessage], model: String = "claude-opus-5-5", products: Bool = false
     ) throws -> [String: Any] {
@@ -130,7 +109,7 @@ struct AnthropicPayloadTests {
     @Test func aPhotoIsABase64BlockAndComesBeforeTheWords() throws {
         // Not a data: URL, which is the shape the OpenAI-compatible path uses. The order
         // is ours to choose and an image before its text reads better.
-        let png = try #require(pngData(width: 400, height: 300))
+        let png = try #require(Fixtures.pngData(width: 400, height: 300))
         let blocks = try AnthropicPayload.opening(
             for: .photo(png, description: "porridge"), sendsPhotos: true
         )
@@ -147,7 +126,7 @@ struct AnthropicPayloadTests {
     @Test func withPhotosOffTheWordsGoAsAnOrdinaryDescription() throws {
         // Asking about "the attached photo" when nothing is attached invites the model to
         // invent what it cannot see.
-        let png = try #require(pngData(width: 400, height: 300))
+        let png = try #require(Fixtures.pngData(width: 400, height: 300))
         let blocks = try AnthropicPayload.opening(
             for: .photo(png, description: "porridge"), sendsPhotos: false
         )
@@ -159,7 +138,7 @@ struct AnthropicPayloadTests {
     }
 
     @Test func aPhotoAloneWithPhotosOffIsRefusedWithSomethingToDo() throws {
-        let png = try #require(pngData(width: 400, height: 300))
+        let png = try #require(Fixtures.pngData(width: 400, height: 300))
         #expect(throws: EstimationError.unavailable(AnthropicPayload.photosNotAllowed)) {
             try AnthropicPayload.opening(for: .photo(png, description: nil), sendsPhotos: false)
         }
@@ -168,7 +147,7 @@ struct AnthropicPayloadTests {
     @Test func aLargePhotoIsDownscaledBeforeItIsEncoded() throws {
         // Sized for visual tokens rather than for bandwidth: ceil(w/28) x ceil(h/28) of
         // them, and well under the long edge at which the API would downscale it itself.
-        let png = try #require(pngData(width: 2400, height: 1800))
+        let png = try #require(Fixtures.pngData(width: 2400, height: 1800))
         let blocks = try AnthropicPayload.opening(for: .photo(png, description: nil), sendsPhotos: true)
         let encoded = try #require(blocks.first?["source"]?["data"]?.stringValue)
         let jpeg = try #require(Data(base64Encoded: encoded))

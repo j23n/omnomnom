@@ -49,12 +49,6 @@ nonisolated struct FakeEstimator: MealEstimating {
 
 /// The four rungs, in order, and what happens when the model is absent or wrong.
 struct LineResolverTests {
-    private func makeContext() throws -> ModelContext {
-        let schema = StoreSchema.schema
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        return ModelContext(try ModelContainer(for: schema, configurations: [configuration]))
-    }
-
     private func bundled(
         _ id: Int, _ name: String, ingredient: Bool = false, popularity: Int = 0
     ) -> BundledFood {
@@ -74,7 +68,7 @@ struct LineResolverTests {
     // MARK: - Rung one: the whole line from memory
 
     @Test func aLineLoggedBeforeComesBackWholeWithoutSearching() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let oats = storedFood("Oats, rolled", in: context)
         let banana = storedFood("Banana, raw", in: context)
         try Phrase.remember(
@@ -106,7 +100,7 @@ struct LineResolverTests {
 
     @Test func aRecalledLineNeverAsksTheModel() async throws {
         // What keeps a repeat under five seconds: the fast path does not wait on a model.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let oats = storedFood("Oats", in: context)
         try Phrase.remember(
             line: "oats", items: [PhraseDraftItem(name: "oats", amount: 40, food: oats)], in: context
@@ -126,7 +120,7 @@ struct LineResolverTests {
     // MARK: - Rung two: one familiar food in a new line
 
     @Test func aFamiliarFoodInsideANewLineComesFromHistory() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let oats = storedFood("Oats, rolled", in: context)
         try Phrase.remember(
             line: "oats", items: [PhraseDraftItem(name: "oats", amount: 45, food: oats)], in: context
@@ -144,7 +138,7 @@ struct LineResolverTests {
     // MARK: - Rung three: the bundled tables
 
     @Test func anUnknownLineIsMatchedInTheTables() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
         let resolver = LineResolver(context: context, repository: repository, estimator: FakeEstimator())
         let resolution = await resolver.resolve("oats")
@@ -154,7 +148,7 @@ struct LineResolverTests {
     }
 
     @Test func aFoodNothingMatchesBlocksTheLog() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let resolver = LineResolver(context: context, repository: FakeRepository(), estimator: FakeEstimator())
         let resolution = await resolver.resolve("something nobody has ever eaten")
         #expect(resolution.rows.count == 1)
@@ -166,7 +160,7 @@ struct LineResolverTests {
 
     @Test func anIngredientFormBlocksRatherThanSettling() async throws {
         // The coffee-powder case, with no model involved at all.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["coffee": [bundled(9, "Coffee, instant, powder", ingredient: true)]])
         let resolver = LineResolver(context: context, repository: repository, estimator: FakeEstimator())
         let resolution = await resolver.resolve("coffee")
@@ -178,7 +172,7 @@ struct LineResolverTests {
         // This read an amount off the front of the words — "200g rice" — which is what the
         // parser was for. The model reports a weight for everything it names, so the words
         // are its problem and the figure arrives already made.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["rice": [bundled(3, "Rice, cooked")]])
         let estimator = FakeEstimator(
             items: [EstimatedItem(name: "rice", lookupTerm: "rice", grams: 200)]
@@ -191,7 +185,7 @@ struct LineResolverTests {
     @Test func theMealComesFromTheFoodsAndNotTheClock() async throws {
         // The reason the model is asked which meal it is: no clock can know that oats at
         // nine in the evening are breakfast.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
         let estimator = FakeEstimator(
             items: [EstimatedItem(name: "oats", lookupTerm: "oats", grams: 40)],
@@ -205,7 +199,7 @@ struct LineResolverTests {
     @Test func withNoModelNothingNewResolves() async throws {
         // The cost of one primary input. Search and the barcode scanner are how the app is
         // used when neither Apple Intelligence nor an endpoint will answer.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
         let resolver = LineResolver(context: context, repository: repository, estimator: nil)
         let resolution = await resolver.resolve("oats")
@@ -213,7 +207,7 @@ struct LineResolverTests {
     }
 
     @Test func aModelThatFailsLeavesNothingRatherThanThrowing() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
         let estimator = FakeEstimator(failure: .failed("no network"))
         let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
@@ -223,7 +217,7 @@ struct LineResolverTests {
 
     @Test func aFirstTimeFoodIsOfferedNoBucket() async throws {
         // "Usual" would mean nothing: there is no history to multiply.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
         let resolver = LineResolver(context: context, repository: repository, estimator: FakeEstimator())
         let resolution = await resolver.resolve("oats")
@@ -231,7 +225,7 @@ struct LineResolverTests {
     }
 
     @Test func aRecalledFoodIsOfferedABucket() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let oats = storedFood("Oats", in: context)
         try Phrase.remember(
             line: "oats", items: [PhraseDraftItem(name: "oats", amount: 40, food: oats)], in: context
@@ -246,7 +240,7 @@ struct LineResolverTests {
     @Test func theModelCanMoveARowToAnotherCandidate() async throws {
         // The whole reason validation exists: "oat" retrieves the biscuits first and the
         // model moves it to the oats.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: [
             "oat": [bundled(5, "Biscuits, oat"), bundled(1, "Oats, rolled")],
         ])
@@ -261,7 +255,7 @@ struct LineResolverTests {
     }
 
     @Test func noneOfTheseLeavesTheRowBlocking() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
         let validator = FakeValidator(verdicts: [
             MatchVerdict(item: 1, candidate: 0, certainty: .unsure),
@@ -275,7 +269,7 @@ struct LineResolverTests {
     @Test func anIDOutsideTheShortlistReadsAsNoneRatherThanAsAHint() async throws {
         // The model can only ever pick a row a retriever found; it cannot name a food it
         // was not offered.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
         let validator = FakeValidator(verdicts: [
             MatchVerdict(item: 1, candidate: 4_242, certainty: .certain),
@@ -286,7 +280,7 @@ struct LineResolverTests {
     }
 
     @Test func probableFromTheModelCountsAsAGlance() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
         let validator = FakeValidator(verdicts: [
             MatchVerdict(item: 1, candidate: 1, certainty: .probable),
@@ -298,7 +292,7 @@ struct LineResolverTests {
     }
 
     @Test func aValidatorThatFailsLeavesTheWholeLineUnchecked() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
         let validator = FakeValidator(failure: .unavailable("Apple Intelligence is off"))
         let resolver = LineResolver(context: context, repository: repository, validator: validator, estimator: FakeEstimator())
@@ -311,7 +305,7 @@ struct LineResolverTests {
 
     @Test func aValidatorThatAnswersShortLeavesTheWholeLineUnchecked() async throws {
         // All-or-nothing, so "not checked" stays a property of the screen.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: [
             "oats": [bundled(1, "Oats, rolled")],
             "banana": [bundled(2, "Banana, raw")],
@@ -330,7 +324,7 @@ struct LineResolverTests {
     }
 
     @Test func noValidatorIsAnOrdinaryConfigurationNotAFailure() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
         let resolver = LineResolver(context: context, repository: repository, validator: nil, estimator: FakeEstimator())
         let resolution = await resolver.resolve("oats")
@@ -343,7 +337,7 @@ struct LineResolverTests {
     @Test func aLineWithNoFoodInItResolvesToNothing() async throws {
         // The model found nothing to name. It used to be the parser that found nothing,
         // which is the same outcome reached by a different party.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let estimator = FakeEstimator(items: [])
         let resolver = LineResolver(context: context, repository: FakeRepository(), estimator: estimator)
         let resolution = await resolver.resolve("and some of my")
@@ -352,7 +346,7 @@ struct LineResolverTests {
     }
 
     @Test func aFailingSearchLeavesRowsUnmatchedRatherThanThrowing() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(failure: .databaseMissing)
         let resolver = LineResolver(context: context, repository: repository, estimator: FakeEstimator())
         let resolution = await resolver.resolve("oats, banana")
@@ -368,7 +362,7 @@ struct LineResolverTests {
     /// of that very name, so the whole term was discarded and one of its words answered
     /// instead.
     @Test func aTermWrittenTheWayATableWritesOneStillMatches() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let margherita = bundled(11, "Pizza margherita (with tomato sauce, mozzarella)")
         let repository = FakeRepository(hits: ["Pizza, Margherita": [margherita]])
         let estimator = FakeEstimator(
@@ -385,7 +379,7 @@ struct LineResolverTests {
     /// were answered with *Fish, cooked (average)*, settled, with nothing asked of the user.
     /// A word saying how a food was prepared is not a food, and cannot answer for one.
     @Test func aPreparationWordNeverAnswersForAFood() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: [
             // Nothing holds both words, which is what sends this down the fallback.
             "pasta": [bundled(21, "Pasta, cooked")],
@@ -405,7 +399,7 @@ struct LineResolverTests {
     /// A narrowed match is the app answering a question nobody asked, so it is shown rather
     /// than assumed, however well the one word scored.
     @Test func aMatchFoundByNarrowingIsNeverSettled() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["oats": [bundled(31, "Oat flakes")]])
         let estimator = FakeEstimator(
             items: [EstimatedItem(name: "oats", lookupTerm: "oats, rolled", grams: 50)]
@@ -421,7 +415,7 @@ struct LineResolverTests {
     /// And a match on everything that was said still settles, so the cap above is about
     /// narrowing rather than about the tables being distrusted.
     @Test func aMatchOnTheWholeTermStillSettles() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["oat flakes": [bundled(31, "Oat flakes")]])
         let estimator = FakeEstimator(
             items: [EstimatedItem(name: "oats", lookupTerm: "oat flakes", grams: 50)]
@@ -437,7 +431,7 @@ struct LineResolverTests {
     /// term, and a qualifier scores perfectly against rows that are a different food. This
     /// one answered with *Natural mineral water*, at 1.10, settled.
     @Test func aQualifierAfterACommaCannotAnswerForTheFood() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: [
             "yogurt": [bundled(41, "Yogurt mild, min. 3.5 % fat", popularity: 80)],
             // Reachable only by searching the qualifier, which is now never searched.
@@ -454,7 +448,7 @@ struct LineResolverTests {
     /// The same fault through a preposition: a pain au chocolat was logged as *Chocolate*,
     /// at 1.35, because the garnish outscored the pastry.
     @Test func aGarnishAfterAPrepositionCannotAnswerForTheFood() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: [
             "croissant": [bundled(43, "Croissant (average)")],
             "chocolate": [bundled(44, "Chocolate", popularity: 100)],
@@ -470,7 +464,7 @@ struct LineResolverTests {
     /// The head phrase entire is tried before any part of it, so the more specific answer
     /// wins where there is one. Searching the words alone gave *Bread, bagel* for rye bread.
     @Test func theHeadPhraseIsTriedWholeBeforeItsWords() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: [
             "rye bread": [bundled(45, "Rye bread", popularity: 87)],
             "bread": [bundled(46, "Bread, bagel")],
@@ -487,7 +481,7 @@ struct LineResolverTests {
     /// came back as *Watermelon raw*, and there is no tonic row, so the honest answer is
     /// the one the sheet is built for: ask.
     @Test func aRowWhoseHeadMerelyBeginsWithTheWordIsNotAnAnswer() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["water": [bundled(47, "Watermelon raw", popularity: 40)]])
         let estimator = FakeEstimator(
             items: [EstimatedItem(name: "tonic water", lookupTerm: "tonic water", grams: 200)]
@@ -503,7 +497,7 @@ struct LineResolverTests {
     /// the preposition are not consulted as a last resort, because that is where every one
     /// of the wrong answers came from.
     @Test func aHeadPhraseThatFindsNothingBlocksRatherThanGuessing() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["beef": [bundled(48, "Beef boiled", popularity: 70)]])
         let estimator = FakeEstimator(
             items: [EstimatedItem(name: "lasagne", lookupTerm: "lasagne with beef", grams: 350)]
@@ -520,7 +514,7 @@ struct LineResolverTests {
         // The stored row is where history lives. Without reading it, a food logged ten
         // times through the search screen reached this screen with the model's estimate
         // and no Less or More at all, because a search hit carries no past use of its own.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let stored = Food(name: "Rice, cooked", kind: .bundled, bundledID: 3, per100g: Nutrition(energy: 130))
         stored.lastGrams = 180
         context.insert(stored)
@@ -538,7 +532,7 @@ struct LineResolverTests {
     }
 
     @Test func aFoodNeverEatenOffersNoSteps() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["rice": [bundled(3, "Rice, cooked")]])
         let resolver = LineResolver(context: context, repository: repository, estimator: FakeEstimator())
         let row = try #require(await resolver.resolve("rice").rows.first)
@@ -559,7 +553,7 @@ struct LineResolverTests {
     }
 
     @Test func aProductAnswersForAFoodTheTablesDoNotHold() async throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let resolver = LineResolver(
             context: context, repository: FakeRepository(),
             products: { _ in Self.product("Calvé Peanut Butter", score: 0.9) },
@@ -579,7 +573,7 @@ struct LineResolverTests {
         // It used to be asked only where the tables held nothing, which meant it was never
         // asked about the foods people mostly eat. Now both are asked and the score
         // decides; here the product is the better answer to a branded term.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["oat bar": [bundled(1, "Oat flakes")]])
         let resolver = LineResolver(
             context: context, repository: repository,
@@ -594,7 +588,7 @@ struct LineResolverTests {
     @Test func aMeasuredRowWinsWhenItScoresAsWell() async throws {
         // The tables are offline, licence-clean and analytically measured, so they take
         // ties — the crowdsourced penalty is the whole of the thumb on the scale.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["oats": [bundled(1, "Oat flakes", popularity: 90)]])
         let resolver = LineResolver(
             context: context, repository: repository,
@@ -609,7 +603,7 @@ struct LineResolverTests {
     @Test func withoutTheOptInNoProductIsAsked() async throws {
         // `nil` rather than an empty answer: the opt-in is off, so nothing may be asked at
         // all, and an unmatched food goes to the user exactly as it did before.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let resolver = LineResolver(
             context: context, repository: FakeRepository(), products: nil, estimator: FakeEstimator()
         )
@@ -623,7 +617,7 @@ struct LineResolverTests {
         // rung won cannot be answered correctly: naming an id moves the row onto a table
         // row it already beat, and 0 empties it. Neither is a judgment about the food, so
         // the row is not offered at all — and the table row beside it still is.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: [
             "oats": [bundled(5, "Biscuits, oat"), bundled(1, "Oats, rolled")],
             "oat bar": [bundled(9, "Oat flakes")],
@@ -657,7 +651,7 @@ struct LineResolverTests {
         // so a line of nothing but products reads as unchecked, which is what the sign-off
         // screen already assumed: it offers its unchecked notice only where a row came
         // from the tables.
-        let context = try makeContext()
+        let context = try TestStore.context()
         let repository = FakeRepository(hits: ["oat bar": [bundled(9, "Oat flakes")]])
         let validator = FakeValidator(verdicts: [
             MatchVerdict(item: 1, candidate: 0, certainty: .unsure),

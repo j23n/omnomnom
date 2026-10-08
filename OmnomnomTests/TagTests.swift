@@ -6,13 +6,6 @@ import Testing
 /// Tags and the Library search that reads them, against an in-memory store with the
 /// app's schema.
 struct TagTests {
-    private func makeContext() throws -> ModelContext {
-        let schema = StoreSchema.schema
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [configuration])
-        return ModelContext(container)
-    }
-
     private func recipe(_ name: String, in context: ModelContext) -> Recipe {
         let recipe = Recipe(name: name, servings: 2)
         context.insert(recipe)
@@ -26,7 +19,7 @@ struct TagTests {
     }
 
     @Test func namedReusesAnExistingTagWhateverTheCasing() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let first = try #require(try Tag.named("Breakfast", in: context))
         let again = try #require(try Tag.named("  breakfast ", in: context))
         #expect(first === again)
@@ -35,13 +28,13 @@ struct TagTests {
     }
 
     @Test func namedRefusesABlankName() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         #expect(try Tag.named("   ", in: context) == nil)
         #expect(try context.fetchCount(FetchDescriptor<Tag>()) == 0)
     }
 
     @Test func aTagCountsEverythingThatCarriesIt() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let tag = try #require(try Tag.named("breakfast", in: context))
         let porridge = recipe("Overnight oats", in: context)
         let granola = food("Homemade granola", in: context)
@@ -53,7 +46,7 @@ struct TagTests {
     }
 
     @Test func orphansAreRemovedAndUsedTagsAreKept() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let used = try #require(try Tag.named("breakfast", in: context))
         _ = try Tag.named("abandoned", in: context)
         recipe("Overnight oats", in: context).tags = [used]
@@ -65,7 +58,7 @@ struct TagTests {
     }
 
     @Test func removingTheLastUseLeavesAnOrphanToCollect() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let tag = try #require(try Tag.named("breakfast", in: context))
         let porridge = recipe("Overnight oats", in: context)
         porridge.tags = [tag]
@@ -78,7 +71,7 @@ struct TagTests {
     }
 
     @Test func searchFindsByNameAndByTag() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let breakfast = try #require(try Tag.named("breakfast", in: context))
         let porridge = recipe("Overnight oats", in: context)
         porridge.tags = [breakfast]
@@ -95,7 +88,7 @@ struct TagTests {
     }
 
     @Test func aRowMatchingBothItsNameAndATagAppearsOnce() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let tag = try #require(try Tag.named("oats", in: context))
         recipe("Overnight oats", in: context).tags = [tag]
         try context.save()
@@ -103,7 +96,7 @@ struct TagTests {
     }
 
     @Test func searchIsSortedByName() throws {
-        let context = try makeContext()
+        let context = try TestStore.context()
         let tag = try #require(try Tag.named("breakfast", in: context))
         recipe("Porridge", in: context).tags = [tag]
         recipe("Croissant", in: context).tags = [tag]
