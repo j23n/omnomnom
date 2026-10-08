@@ -47,14 +47,4 @@ struct SnapshotTests {
         #expect(HealthState.unauthorized.badgeText == "Not in Health")
         #expect(HealthState.orphaned.badgeText == "Only in Health")
     }
-
-    /// The editor offers to write the entry to Health for every state where Health is
-    /// short of it, including one that never got there, so a failed write is recoverable.
-    @Test func needsAttentionCoversEveryStateHealthIsShortOf() {
-        #expect(HealthState.partial.needsAttention)
-        #expect(HealthState.gone.needsAttention)
-        #expect(HealthState.unauthorized.needsAttention)
-        #expect(!HealthState.synced.needsAttention)
-        #expect(!HealthState.orphaned.needsAttention)
-    }
 }

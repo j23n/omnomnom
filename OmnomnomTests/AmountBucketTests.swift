@@ -38,21 +38,4 @@ struct AmountBucketTests {
             #expect(!bucket.label.contains("%"))
         }
     }
-
-    @Test func sizeWordsMapOntoSteps() {
-        #expect(AmountBucket.named("large") == .more)
-        #expect(AmountBucket.named("big") == .more)
-        #expect(AmountBucket.named("small") == .less)
-        #expect(AmountBucket.named("double") == .double)
-        #expect(AmountBucket.named("klein") == .less)
-        #expect(AmountBucket.named("grand") == .more)
-    }
-
-    @Test func anythingElseIsNotASizeWord() {
-        // The set is closed on purpose: anything else is left for the food's own
-        // reference to answer rather than guessed at.
-        #expect(AmountBucket.named("oats") == nil)
-        #expect(AmountBucket.named("") == nil)
-        #expect(AmountBucket.named("enormous") == nil)
-    }
 }

@@ -45,7 +45,7 @@ struct BaselinePhraseTests {
         let second = try phrase("toast", in: context)
         try BaselinePhrase.set(first, for: .breakfast, in: context)
         try BaselinePhrase.set(second, for: .breakfast, in: context)
-        #expect(try BaselinePhrase.all(in: context).count == 1)
+        #expect(try context.fetch(FetchDescriptor<BaselinePhrase>()).count == 1)
         #expect(try BaselinePhrase.baseline(for: .breakfast, in: context)?.phrase?.id == second.id)
     }
 
@@ -85,34 +85,6 @@ struct BaselinePhraseTests {
         try BaselinePhrase.set(oats, for: .breakfast, in: context)
         try BaselinePhrase.clear(for: .breakfast, in: context)
         #expect(try BaselinePhrase.baseline(for: .breakfast, in: context) == nil)
-    }
-
-    // MARK: - What to suggest
-
-    @Test func aLineLoggedEnoughTimesInASlotIsSuggested() throws {
-        let context = try makeContext()
-        _ = try phrase("oats and banana", in: context, uses: BaselinePhrase.suggestionThreshold, slot: .breakfast)
-        #expect(try BaselinePhrase.suggestion(for: .breakfast, in: context)?.text == "oats and banana")
-    }
-
-    @Test func aLineLoggedTooFewTimesIsNotSuggested() throws {
-        // Three is a coincidence; a fortnight of weekdays is five.
-        let context = try makeContext()
-        _ = try phrase("oats", in: context, uses: BaselinePhrase.suggestionThreshold - 1, slot: .breakfast)
-        #expect(try BaselinePhrase.suggestion(for: .breakfast, in: context) == nil)
-    }
-
-    @Test func aSuggestionIsScopedToItsSlot() throws {
-        let context = try makeContext()
-        _ = try phrase("oats", in: context, uses: BaselinePhrase.suggestionThreshold, slot: .breakfast)
-        #expect(try BaselinePhrase.suggestion(for: .dinner, in: context) == nil)
-    }
-
-    @Test func theMostLoggedLineWins() throws {
-        let context = try makeContext()
-        _ = try phrase("oats", in: context, uses: BaselinePhrase.suggestionThreshold, slot: .breakfast)
-        _ = try phrase("toast", in: context, uses: BaselinePhrase.suggestionThreshold + 3, slot: .breakfast)
-        #expect(try BaselinePhrase.suggestion(for: .breakfast, in: context)?.text == "toast")
     }
 
     @Test func rememberingRecordsTheSlotItWasLoggedIn() throws {

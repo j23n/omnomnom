@@ -87,11 +87,6 @@ nonisolated struct Nutrition: Codable, Hashable, Sendable {
         Set(Nutrient.allCases).subtracting(presentNutrients)
     }
 
-    /// Whether all eight figures are here.
-    var isComplete: Bool {
-        missingNutrients.isEmpty
-    }
-
     /// Treats `self` as per 100 units of the food and returns the amounts in `grams` of
     /// it. The unit is the food's own, so this scales millilitres exactly as it scales
     /// grams; nothing here converts between the two.

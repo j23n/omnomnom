@@ -43,10 +43,6 @@ final class BaselinePhrase {
 
     // MARK: - Reading
 
-    static func all(in context: ModelContext) throws -> [BaselinePhrase] {
-        try context.fetch(FetchDescriptor<BaselinePhrase>())
-    }
-
     /// The baseline for one slot, if there is one.
     static func baseline(for slot: MealSlot, in context: ModelContext) throws -> BaselinePhrase? {
         let raw = slot.rawValue
@@ -76,28 +72,5 @@ final class BaselinePhrase {
     static func clear(for slot: MealSlot, in context: ModelContext) throws {
         guard let baseline = try baseline(for: slot, in: context) else { return }
         context.delete(baseline)
-    }
-
-    // MARK: - Learning what to offer
-
-    /// How many times a line must have been logged in a slot before it is worth
-    /// offering as that slot's usual.
-    ///
-    /// Four, because three is a coincidence and a fortnight of weekdays is five. Low
-    /// enough to be useful inside a couple of weeks, high enough that one unusual week
-    /// does not install itself as someone's normal.
-    static let suggestionThreshold = 4
-
-    /// The line most worth offering as a slot's baseline, or `nil` when nothing qualifies.
-    ///
-    /// Read from what the user has actually logged in that slot, never asked for.
-    static func suggestion(for slot: MealSlot, in context: ModelContext) throws -> Phrase? {
-        let raw = slot.rawValue
-        let threshold = suggestionThreshold
-        let descriptor = FetchDescriptor<Phrase>(
-            predicate: #Predicate<Phrase> { $0.lastSlotRaw == raw && $0.useCount >= threshold },
-            sortBy: [SortDescriptor(\Phrase.useCount, order: .reverse)]
-        )
-        return try context.fetch(descriptor).first { $0.isRecallable }
     }
 }

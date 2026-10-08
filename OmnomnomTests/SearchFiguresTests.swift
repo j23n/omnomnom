@@ -103,8 +103,8 @@ struct SearchFiguresTests {
         var short = whole
         short.fiber = nil
         #expect(short.missingNutrients == [.fiber])
-        #expect(!short.isComplete)
-        #expect(whole.isComplete)
+        #expect(!short.missingNutrients.isEmpty)
+        #expect(whole.missingNutrients.isEmpty)
         #expect(Nutrition.empty.missingNutrients == Set(Nutrient.allCases))
     }
 }

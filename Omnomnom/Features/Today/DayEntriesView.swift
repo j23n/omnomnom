@@ -429,7 +429,7 @@ private func seedBaselines(
         context.insert(item)
         item.food = food
         item.phrase = phrase
-        phrase.useCount = BaselinePhrase.suggestionThreshold
+        phrase.useCount = 4
         phrase.lastSlot = pair.slot
         let baseline = BaselinePhrase(mealSlot: pair.slot)
         context.insert(baseline)

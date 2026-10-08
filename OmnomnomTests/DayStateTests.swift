@@ -32,13 +32,6 @@ struct DayStateTests {
         #expect(DayState.derive(entryOrigins: [.baseline, .typed], markedComplete: true) == .complete)
     }
 
-    @Test func onlyACompleteDayCountsTowardAMean() {
-        #expect(DayState.complete.countsTowardMean)
-        for state in [DayState.assumed, .partial, .empty] {
-            #expect(!state.countsTowardMean)
-        }
-    }
-
     @Test func everyStateHasSomethingToSayAndNoneOfItIsAShare() {
         for state in DayState.allCases {
             #expect(!state.note.isEmpty)

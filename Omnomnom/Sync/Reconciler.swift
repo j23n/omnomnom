@@ -29,8 +29,6 @@ nonisolated struct ReconcilePlan: Hashable, Sendable {
         self.unpruned = unpruned
     }
 
-    static let empty = ReconcilePlan(present: [:])
-
     var isEmpty: Bool { present.isEmpty }
 }
 

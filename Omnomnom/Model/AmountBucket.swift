@@ -51,20 +51,4 @@ nonisolated enum AmountBucket: String, CaseIterable, Hashable, Sendable {
         let step: Double = scaled < 100 ? 5 : 10
         return (scaled / step).rounded() * step
     }
-
-    /// Size words a typed line can carry, mapped onto a step. A small closed set: these
-    /// are the words people actually write, and anything else is left for the food's own
-    /// reference to answer.
-    static func named(_ word: String) -> AmountBucket? {
-        switch word {
-        case "small", "little", "half", "klein", "halb", "petit", "petite", "demi":
-            .less
-        case "big", "large", "huge", "generous", "gross", "grosse", "grand", "grande":
-            .more
-        case "double", "doppelt":
-            .double
-        default:
-            nil
-        }
-    }
 }

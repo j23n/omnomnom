@@ -28,16 +28,6 @@ nonisolated enum HealthState: String, Sendable {
         return .synced
     }
 
-    /// States the user can act on from the entry's editor: write the entry to Health or
-    /// remove it here. `unauthorized` is one of them: an entry that never reached Health
-    /// can be written now, and without that a failed write would be unrecoverable.
-    var needsAttention: Bool {
-        switch self {
-        case .partial, .gone, .unauthorized: true
-        case .synced, .orphaned: false
-        }
-    }
-
     /// Short badge text for states worth showing on Today; `nil` for `synced`. The two
     /// states Health is short of read apart rather than only differing in tense: `gone`
     /// was in Health and went, `unauthorized` never arrived.

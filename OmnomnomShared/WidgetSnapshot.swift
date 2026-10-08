@@ -9,13 +9,6 @@ nonisolated struct WidgetPhrase: Codable, Identifiable, Hashable, Sendable {
     let energy: Double?
     /// Raw `MealSlot` this line is usually logged in; used only for the symbol.
     let slotRaw: String?
-
-    init(id: UUID, text: String, energy: Double?, slotRaw: String?) {
-        self.id = id
-        self.text = text
-        self.energy = energy
-        self.slotRaw = slotRaw
-    }
 }
 
 /// What the app last told the widget.
@@ -25,17 +18,15 @@ nonisolated struct WidgetPhrase: Codable, Identifiable, Hashable, Sendable {
 nonisolated struct WidgetSnapshot: Codable, Hashable, Sendable {
     /// Most-logged lines first, capped at what the largest tile can show.
     let phrases: [WidgetPhrase]
-    let writtenAt: Date
 
-    static let empty = WidgetSnapshot(phrases: [], writtenAt: .distantPast)
+    static let empty = WidgetSnapshot(phrases: [])
 
     /// The most a snapshot ever holds. A widget shows at most four; a couple spare costs
     /// nothing and means the list survives one being logged.
     static let capacity = 6
 
-    init(phrases: [WidgetPhrase], writtenAt: Date = .now) {
+    init(phrases: [WidgetPhrase]) {
         self.phrases = Array(phrases.prefix(WidgetSnapshot.capacity))
-        self.writtenAt = writtenAt
     }
 
     /// The URL a tile links to, which the app receives in `onOpenURL`.

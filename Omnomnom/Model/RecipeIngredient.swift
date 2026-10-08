@@ -65,9 +65,4 @@ final class RecipeIngredient {
             per100gSodium = newValue.sodium
         }
     }
-
-    /// What this row adds to the recipe total.
-    var contribution: Nutrition {
-        per100g.scaled(toGrams: grams)
-    }
 }
