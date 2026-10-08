@@ -8,8 +8,6 @@ nonisolated struct LineLogOutcome: Sendable {
     let results: [LogResult]
     /// Rows that could not be logged because what they pointed at had gone.
     let failed: Int
-    /// Whether the line was remembered, which it is not when it has no key.
-    let remembered: Bool
 
     var loggedCount: Int { results.count }
 }
@@ -69,7 +67,7 @@ extension EntryLogger {
             WidgetSnapshotWriter.update(in: context)
         }
         AppLog.store.info("logged \(results.count) of \(resolution.rows.count) rows from one line")
-        return LineLogOutcome(results: results, failed: failed, remembered: remembered)
+        return LineLogOutcome(results: results, failed: failed)
     }
 
     /// Records how the entry came to exist, what the line called it, and whether the food

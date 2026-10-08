@@ -102,7 +102,7 @@ struct LoggedLineTests {
         let results = (0..<3).map { _ in
             LogResult(entryID: UUID(), written: [], healthError: nil, storeError: nil)
         }
-        let outcome = LineLogOutcome(results: results, failed: 0, remembered: true)
+        let outcome = LineLogOutcome(results: results, failed: 0)
         let logged = LoggedLine(resolution: resolution([row("Oat flakes")]), outcome: outcome)
         #expect(logged.message == "Logged 3 items. \(refused)")
     }
@@ -114,8 +114,7 @@ struct LoggedLineTests {
         let line = resolution([row("Oat flakes"), row("Rye bread")])
         let outcome = LineLogOutcome(
             results: [LogResult(entryID: UUID(), written: [.energy], healthError: nil, storeError: nil)],
-            failed: 1,
-            remembered: true
+            failed: 1
         )
         let logged = LoggedLine(resolution: line, outcome: outcome)
         #expect(logged.message == "Logged 1 item. 1 could not be logged.")
@@ -126,8 +125,7 @@ struct LoggedLineTests {
         let line = resolution([row("Banana", confidence: .probable)])
         let outcome = LineLogOutcome(
             results: [LogResult(entryID: UUID(), written: [.energy], healthError: nil, storeError: nil)],
-            failed: 0,
-            remembered: true
+            failed: 0
         )
         let logged = LoggedLine(resolution: line, outcome: outcome)
         #expect(logged.marked == 1)
