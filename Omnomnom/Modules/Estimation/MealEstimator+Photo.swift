@@ -12,7 +12,7 @@ extension FoundationMealEstimator {
     /// Downscales the photo, attaches it after the text, and returns the model's estimate.
     func respond(session: LanguageModelSession, imageData: Data, text: String, options: GenerationOptions) async throws -> MealEstimate {
         guard let image = PhotoData.downscaled(imageData, maxPixelSize: Self.promptPixelSize) else {
-            throw EstimationError.failed("the photo could not be read.")
+            throw EstimationError.failed(EstimationError.unreadablePhoto)
         }
         let response = try await session.respond(generating: MealEstimate.self, options: options) {
             "\(text)"

@@ -16,11 +16,15 @@ nonisolated enum BarcodeAvailability: Hashable, Sendable {
     /// The system prompt has not been shown yet; `requestingCamera` shows it.
     case cameraNotDetermined
 
+    /// Said twice: once when the device is checked up front, and again if VisionKit
+    /// reports the same thing once the scanner is already open.
+    static let unsupportedDeviceMessage = "This device cannot scan barcodes. Type the digits instead."
+
     /// What to tell the user; `nil` when the scanner can run.
     var message: String? {
         switch self {
         case .available: nil
-        case .unsupportedDevice: "This device cannot scan barcodes. Type the digits instead."
+        case .unsupportedDevice: Self.unsupportedDeviceMessage
         case .unavailable: "The camera is in use by another app or restricted right now."
         case .cameraDenied: "Camera access is not allowed. Turn it on in Settings to scan."
         case .cameraNotDetermined: "Allow camera access to scan barcodes."

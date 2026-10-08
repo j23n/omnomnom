@@ -16,7 +16,7 @@ nonisolated struct BundledFood: Identifiable, Hashable, Sendable {
     /// eats: coffee powder, dried milk, raw chicken, oil. Set by the build from named
     /// rules. The matcher demotes these heavily and never settles on one, because they
     /// answer the same words as the food that was meant and hold figures for something
-    /// else. See `is_ingredient` in `Tools/fooddb/fooddb/ingredient.py`.
+    /// else. See `reasons` in `Tools/fooddb/fooddb/ingredient.py`.
     let isIngredient: Bool
 
     init(

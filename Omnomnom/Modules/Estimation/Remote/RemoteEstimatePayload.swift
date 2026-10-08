@@ -107,7 +107,7 @@ nonisolated enum RemoteEstimatePayload {
                 return .text(EstimationPrompt.text(description: hint))
             }
             guard let dataURL = imageDataURL(for: data) else {
-                throw EstimationError.failed("the photo could not be read.")
+                throw EstimationError.failed(EstimationError.unreadablePhoto)
             }
             return .textAndImage(text: EstimationPrompt.photoText(description: description), dataURL: dataURL)
         }
@@ -292,7 +292,7 @@ nonisolated enum RemoteEstimatePayload {
             // Semantically the right case, though its sentence names the on-device model.
             return .tooLong
         case 429:
-            return .failed("too many requests; try again in a moment.")
+            return .failed(EstimationError.rateLimited)
         default:
             if let reason {
                 if contains(reason, any: contextMarkers) { return .tooLong }

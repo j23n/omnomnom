@@ -79,7 +79,7 @@ struct BarcodeScannerView: UIViewControllerRepresentable {
         func dataScanner(_ dataScanner: DataScannerViewController, becameUnavailableWithError error: DataScannerViewController.ScanningUnavailable) {
             switch error {
             case .unsupported:
-                onError("This device cannot scan barcodes. Type the digits instead.")
+                onError(BarcodeAvailability.unsupportedDeviceMessage)
             case .cameraRestricted:
                 onError("The camera is restricted or in use by another app.")
             @unknown default:

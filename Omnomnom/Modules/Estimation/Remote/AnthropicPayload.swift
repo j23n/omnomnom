@@ -96,7 +96,7 @@ nonisolated enum AnthropicPayload {
             }
             guard let image = PhotoData.downscaled(data, maxPixelSize: imagePixelSize),
                   let jpeg = PhotoData.jpegData(image, quality: imageQuality)
-            else { throw EstimationError.failed("the photo could not be read.") }
+            else { throw EstimationError.failed(EstimationError.unreadablePhoto) }
             return [self.image(jpeg), text(LinePrompt.photo(line: line))]
         }
     }
@@ -293,7 +293,7 @@ nonisolated enum AnthropicPayload {
         case 413:
             return .tooLong
         case 429:
-            return .failed("too many requests; try again in a moment.")
+            return .failed(EstimationError.rateLimited)
         case 529:
             return .failed("the API is overloaded right now. Try again in a moment.")
         default:

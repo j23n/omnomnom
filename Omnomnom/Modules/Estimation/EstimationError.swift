@@ -16,6 +16,14 @@ nonisolated enum EstimationError: Error, Hashable, Sendable, LocalizedError {
     /// Anything else, with the framework's own words.
     case failed(String)
 
+    // MARK: - Sentences more than one path needs
+
+    /// Said by both remote paths and by the on-device one, so it is said once.
+    static let rateLimited = "too many requests; try again in a moment."
+
+    /// Said wherever a photograph cannot be decoded, which is all three paths that take one.
+    static let unreadablePhoto = "the photo could not be read."
+
     var errorDescription: String? {
         switch self {
         case .unavailable(let reason): reason
@@ -49,7 +57,7 @@ nonisolated enum EstimationError: Error, Hashable, Sendable, LocalizedError {
         case .assetsUnavailable:
             .unavailable("The on-device model is not available right now. Try again later.")
         case .rateLimited:
-            .failed("too many requests; try again in a moment.")
+            .failed(rateLimited)
         case .unsupportedLanguageOrLocale:
             .failed("the on-device model does not support this language.")
         case .decodingFailure:
@@ -68,7 +76,7 @@ nonisolated enum EstimationError: Error, Hashable, Sendable, LocalizedError {
         case .guardrailViolation, .refusal:
             .guardrail
         case .rateLimited:
-            .failed("too many requests; try again in a moment.")
+            .failed(rateLimited)
         case .unsupportedLanguageOrLocale:
             .failed("the on-device model does not support this language.")
         case .timeout:

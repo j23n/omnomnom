@@ -49,6 +49,25 @@ nonisolated enum EstimationProvider: String, CaseIterable, Codable, Sendable {
     }
 }
 
+/// Where a provider's requests go: its base address with the API's path on the end.
+///
+/// One builder for both providers. Tolerant about a trailing slash and about the caller
+/// having already typed the path, because both are what people paste, and strict about the
+/// scheme, because anything else cannot be a request.
+nonisolated enum EstimationEndpoint {
+    static func url(base: String, path: String) -> URL? {
+        let trimmed = base.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, var url = URL(string: trimmed) else { return nil }
+        guard let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http" else {
+            return nil
+        }
+        if url.path.hasSuffix("/" + path) { return url }
+        while url.path.hasSuffix("/") { url.deleteLastPathComponent() }
+        url.append(path: path)
+        return url
+    }
+}
+
 /// Where Claude is asked, what model, and what it is allowed to see.
 ///
 /// Its own type rather than `RemoteEstimatorSettings` with a different path appended. The
@@ -85,19 +104,9 @@ nonisolated struct AnthropicSettings: Hashable, Sendable {
         return copy
     }
 
-    /// The messages URL, or `nil` when the address is not usable. Tolerant about a
-    /// trailing slash and about the caller having typed the path, because both are what
-    /// people paste.
+    /// The messages URL, or `nil` when the address is not usable.
     var messagesURL: URL? {
-        let trimmed = resolved.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard var url = URL(string: trimmed) else { return nil }
-        guard let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http" else {
-            return nil
-        }
-        if url.path.hasSuffix("/messages") { return url }
-        while url.path.hasSuffix("/") { url.deleteLastPathComponent() }
-        url.append(path: "messages")
-        return url
+        EstimationEndpoint.url(base: resolved.baseURL, path: "messages")
     }
 
     /// Whether this is complete enough to try. Both fields default, so an address that
@@ -132,19 +141,8 @@ nonisolated struct RemoteEstimatorSettings: Hashable, Sendable {
     }
 
     /// The chat-completions URL, or `nil` when the address is not usable.
-    ///
-    /// Tolerant about the trailing slash and about the caller having already typed the
-    /// path, because both are what people paste.
     var completionsURL: URL? {
-        let trimmed = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, var url = URL(string: trimmed) else { return nil }
-        guard let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http" else {
-            return nil
-        }
-        if url.path.hasSuffix("/chat/completions") { return url }
-        while url.path.hasSuffix("/") { url.deleteLastPathComponent() }
-        url.append(path: "chat/completions")
-        return url
+        EstimationEndpoint.url(base: baseURL, path: "chat/completions")
     }
 
     /// Whether this is complete enough to try.
@@ -221,13 +219,13 @@ nonisolated enum EstimationKeychain {
 /// how the app is used when no model will answer.
 nonisolated enum Estimators {
     @MainActor
-    static func current(defaults: UserDefaults = .standard) -> (any MealEstimating)? {
-        switch chosen(defaults: defaults) {
+    static func current() -> (any MealEstimating)? {
+        switch chosen() {
         case .onDevice:
             guard EstimationAvailability.current().isAvailable else { return nil }
             return FoundationMealEstimator()
         case .remote:
-            let settings = remoteSettings(defaults: defaults)
+            let settings = remoteSettings()
             guard settings.isUsable else { return nil }
             return RemoteMealEstimator(settings: settings, key: EstimationKeychain.read(.openAICompatible))
         // Claude answers the whole line in one conversation rather than naming foods for a
@@ -245,11 +243,9 @@ nonisolated enum Estimators {
     /// passed in because they belong to the device — the tables and the store live on the
     /// main actor and this type has no business reaching for them.
     @MainActor
-    static func driver(
-        searching searcher: any LineSearching, defaults: UserDefaults = .standard
-    ) -> (any LineDriving)? {
-        guard chosen(defaults: defaults) == .anthropic else { return nil }
-        let settings = anthropicSettings(defaults: defaults)
+    static func driver(searching searcher: any LineSearching) -> (any LineDriving)? {
+        guard chosen() == .anthropic else { return nil }
+        let settings = anthropicSettings()
         guard settings.isUsable else { return nil }
         return AnthropicLineResolver(
             settings: settings, key: EstimationKeychain.read(.anthropic), searcher: searcher
@@ -258,23 +254,25 @@ nonisolated enum Estimators {
 
     /// Defaults to the device. A first run has sent nothing anywhere and should not need a
     /// decision before it works.
-    static func chosen(defaults: UserDefaults = .standard) -> EstimationProvider {
-        guard let raw = defaults.string(forKey: EstimationProvider.key),
+    private static func chosen() -> EstimationProvider {
+        guard let raw = UserDefaults.standard.string(forKey: EstimationProvider.key),
               let provider = EstimationProvider(rawValue: raw)
         else { return .onDevice }
         return provider
     }
 
-    static func remoteSettings(defaults: UserDefaults = .standard) -> RemoteEstimatorSettings {
-        RemoteEstimatorSettings(
+    private static func remoteSettings() -> RemoteEstimatorSettings {
+        let defaults = UserDefaults.standard
+        return RemoteEstimatorSettings(
             baseURL: defaults.string(forKey: RemoteEstimatorSettings.baseURLKey) ?? "",
             model: defaults.string(forKey: RemoteEstimatorSettings.modelKey) ?? "",
             sendsPhotos: defaults.bool(forKey: RemoteEstimatorSettings.sendsPhotosKey)
         )
     }
 
-    static func anthropicSettings(defaults: UserDefaults = .standard) -> AnthropicSettings {
-        AnthropicSettings(
+    private static func anthropicSettings() -> AnthropicSettings {
+        let defaults = UserDefaults.standard
+        return AnthropicSettings(
             baseURL: defaults.string(forKey: AnthropicSettings.baseURLKey) ?? "",
             model: defaults.string(forKey: AnthropicSettings.modelKey) ?? "",
             sendsPhotos: defaults.bool(forKey: AnthropicSettings.sendsPhotosKey)
