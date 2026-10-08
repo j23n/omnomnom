@@ -29,26 +29,11 @@ struct NutritionPreview: View {
 
     private func cells(_ nutrients: [Nutrient]) -> some View {
         ForEach(nutrients, id: \.self) { nutrient in
-            PreviewCell(nutrient: nutrient, value: nutrition[nutrient])
+            NutrientCell(
+                nutrient: nutrient, value: nutrition[nutrient],
+                font: nutrient.isPrimary ? .body.weight(.semibold) : .body
+            )
         }
-    }
-}
-
-/// Label over value, sized to its content so the grid measures what it really needs.
-private struct PreviewCell: View {
-    let nutrient: Nutrient
-    let value: Double?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(nutrient.shortName)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            ValueText(value, unit: nutrient.unit)
-                .font(nutrient.isPrimary ? .body.weight(.semibold) : .body)
-        }
-        .gridColumnAlignment(.leading)
-        .accessibilityElement(children: .combine)
     }
 }
 

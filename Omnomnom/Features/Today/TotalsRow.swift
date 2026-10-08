@@ -25,7 +25,7 @@ struct TotalsRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            TotalCell(nutrient: .energy, value: totals.energy, font: .system(.largeTitle, design: .rounded, weight: .bold))
+            NutrientCell(nutrient: .energy, value: totals.energy, font: .system(.largeTitle, design: .rounded, weight: .bold))
             ViewThatFits(in: .horizontal) {
                 Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 12) {
                     GridRow {
@@ -54,7 +54,7 @@ struct TotalsRow: View {
 
     private func cells(_ nutrients: [Nutrient], font: Font) -> some View {
         ForEach(nutrients, id: \.self) { nutrient in
-            TotalCell(nutrient: nutrient, value: totals[nutrient], font: font)
+            NutrientCell(nutrient: nutrient, value: totals[nutrient], font: font)
         }
     }
 
@@ -64,26 +64,6 @@ struct TotalsRow: View {
             return "incl. \(Formatters.amount(energy, unit: .kilocalorie)) from Health"
         }
         return "incl. nutrients from Health"
-    }
-}
-
-/// Label over value, sized to its content so the grid measures what it really needs.
-private struct TotalCell: View {
-    let nutrient: Nutrient
-    let value: Double?
-    let font: Font
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(nutrient.shortName)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            ValueText(value, unit: nutrient.unit)
-                .font(font)
-        }
-        .gridColumnAlignment(.leading)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(nutrient.displayName), \(Formatters.spokenAmount(value, unit: nutrient.unit))")
     }
 }
 

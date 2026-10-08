@@ -19,12 +19,6 @@ struct TodayView: View {
     /// the only day selector in the app, so it is what tells the field which day a line
     /// goes into.
     @Environment(\.composer) private var composer
-    /// The validator runs on the same model the estimate module uses, behind the same
-    /// opt-in, so a user who has not turned that on is not quietly handed a model call.
-    @AppStorage(EstimationModule.enabledKey) private var estimationEnabled = false
-    /// The opt-in that already governs searching Open Food Facts by name, read here because
-    /// the fourth rung is that same search asked by the resolver rather than by the user.
-    @AppStorage(BarcodeModule.productSearchKey) private var productSearchEnabled = false
     @State private var model: TodayViewModel
 
     /// Starts from `model`; previews pass one with a banner or the unauthorized notice already up.
@@ -118,27 +112,22 @@ struct TodayView: View {
         }
     }
 
-    /// The four rungs, as the app wires them. Only the widget path needs them here; the
-    /// field over the tab bar builds its own from the same factory.
-    private var resolver: LineResolver {
-        LineResolver.app(
-            context: context,
-            repository: repository,
-            estimationEnabled: estimationEnabled,
-            productSearchEnabled: productSearchEnabled
-        )
-    }
-
     /// Logs the line a widget tap named.
     ///
     /// Written without asking again, because the tap on the widget is the tap: the rule is
     /// that nothing reaches Health unless the user acted, not that they must act twice.
     /// The day is shown underneath it straight away, so what was written is visible rather
     /// than only reported.
+    ///
+    /// A resolver with no rungs wired in, because reading a remembered phrase needs none of
+    /// them: it reads the foods the phrase already points at. Building the ladder here would
+    /// stand up a validator and an Open Food Facts client on every widget tap to answer a
+    /// question that never asks them.
     private func logFromWidget(_ id: UUID) async {
         model.showToday()
         guard let phrase = WidgetSnapshotWriter.phrase(id: id, in: context),
-              let resolution = resolver.resolution(for: phrase)
+              let resolution = LineResolver(context: context, repository: repository)
+                  .resolution(for: phrase)
         else {
             model.show(banner: "That line can't be logged any more.")
             return
