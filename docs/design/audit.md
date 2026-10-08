@@ -6,7 +6,7 @@ Design direction (decided): **stock iOS done well.** Tighten hierarchy, spacing,
 
 Severity: **must** = breaks a plan target or a stated requirement; **should** = visible quality gap that the screen pass ought to fix; **nice** = polish.
 
-Paths are relative to `Omnomnom/` unless they start with `docs/` or `App/`.
+Paths are relative to `Omnomnom/` unless they start with `docs/` or `App/`. They are where the code was when this was written: a file and line reference here is a pointer to a finding, not a claim about the current tree, and some small types have since moved in beside their only caller. The findings are the point; the paths are how they were found.
 
 ---
 
