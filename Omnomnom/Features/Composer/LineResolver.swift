@@ -454,6 +454,22 @@ struct LineResolver {
     ///
     /// All-or-nothing: a validator that throws, is cancelled or answers short leaves the
     /// whole line unchecked rather than some rows checked and others not.
+    ///
+    /// **A row the product rung won is not the validator's to judge, and leaving it in was
+    /// a bug with teeth.** Inclusion is decided by the shortlist, which is stored for every
+    /// item whichever source then won the row — so once Open Food Facts began competing
+    /// rather than rescuing, a product that beat the tables on score was handed to the model
+    /// as an item whose candidates were the table rows it had just beaten. Both answers
+    /// available to the model then threw it away: an id swapped the row onto a table row,
+    /// and 0 — the honest answer, since the food the user ate is not on the list — emptied
+    /// the row and blocked the log. So the thing `tablesWin` decided was undone a moment
+    /// later by a question that could not be answered correctly.
+    ///
+    /// Skipping those rows is what the rest of the app already says happens: `RowOrigin`
+    /// reads "Matched by name, Open Food Facts" with no checked branch at all, and the
+    /// sign-off screen is what stands behind a product instead. It also restores the
+    /// behaviour that held before the rung competed, when a product only ever appeared
+    /// where the tables were empty and the shortlist was empty with them.
     private func check(
         line: String, items resolvable: [ResolvableItem], shortlists: [UUID: [FoodMatch]],
         rows: inout [ResolvedRow]
@@ -464,7 +480,8 @@ struct LineResolver {
         var itemMatches: [Int: [FoodMatch]] = [:]
         for item in resolvable {
             guard let shortlist = shortlists[item.id], !shortlist.isEmpty,
-                  let rowIndex = rows.firstIndex(where: { $0.id == item.id })
+                  let rowIndex = rows.firstIndex(where: { $0.id == item.id }),
+                  rows[rowIndex].origin != .product
             else { continue }
             let number = items.count + 1
             itemRows[number] = rowIndex

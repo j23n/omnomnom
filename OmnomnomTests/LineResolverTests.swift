@@ -618,6 +618,64 @@ struct LineResolverTests {
         #expect(row.blocks)
     }
 
+    @Test func aProductThatWonIsNeverHandedToTheValidator() async throws {
+        // The validator's candidates are the table rows, so an item whose row the product
+        // rung won cannot be answered correctly: naming an id moves the row onto a table
+        // row it already beat, and 0 empties it. Neither is a judgment about the food, so
+        // the row is not offered at all — and the table row beside it still is.
+        let context = try makeContext()
+        let repository = FakeRepository(hits: [
+            "oats": [bundled(5, "Biscuits, oat"), bundled(1, "Oats, rolled")],
+            "oat bar": [bundled(9, "Oat flakes")],
+        ])
+        let validator = FakeValidator(verdicts: [
+            MatchVerdict(item: 1, candidate: 1, certainty: .certain),
+        ])
+        let resolver = LineResolver(
+            context: context, repository: repository, validator: validator,
+            products: { $0 == "oat bar" ? Self.product("Oatly Oat Bar", score: 0.95) : nil },
+            estimator: FakeEstimator()
+        )
+        let resolution = await resolver.resolve("oats and oat bar")
+        #expect(resolution.rows.count == 2)
+        // One verdict for a line of two rows, and the line still counts as checked: the
+        // product row was left out of the count as well as out of the prompt, so the
+        // all-or-nothing rule is not tripped by its absence.
+        #expect(resolution.wasChecked)
+        #expect(resolution.rows.first?.origin == .database)
+        #expect(resolution.rows.first?.choice?.name == "Oats, rolled")
+        #expect(resolution.rows.first?.confidence == .settled)
+        #expect(resolution.rows.last?.origin == .product)
+        #expect(resolution.rows.last?.choice?.name == "Oatly Oat Bar")
+        #expect(resolution.rows.last?.confidence == .probable)
+    }
+
+    @Test func aVerdictOfNoneOfTheseCannotEmptyAProductRow() async throws {
+        // The sharp case. "None of these" is the honest answer to a list of table rows
+        // that does not hold the food the person ate — and applied to the product row it
+        // threw away a good match and blocked the log. The verdict is never asked for now,
+        // so a line of nothing but products reads as unchecked, which is what the sign-off
+        // screen already assumed: it offers its unchecked notice only where a row came
+        // from the tables.
+        let context = try makeContext()
+        let repository = FakeRepository(hits: ["oat bar": [bundled(9, "Oat flakes")]])
+        let validator = FakeValidator(verdicts: [
+            MatchVerdict(item: 1, candidate: 0, certainty: .unsure),
+        ])
+        let resolver = LineResolver(
+            context: context, repository: repository, validator: validator,
+            products: { _ in Self.product("Oatly Oat Bar", score: 0.95) },
+            estimator: FakeEstimator()
+        )
+        let resolution = await resolver.resolve("oat bar")
+        let row = try #require(resolution.rows.first)
+        #expect(row.origin == .product)
+        #expect(row.choice?.name == "Oatly Oat Bar")
+        #expect(row.confidence == .probable)
+        #expect(resolution.canLog)
+        #expect(!resolution.wasChecked)
+    }
+
     // MARK: - Which of the two answers better
 
     @Test func withNoProductTheTablesAnswerWhateverTheyScored() {
