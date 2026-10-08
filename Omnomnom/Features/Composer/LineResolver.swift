@@ -169,8 +169,18 @@ struct LineResolver {
         if let driver {
             return await resolve(input, line: line, driving: driver)
         }
-        guard let estimate = await estimate(input) else {
+        guard let estimator else {
+            AppLog.estimation.info("no estimator configured; nothing to resolve")
             return LineResolution(line: line, rows: [], wasChecked: false)
+        }
+        let estimate: MealEstimate
+        do {
+            estimate = try await estimator.estimate(input)
+        } catch {
+            AppLog.estimation.info("estimate failed: \(error.localizedDescription, privacy: .public)")
+            return LineResolution(
+                line: line, rows: [], wasChecked: false, failure: Self.sentence(for: error)
+            )
         }
         let items = ResolvableItem.items(of: estimate)
         guard !items.isEmpty else {
@@ -196,22 +206,21 @@ struct LineResolver {
         )
     }
 
-    /// What the model made of the input, or `nil` when none would answer.
+    /// What to put in front of the user when a model failed, or `nil` where there is
+    /// nothing to say.
     ///
-    /// A failure is logged and swallowed. The composer shows an empty resolution the same
-    /// way it shows a line with no food in it, because from the user's side those are the
-    /// same situation: nothing to sign off, and the other ways in are still there.
-    private func estimate(_ input: EstimationInput) async -> MealEstimate? {
-        guard let estimator else {
-            AppLog.estimation.info("no estimator configured; nothing to resolve")
-            return nil
-        }
-        do {
-            return try await estimator.estimate(input)
-        } catch {
-            AppLog.estimation.info("estimate failed: \(error.localizedDescription, privacy: .public)")
-            return nil
-        }
+    /// Every one of these sentences names something the user can go and fix — a refused
+    /// key, an address that cannot be reached, a request the API rejected and quoted the
+    /// field of. Saying "nothing in that looked like a food" instead sends someone back to
+    /// rewrite a line that was fine, which is the one thing the composer's own copy rules
+    /// out elsewhere.
+    ///
+    /// Cancellation is the exception: the user typed on, the answer is about a line they
+    /// have moved past, and there is nothing for them to do.
+    static func sentence(for error: any Error) -> String? {
+        let mapped = EstimationError.map(error)
+        guard mapped != .cancelled else { return nil }
+        return mapped.errorDescription
     }
 
     // MARK: - Rung one and two: what the user already asserted

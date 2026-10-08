@@ -161,6 +161,14 @@ nonisolated struct LineResolution: Identifiable, Hashable, Sendable {
     /// model that fails or times out partway through a line counts as absent for the
     /// whole line.
     let wasChecked: Bool
+    /// Why nothing came back, when something went wrong rather than nothing being found.
+    ///
+    /// The composer used to say "Nothing in that looked like a food" for both, which is a
+    /// true sentence about an empty line and a misleading one about a refused key, an
+    /// endpoint that is down, or a request the API rejected. Those are all things the user
+    /// can go and fix, and none of them is about what they typed. `nil` means the model
+    /// answered and there was genuinely nothing in the line.
+    let failure: String?
     /// Which meal this is, as the model judged it from the foods — oats mean breakfast
     /// whatever the clock says. `nil` when nothing judged it: a line that came back from
     /// memory carries the slot it was last logged in instead, and a line with no model
@@ -190,13 +198,14 @@ nonisolated struct LineResolution: Identifiable, Hashable, Sendable {
 
     init(
         id: UUID = UUID(), line: String, rows: [ResolvedRow], wasChecked: Bool,
-        meal: MealSlot? = nil
+        meal: MealSlot? = nil, failure: String? = nil
     ) {
         self.id = id
         self.line = line
         self.rows = rows
         self.wasChecked = wasChecked
         self.meal = meal
+        self.failure = failure
     }
 
     /// Puts an edited row back where it was, by identity.

@@ -245,13 +245,29 @@ nonisolated enum AnthropicPayload {
         return ToolCall(id: id, tool: name, term: block["input"]?["term"]?.stringValue ?? "")
     }
 
+    /// What the body says about a failure, in whichever shape it arrived.
+    ///
+    /// The envelope first, and a capped preview of the body when that finds nothing. The
+    /// fallback is worth having rather than tidy: "the API answered 400." with no detail
+    /// is a dead end for whoever has to fix it, and the one thing that always names the
+    /// offending field is the body. Shown and never logged — an error body can quote back
+    /// what the user typed.
+    static func detail(in body: Data) -> String? {
+        if let message = RemoteEstimatePayload.message(in: body) { return message }
+        let collapsed = RemoteEstimatePayload.preview(of: body)
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+        guard !collapsed.isEmpty else { return nil }
+        return String(collapsed.prefix(RemoteEstimatePayload.maximumErrorMessageLength))
+    }
+
     /// What to show for a non-2xx answer.
     ///
     /// The error envelope and the words servers use for a prompt that did not fit are the
     /// other remote path's, reused rather than copied: an error body shaped
     /// `{"error": {"message": …}}` is read the same way whoever sent it.
     static func error(status: Int, body: Data) -> EstimationError {
-        let reason = RemoteEstimatePayload.message(in: body)
+        let reason = detail(in: body)
         switch status {
         case 401, 403:
             return .unavailable("The API refused the key. Check it in Settings.")

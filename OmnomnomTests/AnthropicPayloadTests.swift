@@ -294,6 +294,26 @@ struct AnthropicPayloadTests {
         #expect(message.contains("max_tokens"))
     }
 
+    @Test func aBodyInNoShapeThisAppKnowsIsStillShown() throws {
+        // The last resort, and the state this path was in when a real 400 arrived: with
+        // nothing readable in the envelope there was nothing on screen to say which field
+        // the API disliked.
+        let body = Data("Bad Request: unexpected field 'thinking' for this model".utf8)
+        guard case .failed(let message) = AnthropicPayload.error(status: 400, body: body) else {
+            Issue.record("expected a failure")
+            return
+        }
+        #expect(message.contains("unexpected field"))
+    }
+
+    @Test func anEmptyBodyLeavesTheStatusToSpeakForItself() throws {
+        guard case .failed(let message) = AnthropicPayload.error(status: 500, body: Data()) else {
+            Issue.record("expected a failure")
+            return
+        }
+        #expect(message == "the API answered 500.")
+    }
+
     @Test func aPromptThatDidNotFitIsSaidAsLengthRatherThanAsAnError() {
         let body = Data(#"{"error":{"message":"prompt is too long: 1200000 tokens > maximum context length"}}"#.utf8)
         #expect(AnthropicPayload.error(status: 400, body: body) == .tooLong)

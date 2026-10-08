@@ -183,8 +183,6 @@ struct LineResolverToolsTests {
     }
 
     @Test func aDriverThatFailsLeavesNothingRatherThanThrowing() async throws {
-        // From the user's side an empty sheet and a failure are the same situation:
-        // nothing to sign off, and the other ways in are still there.
         let context = try makeContext()
         let fake = driver(items: [item(candidate: 1)], offering: [match(1, "Oat flakes")])
         fake.failure = .failed("the API was unreachable")
@@ -192,6 +190,27 @@ struct LineResolverToolsTests {
 
         #expect(resolution.isEmpty)
         #expect(!resolution.wasChecked)
+        // And it says which failure. An empty sheet and a refused key are the same
+        // picture, and only one of them is about what the user typed — "nothing in that
+        // looked like a food" sends someone back to rewrite a line that was fine.
+        #expect(resolution.failure == "Estimation failed: the API was unreachable")
+    }
+
+    @Test func aRefusedKeyReadsAsSomethingToGoAndFix() async throws {
+        let context = try makeContext()
+        let fake = driver(items: [], offering: [])
+        fake.failure = .unavailable("The API refused the key. Check it in Settings.")
+        let resolution = await resolver(context, fake).resolve("spaghetti")
+        #expect(resolution.failure == "The API refused the key. Check it in Settings.")
+    }
+
+    @Test func beingCancelledSaysNothingBecauseThereIsNothingToDo() async throws {
+        // The user typed on. The answer is about a line they have moved past, and a
+        // banner about it would be noise over the line they are writing now.
+        let context = try makeContext()
+        let fake = driver(items: [], offering: [])
+        fake.failure = .cancelled
+        #expect(await resolver(context, fake).resolve("oats").failure == nil)
     }
 
     @Test func aLineLoggedBeforeNeverReachesTheModel() async throws {

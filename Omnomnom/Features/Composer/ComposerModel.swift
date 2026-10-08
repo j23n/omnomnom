@@ -80,7 +80,10 @@ final class ComposerModel {
             guard !Task.isCancelled, let self else { return }
             isResolving = false
             if resolved.isEmpty {
-                banner = Self.nothingFound(canRead: resolver.canReadALine)
+                // What went wrong, where something did. A failure the user can act on
+                // beats a sentence about their typing, and the two are indistinguishable
+                // from an empty sheet.
+                banner = resolved.failure ?? Self.nothingFound(canRead: resolver.canReadALine)
                 return
             }
             resolution = resolved

@@ -26,7 +26,9 @@ extension LineResolver {
             driven = try await driver.resolve(input)
         } catch {
             AppLog.estimation.info("line unresolved: \(error.localizedDescription, privacy: .public)")
-            return LineResolution(line: line, rows: [], wasChecked: false)
+            return LineResolution(
+                line: line, rows: [], wasChecked: false, failure: LineResolver.sentence(for: error)
+            )
         }
         var rows: [ResolvedRow] = []
         for item in driven.answer.items {
