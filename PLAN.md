@@ -27,7 +27,7 @@ The motivating target is the redesigned Health app's Longevity tab, which scores
 | Products | Opt-in; Open Food Facts looked up by barcode or searched by name, cached locally |
 | Input | One line of text or speech, with an optional photo, read by a model; search and barcode remain the way in |
 | Amounts | Portion buckets against the last amount; grams canonical underneath and still reachable |
-| Trends | Energy, protein and fiber over time, plus data coverage |
+| Trends | All eight nutrients over time, plus data coverage |
 | On-device AI | Core path, not a module: names the foods in what was written, and checks each match. Apple Intelligence, or an endpoint the user sets; with neither, only a line logged before resolves |
 | AI estimation | Opt-in, and the gate the composer's own camera asks too; same model, same prompt, same matcher |
 | Meals | Remembered from what was logged, not built by weighing; `Recipe` in the schema for a batch cooked and portioned |
@@ -109,9 +109,9 @@ HealthKit is the main friction point with strict concurrency. Its completion-han
 
 Two unavoidable exceptions, both contained.
 
-`DataScannerViewController` is UIKit, and there is no SwiftUI-native barcode scanner. It needs a `UIViewControllerRepresentable` wrapper of roughly forty lines, confined to the opt-in barcode module.
+`DataScannerViewController` is UIKit, and there is no SwiftUI-native barcode scanner. It needs a `UIViewControllerRepresentable` wrapper, confined to the opt-in barcode module.
 
-SwiftData cannot open a prebuilt read-only FTS5 database. The app opens `foods.sqlite` through the SQLite C API that ships with iOS, which includes FTS5, behind a thin Swift wrapper: open read-only, three prepared statements (FTS5 match, food by id, portions by food id), rows decoded into value types. Roughly a hundred lines, no third-party dependency. The wrapper is an actor so search runs off the main actor without further ceremony.
+SwiftData cannot open a prebuilt read-only FTS5 database. The app opens `foods.sqlite` through the SQLite C API that ships with iOS, which includes FTS5, behind a thin Swift wrapper: open read-only, four prepared statements (FTS5 match, food by id, portions by food id, and one metadata read), rows decoded into value types. A couple of hundred lines, no third-party dependency. The wrapper is an actor so search runs off the main actor without further ceremony.
 
 ### Everything that needs gating
 
@@ -231,15 +231,17 @@ SwiftData, local-only. `Tag` and `Photo` sit beside the four core entities, and 
 | Entity | Holds |
 | --- | --- |
 | `Food` | A bundled reference by id, an Open Food Facts cache entry, or a user-created custom food |
-| `Recipe` | Name, servings count. A batch dish, no longer the mechanism for repetition |
-| `RecipeIngredient` | Food reference plus grams |
+| `Recipe` | Name, servings count, its ingredients, and what it was last used for. A batch dish, no longer the mechanism for repetition |
+| `RecipeIngredient` | A frozen copy of the food's name, unit and per-100 values, plus the amount and a `sortIndex`. The food reference is display only |
 | `LogEntry` | What, how much, timestamp, meal slot, frozen nutrition snapshot, HealthKit sync state, `origin` |
 | `Phrase` | A normalised typed line, and what it resolved to last time |
 | `PhraseItem` | One food reference plus an amount, with a `sortIndex` |
 | `BaselinePhrase` | A phrase the user eats by default, plus its meal slot |
-| `DayRecord` | One date: whether the user marked it complete. Nothing else |
+| `DayRecord` | One date: whether the user marked it complete, and which meals they said held nothing |
+| `Tag` | A label the user put on a custom food or a recipe |
+| `Photo` | The user's own picture of a food, a recipe or an entry |
 
-`LogEntry.origin` is new and says how the entry came to exist: typed, dictated, photographed, picked from search, repeated, or accepted from the baseline. It is display and coverage information, never behaviour — nothing branches on it in the write path — and it is what lets an accepted baseline day stay distinguishable from a typed one a month later.
+`LogEntry.origin` says how the entry came to exist: typed, dictated, picked from search, or accepted from the baseline. It is display and coverage information, never behaviour — nothing branches on it in the write path — and it is what lets an accepted baseline day stay distinguishable from a typed one a month later.
 
 `Phrase` is the memory the natural-language path runs on, and it obeys the same CloudKit rules as everything else: no unique attribute, so a normalised string is resolved case-insensitively in code at write time, exactly as `Tag` names already are. `PhraseItem` carries its own `sortIndex` rather than relying on an ordered relationship.
 
