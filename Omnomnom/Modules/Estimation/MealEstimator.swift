@@ -17,8 +17,10 @@ nonisolated protocol MealEstimating: Sendable {
 
 /// Runs one request against the on-device model. A session is created per request
 /// with the fixed instructions and discarded; nothing is kept between calls. Greedy
-/// sampling so the same input gives the same numbers. The photo path lives in
-/// `MealEstimator+Photo`, the one place that touches the iOS 27 image API.
+/// sampling so the same input gives the same numbers. No tools: this is the one request
+/// with no searching in it, which is why its prompt still describes the wording a
+/// composition table uses — see `EstimationPrompt`. The photograph goes through
+/// `PhotoPrompt`, the one place that touches the iOS 27 image API.
 actor FoundationMealEstimator: MealEstimating {
     init() {}
 
@@ -38,9 +40,10 @@ actor FoundationMealEstimator: MealEstimating {
                 return response.content
             case .photo(let data, let description):
                 guard #available(iOS 27, *) else { throw EstimationError.photoUnavailable }
-                let estimate = try await respond(
+                let estimate = try await PhotoPrompt.respond(
                     session: session, imageData: data,
-                    text: EstimationPrompt.photoText(description: description), options: options
+                    text: EstimationPrompt.photoText(description: description),
+                    generating: MealEstimate.self, options: options
                 )
                 try Task.checkCancellation()
                 AppLog.estimation.info("photo estimate: \(estimate.items.count) items")

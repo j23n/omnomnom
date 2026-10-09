@@ -95,7 +95,7 @@ struct EstimationProviderView: View {
             Section {
                 Text(availability.message)
             } footer: {
-                Text("Apple Intelligence runs the model on this iPhone. Nothing is sent anywhere and it works with no network at all.")
+                Text(Self.onDeviceFooter)
             }
         }
     }
@@ -268,6 +268,18 @@ struct EstimationProviderView: View {
 
         Nothing else travels: your log and Health stay on this device. Where the address \
         points and what is kept there is between you and whoever runs it.
+        """
+
+    /// The on-device arm's only footer. It is the one provider with nothing to configure,
+    /// so this is where the thing worth knowing about it goes: it reads a line as the other
+    /// two do, by searching the database, and it is the only one that does so without
+    /// sending anything anywhere.
+    private static let onDeviceFooter = """
+        Apple Intelligence runs the model on this iPhone. It reads what you write on Today \
+        and searches your food database to do it, and it works with no network at all.
+
+        Nothing is sent anywhere, so nothing here needs a key. A much smaller model than \
+        the other two choices, so expect to correct it more often on the sign-off screen.
         """
 
     private static let keyFooter = """

@@ -124,7 +124,7 @@ struct SettingsView: View {
         """
         Barcode scans run on this device. Looking up a product sends its barcode to Open Food Facts; results are kept on this device.
 
-        Product search sends what you type to Open Food Facts, so branded products can be found by name. The bundled database holds generic foods only and never a brand. With this on, a line you send is looked up there as well, food by food, and whichever answers better is what the sign-off screen shows.
+        Product search sends what you type to Open Food Facts, so branded products can be found by name. The bundled database holds generic foods only and never a brand. With this on, the model reading a line can search there too, and it chooses between a branded product and a generic row itself rather than the two being scored against each other.
 
         \(Self.estimationNote(for: provider))
         """
@@ -133,11 +133,11 @@ struct SettingsView: View {
     private static func estimationNote(for provider: EstimationProvider) -> String {
         switch provider {
         case .onDevice:
-            "Estimates are produced on this device by Apple Intelligence. Nothing is sent anywhere. They are rough and you confirm every value before it is logged."
+            "Lines are read on this device by Apple Intelligence, which searches the food database here to do it. Nothing is sent anywhere. Estimates are rough and you confirm every value before it is logged."
         case .anthropic:
             "Lines are resolved by Claude, so the meal you type is sent to Anthropic. It searches the food database for you, and the rows it reads travel back with the conversation. Estimates are rough and you confirm every value before it is logged."
         case .remote:
-            "Estimates are produced by the endpoint you entered, so the meal you type is sent to it. They are rough and you confirm every value before it is logged."
+            "Lines are resolved by the endpoint you entered, so the meal you type is sent to it. It searches the food database for you, and the rows it reads travel back with the conversation. Estimates are rough and you confirm every value before it is logged."
         }
     }
 }

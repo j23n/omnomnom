@@ -4,13 +4,12 @@ import Security
 /// Which model is asked about a meal.
 ///
 /// Reading what someone writes on Today means searching this app's database, which a model
-/// does by calling a tool for it. Only the two remote options do, and that is a gap in this
-/// app rather than a limit of the device: `FoundationModels` has had tool calling since
-/// iOS 26 — a `Tool` with a name, a description, `@Generable` arguments and `call`, handed
-/// to `LanguageModelSession(tools:)` — and iOS 27 adds a mode for governing when the model
-/// may use one. Nobody has written the conformer, so on device answers the Add screen's
-/// estimate and nothing on Today, neither a typed line nor a photo attached beside one.
-/// `docs/OPEN-QUESTIONS.md` carries what it would take.
+/// does by calling a tool for it. All three do: `FoundationModels` has had tool calling
+/// since iOS 26, so the on-device model gets the same two searches under the same names as
+/// the two remote ones, and a line resolves the same way whichever answered. What differs is
+/// who runs the conversation — the framework does on device, by hand over HTTP — and how
+/// good a much smaller model is at choosing among the rows, which is the open question in
+/// `docs/OPEN-QUESTIONS.md` and needs a device to answer rather than an argument.
 ///
 /// On-device still leads, because it costs nothing, works without a network and sends
 /// nothing anywhere. The remote options exist because Apple Intelligence is absent on
@@ -39,7 +38,7 @@ nonisolated enum EstimationProvider: String, CaseIterable, Codable, Sendable {
     var detail: String {
         switch self {
         case .onDevice:
-            "Apple Intelligence, for the estimate on the Add screen. Nothing leaves the device. It does not yet read what you write on Today, which needs a model that searches the food database for you."
+            "Apple Intelligence. It reads what you write on Today and searches your food database to do it, all on this iPhone. Nothing leaves the device and it costs nothing."
         case .anthropic:
             "Anthropic's API, with a key of yours. It searches this app's food database itself, and what you type is sent to it."
         case .remote:
@@ -223,18 +222,20 @@ nonisolated enum EstimationKeychain {
 ///
 /// One place, because a second reading of these defaults would be a second chance to
 /// disagree about which model is answering. `nil` means none will — a provider chosen and
-/// not yet configured, or one with no driver written for it yet — and the caller says so
+/// not yet configured, and on device a model the device will not run — and the caller says so
 /// rather than failing: search and the barcode scanner are how the app is used when no
 /// model will answer.
 nonisolated enum Estimators {
     /// The model that will read a line, or `nil` when none will.
     ///
-    /// `nil` means one of two things the caller need not tell apart: the chosen provider
-    /// has no driver written for it, or it has one and has not been configured yet. Either
-    /// way the composer says so in the one sentence it has, and search and the scanner
-    /// still work. Asking for the driver is also how `LineResolver` learns whether a line
-    /// can be read at all, which is better than reading the provider setting a second time
-    /// and risking a different answer.
+    /// All three providers have a driver now, so `nil` means one thing: the chosen one is
+    /// not ready. A key not pasted in, an address that does not parse, or — on device —
+    /// hardware that cannot run the model, Apple Intelligence switched off, or assets still
+    /// downloading. The caller need not tell those apart: the composer says so in the one
+    /// sentence it has, Settings says which it is, and search and the scanner still work.
+    /// Asking for the driver is also how `LineResolver` learns whether a line can be read at
+    /// all, which is better than reading the provider setting a second time and risking a
+    /// different answer.
     ///
     /// A switch rather than a guard, so that adding a provider is a compile error here. The
     /// searches are passed in because they belong to the device — the tables and the store
@@ -243,7 +244,12 @@ nonisolated enum Estimators {
     static func driver(searching searcher: any LineSearching) -> (any LineDriving)? {
         switch chosen() {
         case .onDevice:
-            return nil
+            // The one provider whose readiness is a property of the device rather than of
+            // something typed in: eligible hardware, Apple Intelligence switched on, and
+            // the assets downloaded. `nil` here is the same "not configured" the other two
+            // mean by a missing key, and Settings already says which of the three it is.
+            guard EstimationAvailability.current().isAvailable else { return nil }
+            return FoundationLineResolver(searcher: searcher)
         case .anthropic:
             let settings = anthropicSettings()
             guard settings.isUsable else { return nil }
@@ -260,11 +266,15 @@ nonisolated enum Estimators {
         }
     }
 
-    /// Defaults to the device, which has sent nothing anywhere and needs no key. It is no
-    /// longer true that a first run needs no decision before everything works: the device
-    /// cannot read a typed line, so the composer asks for a provider to be chosen, in the
-    /// one sentence it has to say it in. Defaulting to a remote provider instead would
-    /// trade that for a first run that needs a key pasted in, which is worse.
+    /// Defaults to the device, which sends nothing anywhere and needs no key — and, now that
+    /// it has a driver, a first run needs no decision before everything works. That was the
+    /// intent of this default all along and was briefly untrue: for as long as the only
+    /// drivers were remote, the app as installed could answer a line only from memory and
+    /// the composer had to ask for a provider to be chosen. Nothing about the default
+    /// changed to fix that; what changed is that the default now reads a line.
+    ///
+    /// On a device with no Apple Intelligence it still asks, because there the choice is
+    /// real: the fix is a key, and the one sentence the composer has says so.
     private static func chosen() -> EstimationProvider {
         guard let raw = UserDefaults.standard.string(forKey: EstimationProvider.key),
               let provider = EstimationProvider(rawValue: raw)
