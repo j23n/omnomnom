@@ -4,11 +4,13 @@ import Security
 /// Which model is asked about a meal.
 ///
 /// Reading what someone writes on Today means searching this app's database, which a model
-/// does by calling a tool for it. The two remote options can. Apple's on-device model takes
-/// no tools, so it answers the Add screen's estimate and nothing on Today — neither a typed
-/// line nor a photo attached beside one, both of which go down the same path. That is the
-/// one real cost of having deleted the retrieval the app used to do on a model's behalf,
-/// and `docs/OPEN-QUESTIONS.md` carries what might be done about it.
+/// does by calling a tool for it. Only the two remote options do, and that is a gap in this
+/// app rather than a limit of the device: `FoundationModels` has had tool calling since
+/// iOS 26 — a `Tool` with a name, a description, `@Generable` arguments and `call`, handed
+/// to `LanguageModelSession(tools:)` — and iOS 27 adds a mode for governing when the model
+/// may use one. Nobody has written the conformer, so on device answers the Add screen's
+/// estimate and nothing on Today, neither a typed line nor a photo attached beside one.
+/// `docs/OPEN-QUESTIONS.md` carries what it would take.
 ///
 /// On-device still leads, because it costs nothing, works without a network and sends
 /// nothing anywhere. The remote options exist because Apple Intelligence is absent on
@@ -37,7 +39,7 @@ nonisolated enum EstimationProvider: String, CaseIterable, Codable, Sendable {
     var detail: String {
         switch self {
         case .onDevice:
-            "Apple Intelligence, for the estimate on the Add screen. Nothing leaves the device. Reading a line or a photo on Today needs a model that can search the food database itself, which this one cannot."
+            "Apple Intelligence, for the estimate on the Add screen. Nothing leaves the device. It does not yet read what you write on Today, which needs a model that searches the food database for you."
         case .anthropic:
             "Anthropic's API, with a key of yours. It searches this app's food database itself, and what you type is sent to it."
         case .remote:
@@ -221,19 +223,18 @@ nonisolated enum EstimationKeychain {
 ///
 /// One place, because a second reading of these defaults would be a second chance to
 /// disagree about which model is answering. `nil` means none will — a provider chosen and
-/// not yet configured, or one that cannot read a line at all — and the caller says so
+/// not yet configured, or one with no driver written for it yet — and the caller says so
 /// rather than failing: search and the barcode scanner are how the app is used when no
 /// model will answer.
 nonisolated enum Estimators {
     /// The model that will read a line, or `nil` when none will.
     ///
     /// `nil` means one of two things the caller need not tell apart: the chosen provider
-    /// takes no tools, so it cannot search this app's database and has nothing to read a
-    /// line with, or it can but has not been configured yet. Either way the composer says
-    /// so in the one sentence it has, and search and the scanner still work. Asking for the
-    /// driver is also how `LineResolver` learns whether a line can be read at all, which is
-    /// better than reading the provider setting a second time and risking a different
-    /// answer.
+    /// has no driver written for it, or it has one and has not been configured yet. Either
+    /// way the composer says so in the one sentence it has, and search and the scanner
+    /// still work. Asking for the driver is also how `LineResolver` learns whether a line
+    /// can be read at all, which is better than reading the provider setting a second time
+    /// and risking a different answer.
     ///
     /// A switch rather than a guard, so that adding a provider is a compile error here. The
     /// searches are passed in because they belong to the device — the tables and the store

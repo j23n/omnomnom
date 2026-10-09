@@ -1422,9 +1422,13 @@ neither switch; it goes through `LineResolver.app` as the composer does, so a sp
 governed by the same two.
 
 **What on device lost, which is the price of one path.** Apple's Foundation Models path does
-not conform to `LineDriving` and cannot: it takes no tools, so it would be back to guessing
-a term, and that guess is the thing the validator existed to paper over — the case measured
-in this log is "Pasta, cooked" answered with *Fish, cooked (average)*, settled and unasked.
+not conform to `LineDriving`. Recorded wrongly here at first, as though it could not: the
+framework has had tool calling since iOS 26 — a `Tool` with a name, a description,
+`@Generable` arguments and `call`, given to `LanguageModelSession(tools:)` — and iOS 27 adds
+a mode governing when the model may use one. So the conformer is writable and merely was not
+written. What the ladder did instead was guess a term rather than search for one, which is
+the thing the validator existed to paper over — the case measured in this log is
+"Pasta, cooked" answered with *Fish, cooked (average)*, settled and unasked.
 So on device reads neither a typed line nor a photograph attached to one in the composer,
 and it is still the default provider: the app as installed answers a line from memory or not
 at all until a key is set. What it keeps is the photograph-and-description estimate on the

@@ -181,26 +181,31 @@ With the ladder deleted, a model that searches the database for itself is the on
 that reads a typed line. This is what follows from that, and not one of these is answerable
 by reading.
 
-32. **Apple's on-device model no longer reads a typed line, and whether it could is a device
-    question.** It takes no tools, so it cannot search the tables, and guessing their
-    wording is exactly what was deleted — the measured case is "Pasta, cooked" resolving to
-    *Fish, cooked (average)*. On device is still the default provider, so out of the box the
-    composer answers only a line logged before. Whether something loop-shaped can be built
-    on Foundation Models at all — a session asked for a search term, handed rows, and asked
-    again, which is the loop done by hand — is not a thing to settle in a document: it needs
-    a device with Apple Intelligence, the real tables, and the twenty-second budget measured
-    against a few real lines. Until somebody runs it, the honest position is that the
-    primary input needs a key.
+32. **Apple's on-device model no longer reads a typed line, and the reason is a missing
+    driver rather than a missing capability.** `FoundationModels` has supported tool calling
+    since iOS 26: a type conforming to `Tool` with a name, a description, `@Generable`
+    arguments and an async `call`, passed to `LanguageModelSession(tools:)`, with the model
+    deciding when to invoke it; iOS 27 adds a mode for governing when it may. So a
+    `FoundationLineResolver` conforming to `LineDriving` is writable with the same two
+    searches the other two drivers are given, and nobody has written it. On device is still
+    the default provider, so out of the box the composer answers only a line logged before.
+    What a document cannot settle is whether it would be *good*: a 3-billion-parameter model
+    choosing among candidate rows, searching again when a word finds nothing, and finishing
+    inside the composer's twenty-second budget is a question for a device with Apple
+    Intelligence, the real tables and a few real lines. The thing to avoid asserting again
+    is that it cannot be done at all.
 33. **The composer's camera went with it, and the choice there is a product decision.** A
     photograph attached in the composer is `.photo` input to the same `LineDriving` path a
-    typed line takes, so on device it cannot be read either and the composer says no model
-    is set up to read it. The Add screen's photo estimate still works on-device by
-    construction, so the capability has moved rather than vanished — but one of three has to
-    be chosen: the composer's photo falls back to a description-only on-device estimate with
-    no database grounding behind it, or the composer's camera button hides itself when the
-    provider cannot read a photograph, or it stays as it is and Settings carries the
-    explanation. Settings currently says the on-device provider "cannot read a typed line",
-    which is honest about the typed case and silent about the photographed one.
+    typed line takes, so on device it goes unread for the same reason — no conformer — and
+    the composer says no model is set up to read it. The Add screen's photo estimate still
+    works on-device by construction, so the capability has moved rather than vanished. If
+    question 32 is answered by writing the driver, this question dissolves with it, because
+    the photograph travels the same path. If it is not, one of three has to be chosen: the
+    composer's photo falls back to a description-only on-device estimate with no database
+    grounding behind it, or the composer's camera button hides itself when the provider has
+    no driver, or it stays as it is and Settings carries the explanation. Settings currently
+    says the on-device provider "does not yet read what you write on Today", which covers
+    both cases but promises a "yet" that nothing is yet committed to.
 34. **"OpenAI-compatible" is a family resemblance, and there is no longer anything to fall
     back to.** `LineDriving` needs a server that takes tool definitions, returns tool calls
     and accepts tool results back, and plenty of what answers at `/v1/chat/completions`
