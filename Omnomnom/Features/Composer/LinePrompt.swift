@@ -56,7 +56,7 @@ nonisolated enum LinePrompt {
         - Never give advice, judgment or health claims.
         """
 
-    /// The two searches, by the names both drivers declare them under.
+    /// The two searches, by the names every driver declares them under.
     ///
     /// Here rather than in either payload because a tool's name and the sentence describing
     /// it are one decision, and the two were already drifting apart across two files: the
@@ -69,21 +69,27 @@ nonisolated enum LinePrompt {
     /// Answered to a call naming a tool this app does not have.
     ///
     /// Every call has to be answered — an unanswered one makes the next request invalid on
-    /// at least one of the two protocols — so a wrong name gets a sentence pointing at the
-    /// right one rather than silence.
+    /// at least one of the two wire protocols — so a wrong name gets a sentence pointing at
+    /// the right one rather than silence. The on-device driver answers it too, where the
+    /// case it covers is a product search called with its opt-in off.
     static let noSuchSearch = "There is no such search. Use \(foodTool)."
 
     /// How many round trips one line may take before the app gives up.
     ///
     /// Enough for a model to search for every food, read the results and search again for
     /// the ones that found nothing; small enough that a model which will not stop searching
-    /// costs a bounded number of requests rather than a bill. One number for both drivers,
-    /// because it is a judgment about how a model behaves and not about whose server it is
-    /// running on.
+    /// costs a bounded number of requests rather than a bill. One number for both drivers
+    /// that count, because it is a judgment about how a model behaves and not about whose
+    /// server it is running on.
+    ///
+    /// It does not reach the on-device driver, which does not write the conversation and so
+    /// never gets to stop it — the framework decides there, and that path is unbounded.
+    /// `docs/OPEN-QUESTIONS.md` holds what to do about it.
     static let maximumRounds = 5
 
-    /// Said when the model is still searching after `maximumRounds`. Shared verbatim: the
-    /// words name the model rather than the endpoint, so there is nothing per-path in them.
+    /// Said when the model is still searching after `maximumRounds`. Shared verbatim by the
+    /// two drivers that can say it: the words name the model rather than the endpoint, so
+    /// there is nothing per-path in them.
     static let keptSearching = "the model kept searching without answering. Try again, or describe the meal more plainly."
 
     /// What the food search is for, as the model reads it.

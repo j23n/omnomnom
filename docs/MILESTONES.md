@@ -1451,3 +1451,118 @@ Unbuilt, and more so than usual. There is still no Swift toolchain here, so noth
 compiled or run, and a deletion of this shape is exactly what a compiler finds cheaply and
 reading does not. The tests of the deleted machinery went with it. The first build is still
 the thing to do next.
+
+## On device holds the search too
+
+**This follows a correction, and the correction belongs in the record.** "The ladder comes
+out" said Apple's Foundation Models path could not conform to `LineDriving` because the
+model takes no tools. That was wrong rather than out of date: `FoundationModels` has had
+tool calling since iOS 26 and this app's deployment target is 26.0, so the capability was
+there the whole time. That entry has since been amended to say the conformer was writable
+and merely unwritten. `FoundationLineResolver` writes it, and all three providers now read
+a line the same way.
+
+**The same two searches, under the same names.** `FoodSearchTool` and `ProductSearchTool`
+take their `name` and `description` from `LinePrompt`, which is where both remote drivers
+take theirs, and the product one is declared only when its opt-in is on — an undeclared
+tool cannot be called, so the model never spends a turn finding a search empty, and
+`LineSearchRun` refuses it a second time in case a later caller forgets. One arguments
+type serves both tools, because both take exactly a term. On device is the default
+provider, so the app as installed reads a typed line with no key set and nothing leaving
+the device.
+
+**The framework owns the loop, which is the one real difference from the other two.** The
+HTTP drivers send, read the tool calls, run the searches, send the results back and count
+the rounds. Here `session.respond` does all of that: it invokes the tool, puts the output
+into its own transcript and carries on. So there is no round counter,
+`LinePrompt.maximumRounds` does not apply to this path, and there is no equivalent of "the
+model kept searching without answering", because this driver never gets to decide it has
+had enough.
+
+**What that costs is a bound, and it is a gap rather than a trade.** The remote paths stop
+at five round trips of a timed-out request each; `ComposerModel.submit` sets no deadline of
+its own, so this one stops when the framework stops, and a model that keeps calling the
+search keeps the field spinning until the task is cancelled. The task being cancellable is
+all that stands between that and a hang. A deadline means racing `respond` against a sleep
+and cancelling the loser, which is unverifiable concurrency written on a machine with no
+compiler, against a budget nobody has measured — guessing the number would move the gap
+rather than close it. It is written down in `docs/OPEN-QUESTIONS.md` with the measurement
+that has to come first.
+
+**Greedy sampling, so this is the one path that is actually deterministic.** Both remote
+drivers gave up `temperature: 0` because current reasoning models reject it, so the same
+line can resolve two ways there on consecutive days. `samplingMode: .greedy` is accepted
+here, as it already is for the Add screen's estimate, so a line resolved twice resolves
+the same way twice without phrase memory having to hide it.
+
+**`LineSearchRun` is where the invariant lives, and it is a class for a reason.** `Tool` is
+`Sendable`, and a tool is handed to the session once at construction while the pool it
+fills has to be readable afterwards by the resolver that built it. A `@MainActor final
+class` is the simplest thing that is both: the actor protects its state, so the tools carry
+no lock of their own, and it is already where the searches need to run. It holds one
+`LineCandidatePool`, so the ids are one sequence across both searches and an id the run
+never issued reads as "none of these" exactly as 0 does — the same guarantee the other two
+drivers get from the same type, reached a different way.
+
+**The answer shape is a mirror.** `GeneratedLine`, `GeneratedLineItem` and
+`GeneratedCertainty` are `@Generable` versions of `ResolvedLine`, `ResolvedLineItem` and
+`VerdictCertainty`, for the reason `EstimatedMeal` gives for not being `MealSlot`: the
+app's own type should not be a thing a model is asked to produce. `EstimatedMeal` itself is
+reused rather than mirrored, since it was already `@Generable`. Keeping the mirrors in the
+same file is also what keeps the whole provider to one file — no other path gains an import
+or a macro for it — so a model that turns out to choose badly among candidate rows costs
+this file and one switch case to remove.
+
+**The composer's photograph is answered on device again.** A picture attached in the field
+is `.photo` input down the same `LineDriving` path, so it resolves wherever a typed line
+does, on device behind `#available(iOS 27, *)` — the same guard and the same sentence about
+the OS as the Add screen's. `PhotoPrompt` is the one place that touches that API, generic
+over what it generates, and it replaced `MealEstimator+Photo.swift`. That file was kept as
+its own file one entry ago precisely because it was the single caller of the image API;
+there are two callers now, generating two different shapes, so the helper belongs to
+neither of them.
+
+**The Add screen's estimate is untouched, and still has no tools.**
+`FoundationMealEstimator` builds its session without them deliberately: it is one request
+with no searching in it, which is why `EstimationPrompt` still spends five lines describing
+the wording a composition table uses. Two on-device paths, two prompts, two shapes, one
+with tools and one without, and they are not the same thing.
+
+**`Estimators.driver` gates `.onDevice` on availability.**
+`EstimationAvailability.current().isAvailable` means eligible hardware, Apple Intelligence
+switched on and the model assets downloaded, which is this provider's equivalent of the
+other two's missing key — `nil` there is the same "not configured" the caller already
+handles, and Settings says which of the three it is. The provider's own line there now says
+it reads what you write on Today and searches your food database to do it, all on this
+iPhone, and the footer adds that it is a much smaller model than the other two, so expect
+to correct it more often on the sign-off screen. Three sentences in Settings were still
+describing machinery that had gone: the product-search footer said a line was looked up at
+Open Food Facts food by food and whichever answered better was what the sign-off screen
+showed, which was the deleted score arbitration, and the on-device and endpoint notes both
+said estimates were produced where a line is now read.
+
+Tests: eight, on the two parts that do not need a device. Five on `LineSearchRun`, which is
+the shared state the tools write into and therefore where the can't-invent-a-food invariant
+lives on this path — numbering, one id sequence across both searches, a search that found
+nothing saying so, the product search refused when called with the opt-in off, and both
+tools named and described from the one place that owns that. Three on the mapping from the
+generated shape to the app's own, including that 0 survives it. `resolve` itself has no
+test and cannot have one here: `LanguageModelSession` is concrete and the framework owns
+the loop, so there is no seam to put a fake behind, which is in `docs/OPEN-QUESTIONS.md`.
+
+Unbuilt. Nothing has been compiled or run — there is still no Swift toolchain here, and
+verification was a brace, paren and bracket balance scan, greps for residue of the deleted
+extension, and resolving each symbol this file names against its declaration. Two API
+shapes are what a first build would check first. `LanguageModelSession(tools:instructions:)`
+with the instructions as a string is the shape Apple's own tool-calling example uses, and
+the `Tool` conformance matches the reference — but the newer framework is reported to want
+the model passed in rather than defaulted, and if that is so it adds `model:` to this call
+site and to `FoundationMealEstimator` and changes nothing else. And `Attachment(image)`
+inside the prompt builder is carried over unchanged from the deleted extension, so it has
+never been compiled either.
+
+And nobody has measured whether the on-device model is any good at this. It is wired, not
+proved: a model of roughly three billion parameters choosing among candidate rows,
+searching again under different wording when a term finds nothing, and finishing inside the
+composer's twenty-second budget. That wants a device with Apple Intelligence, the real
+tables and real lines, and it is the honest open question rather than a detail of one.

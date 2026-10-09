@@ -181,31 +181,45 @@ With the ladder deleted, a model that searches the database for itself is the on
 that reads a typed line. This is what follows from that, and not one of these is answerable
 by reading.
 
-32. **Apple's on-device model no longer reads a typed line, and the reason is a missing
-    driver rather than a missing capability.** `FoundationModels` has supported tool calling
-    since iOS 26: a type conforming to `Tool` with a name, a description, `@Generable`
-    arguments and an async `call`, passed to `LanguageModelSession(tools:)`, with the model
-    deciding when to invoke it; iOS 27 adds a mode for governing when it may. So a
-    `FoundationLineResolver` conforming to `LineDriving` is writable with the same two
-    searches the other two drivers are given, and nobody has written it. On device is still
-    the default provider, so out of the box the composer answers only a line logged before.
-    What a document cannot settle is whether it would be *good*: a 3-billion-parameter model
-    choosing among candidate rows, searching again when a word finds nothing, and finishing
-    inside the composer's twenty-second budget is a question for a device with Apple
-    Intelligence, the real tables and a few real lines. The thing to avoid asserting again
-    is that it cannot be done at all.
-33. **The composer's camera went with it, and the choice there is a product decision.** A
-    photograph attached in the composer is `.photo` input to the same `LineDriving` path a
-    typed line takes, so on device it goes unread for the same reason — no conformer — and
-    the composer says no model is set up to read it. The Add screen's photo estimate still
-    works on-device by construction, so the capability has moved rather than vanished. If
-    question 32 is answered by writing the driver, this question dissolves with it, because
-    the photograph travels the same path. If it is not, one of three has to be chosen: the
-    composer's photo falls back to a description-only on-device estimate with no database
-    grounding behind it, or the composer's camera button hides itself when the provider has
-    no driver, or it stays as it is and Settings carries the explanation. Settings currently
-    says the on-device provider "does not yet read what you write on Today", which covers
-    both cases but promises a "yet" that nothing is yet committed to.
+32. **Whether a model that size is any good at this is the open question, and it is
+    unmeasured.** `FoundationLineResolver` conforms to `LineDriving` over the same two
+    searches the other two drivers are given, so the on-device model reads a typed line and
+    the default provider needs no key. What nobody has run is the part that matters: a model
+    of roughly three billion parameters has to choose among candidate rows, search again
+    under different wording when a term finds nothing, and answer inside the composer's
+    twenty-second budget. What to measure is the fixture set of real typed lines the matcher
+    needs anyway, on a device with Apple Intelligence and the real tables — resolved rows
+    per line and per certainty, the same lines read by one of the remote providers for
+    comparison, how often it searches a second time, and how long a line takes end to end.
+    Two things stay unset until that exists. The first is the budget, and therefore the
+    deadline. Nothing bounds this path: the remote drivers stop at `LinePrompt.maximumRounds`
+    round trips of a timed-out request each, `ComposerModel.submit` sets no deadline, and
+    `session.respond` returns when the framework decides it does, so a model that keeps
+    calling the search keeps the field spinning until the task is cancelled — and the task
+    being cancellable is all that stands between that and a hang. A deadline means racing
+    `respond` against a `Task.sleep` and cancelling the loser, and the number it needs is
+    the first thing a measurement produces, so it is written after the measurement rather
+    than guessed before it. The second is the fallback. If the answers are bad, what the app
+    does about it is undecided: fall back to a remote provider where one is configured, say
+    so and leave the line to search, or keep the answer and lean harder on the sign-off
+    screen. Removing the provider outright is cheap by construction, one file and one switch
+    case, which is what keeping it to one file bought.
+33. **The composer's camera is answered on device again, and what is left is iOS 26 and the
+    two screens.** A photograph attached in the composer is `.photo` input to the same
+    `LineDriving` path a typed line takes, so the on-device driver reads it. That much is
+    resolved, and the three options this question used to put up — a description-only
+    on-device estimate with no database grounding behind it, a camera button that hides
+    itself, or Settings carrying the explanation — are moot on a device with Apple
+    Intelligence on iOS 27. Two things are not. The image API is iOS 27 and the typed line
+    is not, so on iOS 26 the same provider reads a line and answers a photograph with
+    "Photos need iOS 27"; the composer's camera button gates only on
+    `UIImagePickerController.isSourceTypeAvailable(.camera)`, so it is offered there
+    regardless, and whether it should be is the product decision that remains. And a device
+    with no Apple Intelligence and no key reads neither, as before. The rest of this is the
+    two photo paths: the module's draft keeps the photo with the entries, the composer's
+    sign-off is where every other input lands and its rows were searched for rather than
+    guessed at, and both work with nothing configured now — so what used to separate them
+    does not.
 34. **"OpenAI-compatible" is a family resemblance, and there is no longer anything to fall
     back to.** `LineDriving` needs a server that takes tool definitions, returns tool calls
     and accepts tool results back, and plenty of what answers at `/v1/chat/completions`
@@ -229,3 +243,15 @@ by reading.
     there is not, those thresholds are a measurement worth keeping written down rather than
     code worth calling. Related: the sign-off sheet's unchecked sentence for a bundled row,
     "Matched by name", now has no path that produces it for the same reason.
+36. **The on-device driver has no seam, so its loop is only ever exercised on a device.**
+    `resolve` builds a real `LanguageModelSession`, which is a concrete type, and the loop
+    inside `respond` is the framework's — that is the whole reason this driver has no loop
+    of its own. The two HTTP drivers are testable because a transport is a protocol and a
+    scripted reply is a value; here there is nothing to put a fake behind, so the tests
+    cover `LineSearchRun` and the mapping out of the generated shape, and the request, the
+    searching and the answer are covered by nothing at all. Whether that wants a seam — a
+    protocol over "ask for this shape, with these tools", with a fake session behind it in
+    tests — or whether on-device behaviour is simply a thing only a device establishes, is
+    open. The cost of a seam is a protocol invented over a framework type for the tests'
+    sake; the cost of going without is that the default provider's path is first run by a
+    user.

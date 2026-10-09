@@ -10,10 +10,11 @@ import Foundation
 /// the guess, score what came back, ask a second model whether the retriever had chosen
 /// well — existed only because the model could not look for itself, and none of it is here.
 ///
-/// Its own file because two types now implement it, over two protocols that have nothing in
-/// common but this shape, and a third could be written without touching either. It lived in
-/// the first conformer's file while there was only one, which read as though the seam were
-/// that provider's idea.
+/// Its own file because three types now implement it and they have nothing in common but
+/// this shape: two speak HTTP, over protocols that resemble each other only distantly, and
+/// the third speaks to a framework on the device and has no conversation to write at all.
+/// It lived in the first conformer's file while there was only one, which read as though the
+/// seam were that provider's idea.
 @MainActor
 protocol LineDriving: Sendable {
     func resolve(_ input: EstimationInput) async throws -> DrivenLine
