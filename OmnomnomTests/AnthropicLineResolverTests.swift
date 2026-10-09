@@ -224,14 +224,14 @@ struct AnthropicLineResolverTests {
 
     @Test func aModelThatKeepsSearchingIsStoppedAtTheRoundLimit() async throws {
         let searcher = FakeLineSearch()
-        let forever = Array(repeating: searchReply(term: "oats"), count: AnthropicPayload.maximumRounds)
+        let forever = Array(repeating: searchReply(term: "oats"), count: LinePrompt.maximumRounds)
         let (subject, transport) = resolver(forever, searcher: searcher)
-        await #expect(throws: EstimationError.failed(AnthropicPayload.keptSearching)) {
+        await #expect(throws: EstimationError.failed(LinePrompt.keptSearching)) {
             try await subject.resolve(.text("oats"))
         }
         // Bounded: a model that will not answer costs a fixed number of requests.
         let rounds = await transport.rounds
-        #expect(rounds == AnthropicPayload.maximumRounds)
+        #expect(rounds == LinePrompt.maximumRounds)
     }
 
     @Test func anEmptyModelFieldSendsTheDefaultRatherThanAnEmptyString() async throws {

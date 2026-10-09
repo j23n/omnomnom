@@ -8,7 +8,7 @@ import Foundation
 /// photograph, and an error from the API can quote either back. That belongs on screen,
 /// where the user is already looking, and never in a log a crash report could carry.
 ///
-/// **Why this is not `RemoteEstimatePayload` with a different URL.** The two are different
+/// **Why this is not `OpenAICompatiblePayload` with a different URL.** The two are different
 /// protocols wearing similar clothes, and the differences are each load-bearing here:
 /// the system prompt is a field rather than a message, `max_tokens` is required, an image
 /// is a base64 block rather than a `data:` URL, the schema lives in `output_config.format`
@@ -24,6 +24,10 @@ import Foundation
 nonisolated enum AnthropicPayload {
     /// The only version header the API takes.
     static let version = "2023-06-01"
+    /// Opts the request into server-side fallbacks, which is where `fallbacks` below is
+    /// read. Sent as a header because this is raw HTTP: there is no Swift SDK to pass a
+    /// `betas` array to, and the app carries no third-party dependency to get one.
+    static let fallbackBeta = "server-side-fallback-2026-07-01"
     /// Offered in Settings as the address to use, and the one the field is placeheld with.
     static let defaultBaseURL = "https://api.anthropic.com/v1"
     /// Offered as the model to use. A plain field rather than a picker, because the model
@@ -37,14 +41,10 @@ nonisolated enum AnthropicPayload {
     /// depth. Low: naming the foods on a plate and picking rows from a list is not a
     /// problem that repays deliberation, and the composer is on a twenty-second budget.
     static let effort = "low"
-    /// How long one round trip may take. Shorter than the OpenAI-compatible path's 45,
-    /// because there are several of these in a resolution rather than one.
+    /// How long one round trip may take. Shorter than the OpenAI-compatible path's 45, and
+    /// not because that path makes fewer requests — it makes the same several — but because
+    /// a hosted API is quick to its first token and a server someone runs at home is not.
     static let timeout: TimeInterval = 30
-    /// How many round trips one line may take before the app gives up. Enough for a model
-    /// to search for every food, read the results and search again for the ones that found
-    /// nothing; small enough that a model which will not stop searching costs a bounded
-    /// number of requests rather than a bill.
-    static let maximumRounds = 5
     /// A reply is a few kilobytes. Anything above this is not one.
     static let maximumBodySize = 1 << 20
     /// Longest side of the photo that is sent, in pixels.
@@ -58,17 +58,13 @@ nonisolated enum AnthropicPayload {
     static let imagePixelSize = 1_024
     static let imageQuality = 0.85
 
-    static let foodTool = "search_foods"
-    static let productTool = "search_products"
-
-    /// Said when a reply arrives that cannot be read as an answer. The same sentence as the
-    /// other two decoding failures, because to the user it is the same event.
+    /// Said when a reply arrives that cannot be read as an answer. The other driver says
+    /// the same thing about its endpoint, because to the user it is the same event; only the
+    /// noun differs, since that one is a server of their own.
     static let unreadableAnswer = "the model's answer could not be read. Try again."
     /// Said when the reply stopped at the token limit, which is half a JSON object and
     /// fails to parse for a reason the user can act on.
     static let cutOff = "the model stopped before it finished answering. Try a shorter description."
-    /// Said when the model is still searching after `maximumRounds`.
-    static let keptSearching = "the model kept searching without answering. Try again, or describe the meal more plainly."
     /// Said when a photo is the only thing given and photos are not allowed out.
     static let photosNotAllowed = """
         Claude is not allowed to see your photos. Turn that on in Settings, \
@@ -145,9 +141,18 @@ nonisolated enum AnthropicPayload {
         // Deliberately absent: `thinking`, which is on by default and cannot be switched
         // off on the current models, so sending anything for it is at best a no-op and at
         // worst a 400; and `temperature`, which is rejected outright.
+        // A safety classifier can decline a request outright. Since the ladder went, a
+        // model reading the line is the only thing that can read one at all, so a refusal
+        // with nothing behind it fails the app's primary input. `"default"` lets the API
+        // route by refusal category rather than this app naming a model list it would then
+        // have to keep current — the same reason the model itself is a field and not a
+        // picker. The one cost is that a gateway standing in for the API has to tolerate
+        // the beta header above; the address is the user's to set, and a gateway that
+        // rejects it says so in the sentence the request already surfaces.
         let request: JSONValue = .object([
             "model": .string(named),
             "max_tokens": .int(maximumTokens),
+            "fallbacks": .string("default"),
             "system": .string(LinePrompt.instructions),
             "messages": .array(messages.map(\.json)),
             "tools": .array(tools(searchesProducts: searchesProducts)),
@@ -175,6 +180,7 @@ nonisolated enum AnthropicPayload {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue(version, forHTTPHeaderField: "anthropic-version")
+        request.setValue(fallbackBeta, forHTTPHeaderField: "anthropic-beta")
         if let key = key?.trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty {
             request.setValue(key, forHTTPHeaderField: "x-api-key")
         }
@@ -185,14 +191,14 @@ nonisolated enum AnthropicPayload {
     static func tools(searchesProducts: Bool) -> [JSONValue] {
         var tools = [
             tool(
-                named: foodTool, description: LinePrompt.foodToolDescription,
+                named: LinePrompt.foodTool, description: LinePrompt.foodToolDescription,
                 term: "A food to look for, in whatever wording you want to try"
             )
         ]
         if searchesProducts {
             tools.append(
                 tool(
-                    named: productTool, description: LinePrompt.productToolDescription,
+                    named: LinePrompt.productTool, description: LinePrompt.productToolDescription,
                     term: "A product name or brand to look for"
                 )
             )
@@ -228,6 +234,8 @@ nonisolated enum AnthropicPayload {
             throw EstimationError.failed(unreadableAnswer)
         }
         switch reply.stopReason {
+        // With fallbacks on, a refusal that could be routed was already routed, so one
+        // arriving here means the fallback declined too. There is nothing further to try.
         case "refusal":
             throw EstimationError.guardrail
         case "max_tokens":
@@ -244,7 +252,7 @@ nonisolated enum AnthropicPayload {
         // is one block, and joining would only help a reply that is not the shape asked
         // for — where the first brace to the last one is a better guess anyway.
         guard let spoken = reply.content.first(where: { $0["type"]?.stringValue == "text" })?["text"]?.stringValue,
-              let object = RemoteEstimatePayload.jsonObject(in: spoken),
+              let object = OpenAICompatiblePayload.jsonObject(in: spoken),
               let body = object.data(using: .utf8),
               let answer = try? JSONDecoder().decode(ResolvedLine.self, from: body)
         else { throw EstimationError.failed(unreadableAnswer) }
@@ -270,12 +278,12 @@ nonisolated enum AnthropicPayload {
     /// offending field is the body. Shown and never logged — an error body can quote back
     /// what the user typed.
     static func detail(in body: Data) -> String? {
-        if let message = RemoteEstimatePayload.message(in: body) { return message }
-        let collapsed = RemoteEstimatePayload.preview(of: body)
+        if let message = OpenAICompatiblePayload.message(in: body) { return message }
+        let collapsed = OpenAICompatiblePayload.preview(of: body)
             .split(whereSeparator: \.isWhitespace)
             .joined(separator: " ")
         guard !collapsed.isEmpty else { return nil }
-        return String(collapsed.prefix(RemoteEstimatePayload.maximumErrorMessageLength))
+        return String(collapsed.prefix(OpenAICompatiblePayload.maximumErrorMessageLength))
     }
 
     /// What to show for a non-2xx answer.
@@ -299,7 +307,7 @@ nonisolated enum AnthropicPayload {
         default:
             guard let reason else { return .failed("the API answered \(status).") }
             let lowered = reason.lowercased()
-            if RemoteEstimatePayload.contextMarkers.contains(where: lowered.contains) { return .tooLong }
+            if OpenAICompatiblePayload.contextMarkers.contains(where: lowered.contains) { return .tooLong }
             return .failed("the API answered \(status): \(reason)")
         }
     }

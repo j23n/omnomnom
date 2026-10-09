@@ -4,8 +4,6 @@ import Foundation
 nonisolated enum RowOrigin: Hashable, Sendable {
     /// The whole line came back from a phrase logged before.
     case phrase
-    /// This one food came back from history, inside a line that is otherwise new.
-    case item
     /// Matched in the bundled tables.
     case database
     /// Found in Open Food Facts, which is opt-in and online.
@@ -21,12 +19,12 @@ nonisolated enum RowOrigin: Hashable, Sendable {
     func detail(checked: Bool) -> String {
         switch self {
         case .phrase: "From a line you logged before"
-        case .item: "From what you logged before"
         case .database: checked ? "Checked" : "Matched by name"
-        // No `checked` branch, unlike the row above. The validator chooses among rows the
-        // bundled tables returned, so a product has never been through it whatever was true
-        // of the rest of the line, and "Checked, Open Food Facts" would be a sentence about
-        // something that did not happen.
+        // No `checked` branch, unlike the row above, and the reason outlived the path it was
+        // written for. A product's figures are typed in by strangers; a model can confirm
+        // which product this is from the name, the brand and the energy, but not whether
+        // those figures are right, and it is the figures that reach Health. So a product is
+        // never reported as checked however thoroughly the rest of the line was read.
         case .product: "Matched by name, Open Food Facts"
         case .chosen: "You chose this"
         }

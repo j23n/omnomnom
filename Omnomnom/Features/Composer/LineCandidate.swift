@@ -51,7 +51,7 @@ nonisolated struct LineCandidate: Identifiable, Hashable, Sendable {
         if isProduct { parts.append("Open Food Facts") }
         if gaps == 1 { parts.append("1 figure missing") } else if gaps > 1 { parts.append("\(gaps) figures missing") }
         let suffix = parts.isEmpty ? "" : " (\(parts.joined(separator: ", ")))"
-        return "id \(id): \(ValidationPrompt.clean(name))\(suffix)"
+        return "id \(id): \(LinePrompt.clean(name))\(suffix)"
     }
 }
 
@@ -146,9 +146,10 @@ protocol LineSearching: Sendable {
 /// rest of the app ranks with, and Open Food Facts through the client the Add screen
 /// already uses.
 ///
-/// Deliberately thin. Everything here has a counterpart in `LineResolver`'s own rungs, and
-/// the point of this path is that the strategy above it — which term to try, whether to try
-/// another — moves to the model instead of being written out as a fallback rule.
+/// Deliberately thin. The strategy — which term to try, and whether to try another — is
+/// the model's, not this type's. That is the whole point: the rules that used to live above
+/// a search here, deciding what to look for and what to do when it found nothing, were
+/// written out as fallbacks because the model could not see the tables.
 @MainActor
 struct AppLineSearch: LineSearching {
     let repository: any FoodSearching

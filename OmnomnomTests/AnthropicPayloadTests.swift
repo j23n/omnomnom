@@ -74,13 +74,13 @@ struct AnthropicPayloadTests {
     @Test func theProductSearchIsDeclaredOnlyBehindItsOptIn() throws {
         let without = try body(messages: [.user([])], products: false)
         let one = try #require(without["tools"] as? [[String: Any]])
-        #expect(one.map { $0["name"] as? String } == [AnthropicPayload.foodTool])
+        #expect(one.map { $0["name"] as? String } == [LinePrompt.foodTool])
 
         let with = try body(messages: [.user([])], products: true)
         let two = try #require(with["tools"] as? [[String: Any]])
         // An undeclared tool cannot be called, which is not the same as one that answers
         // nothing: the model never spends a round trip discovering it is empty.
-        #expect(two.map { $0["name"] as? String } == [AnthropicPayload.foodTool, AnthropicPayload.productTool])
+        #expect(two.map { $0["name"] as? String } == [LinePrompt.foodTool, LinePrompt.productTool])
         #expect(two.allSatisfy { $0["strict"] as? Bool == true })
         let schema = try #require(two.first?["input_schema"] as? [String: Any])
         #expect(schema["required"] as? [String] == ["term"])
@@ -96,6 +96,20 @@ struct AnthropicPayloadTests {
         #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
         #expect(request.value(forHTTPHeaderField: "anthropic-version") == AnthropicPayload.version)
         #expect(request.timeoutInterval == AnthropicPayload.timeout)
+    }
+
+    @Test func theRefusalFallbackIsAskedForInBothPlacesItHasToBe() throws {
+        // A safety refusal fails the app's only way of reading a line, so the request opts
+        // into being routed rather than declined. It takes two things that have to agree:
+        // the beta header, and the field it enables.
+        let url = try #require(URL(string: "https://api.anthropic.com/v1/messages"))
+        let request = AnthropicPayload.request(url: url, key: "sk-test", body: Data())
+        #expect(request.value(forHTTPHeaderField: "anthropic-beta") == AnthropicPayload.fallbackBeta)
+
+        let json = try body(messages: [.user([AnthropicPayload.text("oats")])])
+        // "default" rather than a list of models: a list in here would be one more thing
+        // to keep current, which is the same argument that makes the model a typed field.
+        #expect(json["fallbacks"] as? String == "default")
     }
 
     @Test func withNoKeyNoKeyHeaderIsSent() throws {

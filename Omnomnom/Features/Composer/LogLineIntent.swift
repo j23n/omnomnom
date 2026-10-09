@@ -4,9 +4,10 @@ import SwiftData
 
 /// Logging a meal from a spoken or typed sentence, without opening the app.
 ///
-/// The shortest path there is: say a line, and what resolves is in Health. It runs the
-/// same four rungs the composer does, so a line logged before comes straight back from
-/// memory and a new one is matched in the bundled tables.
+/// The shortest path there is: say a line, and what resolves is in Health. It resolves
+/// the line exactly as the composer does, through the same factory and the same opt-ins,
+/// so a line logged before comes straight back from memory and a new one goes to the
+/// model that searches for itself.
 ///
 /// It never opens the app to finish something, and it never logs a row it is unsure of.
 /// What settles is logged; anything else is left on `AppRouter` so the composer has the
@@ -31,24 +32,22 @@ struct LogLineIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let context = ModelContext(container)
-        // No validator here on purpose. The second pass belongs behind its opt-in and
-        // behind a screen that can show what it decided; an intent that silently asked a
-        // model and logged the answer would be the one place nobody could see it work.
-        // The same model the composer uses. Without one a spoken line resolves to nothing
-        // and the dialog says so, rather than Siri reporting success over an empty log.
+        // The same model the composer uses, wired through the same factory and therefore
+        // from the same two opt-ins. It used to build the resolver by hand and read
+        // neither, so a spoken line asked a model that the Meal estimation switch was
+        // meant to govern. Without a model a spoken line resolves to nothing and the
+        // dialog says so, rather than Siri reporting success over an empty log.
         //
-        // The driving provider is passed through rather than left out, which is not the
-        // same concession: it resolves a line in one request and its rows carry the same
-        // confidences, so leaving it out would not make the intent more cautious — it
-        // would make a spoken line stop working for anyone who chose that provider. Only
+        // The driving model is not withheld from the intent: it resolves a line in one
+        // request and its rows carry the same confidences, so leaving it out would not
+        // make the intent more cautious — it would make a spoken line stop working. Only
         // settled rows are logged either way, and everything else goes to the composer.
-        let searcher = AppLineSearch.app(
+        let defaults = UserDefaults.standard
+        let resolver = LineResolver.app(
+            context: context,
             repository: repository,
-            productSearchEnabled: UserDefaults.standard.bool(forKey: BarcodeModule.productSearchKey)
-        )
-        let resolver = LineResolver(
-            context: context, repository: repository, estimator: Estimators.current(),
-            driver: Estimators.driver(searching: searcher)
+            estimationEnabled: defaults.bool(forKey: EstimationModule.enabledKey),
+            productSearchEnabled: defaults.bool(forKey: BarcodeModule.productSearchKey)
         )
         let resolution = await resolver.resolve(line)
 

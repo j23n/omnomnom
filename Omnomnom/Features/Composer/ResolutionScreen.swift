@@ -241,7 +241,7 @@ private func previewRow(
             )
             : nil,
         amount: amount,
-        bucket: (origin == .phrase || origin == .item) ? .usual : nil,
+        bucket: origin == .phrase ? .usual : nil,
         origin: origin,
         confidence: confidence
     )
@@ -272,7 +272,7 @@ private func previewRow(
             resolution: LineResolution(
                 line: "oats, flat white, something unusual",
                 rows: [
-                    previewRow("Oats, rolled", kcal: 370, amount: 40, origin: .item, confidence: .settled),
+                    previewRow("Oats, rolled", kcal: 370, amount: 40, origin: .database, confidence: .settled),
                     previewRow("Coffee with milk", kcal: 45, amount: 200, origin: .database, confidence: .probable),
                     previewRow("something unusual", kcal: 0, amount: 0, origin: .database, confidence: .unsure, matched: false),
                 ],

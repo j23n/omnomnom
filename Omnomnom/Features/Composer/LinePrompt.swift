@@ -4,16 +4,18 @@ import Foundation
 /// are tested. The instructions hold nothing the user typed: a request obeys them over the
 /// message, so user input only ever appears inside the message, quoted.
 ///
-/// This is `EstimationPrompt` and `ValidationPrompt` collapsed into one, which is the whole
-/// point of the path. Two rules that had to be in those prompts are gone from this one:
+/// This is the one prompt the line path has. It replaced two — the estimation prompt that
+/// asked a model to name foods, and the validation prompt that asked another to check what
+/// a retriever did with those names — and both are gone now, along with the retrieval they
+/// described. Two rules they had to carry are gone from this one:
 ///
 /// - **No `lookupTerm`.** The estimation prompt spends five lines describing the shape of a
 ///   corpus the model cannot see — generic, unbranded, cooked or raw stated, never a dish
 ///   name — because it had to guess the wording a composition table uses before anything
 ///   was searched. A model holding the search does not guess. It looks, reads what came
 ///   back, and looks again under a different word if nothing fits.
-/// - **No instruction about narrowing.** `LineResolver` drops words from a term when the
-///   whole term finds nothing, with a rule about which words may carry the fallback,
+/// - **No instruction about narrowing.** The old path dropped words from a term when the
+///   whole term found nothing, with a rule about which words may carry the fallback,
 ///   because the retriever had one chance at the wording. Searching again is a cheaper and
 ///   more honest version of the same recovery, and it is the model's to decide.
 ///
@@ -54,6 +56,36 @@ nonisolated enum LinePrompt {
         - Never give advice, judgment or health claims.
         """
 
+    /// The two searches, by the names both drivers declare them under.
+    ///
+    /// Here rather than in either payload because a tool's name and the sentence describing
+    /// it are one decision, and the two were already drifting apart across two files: the
+    /// name in one place, the words in another, and a second copy of the name beside a
+    /// second copy of nothing. A model that is told to call `search_foods` and handed a tool
+    /// called something else fails in a way no test of either file alone would catch.
+    static let foodTool = "search_foods"
+    static let productTool = "search_products"
+
+    /// Answered to a call naming a tool this app does not have.
+    ///
+    /// Every call has to be answered — an unanswered one makes the next request invalid on
+    /// at least one of the two protocols — so a wrong name gets a sentence pointing at the
+    /// right one rather than silence.
+    static let noSuchSearch = "There is no such search. Use \(foodTool)."
+
+    /// How many round trips one line may take before the app gives up.
+    ///
+    /// Enough for a model to search for every food, read the results and search again for
+    /// the ones that found nothing; small enough that a model which will not stop searching
+    /// costs a bounded number of requests rather than a bill. One number for both drivers,
+    /// because it is a judgment about how a model behaves and not about whose server it is
+    /// running on.
+    static let maximumRounds = 5
+
+    /// Said when the model is still searching after `maximumRounds`. Shared verbatim: the
+    /// words name the model rather than the endpoint, so there is nothing per-path in them.
+    static let keptSearching = "the model kept searching without answering. Try again, or describe the meal more plainly."
+
     /// What the food search is for, as the model reads it.
     static let foodToolDescription = """
         Search this device's bundled nutrition composition tables for a food. These are \
@@ -92,12 +124,22 @@ nonisolated enum LinePrompt {
         return candidates.map(\.promptLine).joined(separator: "\n")
     }
 
+    /// Longest line that goes into a prompt, matching the estimator's own bound.
+    static let maximumLineLength = 500
+
     /// Trimmed, newlines collapsed, capped, and quotation marks neutralised so a typed one
     /// cannot close the one the message wraps it in.
     ///
-    /// The validation prompt's own cleaning, cap included, rather than a second copy of it:
-    /// what a line may carry into a prompt is one decision, and two of them would drift.
+    /// What a line may carry into a prompt is one decision. This was the validation
+    /// prompt's, and every caller delegated to it; the prompt is gone and the decision is
+    /// not, so it lives here, where the line that reaches a model is built.
     static func clean(_ text: String) -> String {
-        ValidationPrompt.clean(text)
+        let collapsed = text
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+            .replacingOccurrences(of: "\"", with: "'")
+        return String(collapsed.prefix(maximumLineLength))
     }
 }

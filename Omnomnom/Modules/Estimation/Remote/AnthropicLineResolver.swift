@@ -1,31 +1,6 @@
 import Foundation
 import os
 
-/// A model that retrieves for itself: given what was written or photographed, it searches
-/// this device's own tables and answers with the rows it chose.
-///
-/// The seam is "resolve a line" rather than "estimate a meal", which is what makes the two
-/// paths honestly different rather than one path with a flag. A small model is handed a
-/// shortlist and asked to pick from it; a model that can call a tool decides what to search
-/// for, reads what came back, and searches again — so the step where the app guesses the
-/// wording a composition table uses does not exist on this path at all.
-@MainActor
-protocol LineDriving: Sendable {
-    func resolve(_ input: EstimationInput) async throws -> DrivenLine
-}
-
-/// A line a model resolved, with the candidates it was shown.
-///
-/// The pool travels with the answer because the answer is only ids. Redeeming them needs
-/// the store — a bundled row wants this person's history with that food, a product wants
-/// the cache and the fetch a scan uses — and that belongs to `LineResolver` rather than
-/// here, where it would drag a `ModelContext` into something that otherwise only speaks
-/// HTTP.
-nonisolated struct DrivenLine: Hashable, Sendable {
-    let answer: ResolvedLine
-    let pool: LineCandidatePool
-}
-
 /// Runs the loop: ask, run the searches it asks for, send the results back, until it
 /// answers or the round limit is reached.
 ///
@@ -76,7 +51,7 @@ final class AnthropicLineResolver: LineDriving {
                 try AnthropicPayload.opening(for: input, sendsPhotos: settings.sendsPhotos)
             )
         ]
-        for round in 1...AnthropicPayload.maximumRounds {
+        for round in 1...LinePrompt.maximumRounds {
             let data = try await send(messages, to: url, round: round)
             switch try AnthropicPayload.step(from: data) {
             case .answer(let answer):
@@ -93,8 +68,8 @@ final class AnthropicLineResolver: LineDriving {
         // request rather than a lost one: it was already in flight when the limit was
         // reached. Not retried under a different prompt either — a model that searched
         // five times without answering is not going to answer the sixth time for free.
-        AppLog.estimation.info("gave up after \(AnthropicPayload.maximumRounds) rounds")
-        throw EstimationError.failed(AnthropicPayload.keptSearching)
+        AppLog.estimation.info("gave up after \(LinePrompt.maximumRounds) rounds")
+        throw EstimationError.failed(LinePrompt.keptSearching)
     }
 
     /// One round trip, with every failure already in the user's terms.
@@ -140,12 +115,12 @@ final class AnthropicLineResolver: LineDriving {
         var blocks: [JSONValue] = []
         for call in calls {
             switch call.tool {
-            case AnthropicPayload.foodTool:
+            case LinePrompt.foodTool:
                 let found = pool.add(foods: await searcher.foods(matching: call.term))
                 blocks.append(
                     AnthropicPayload.toolResult(id: call.id, text: LinePrompt.results(found))
                 )
-            case AnthropicPayload.productTool where searcher.searchesProducts:
+            case LinePrompt.productTool where searcher.searchesProducts:
                 let found = pool.add(products: await searcher.products(matching: call.term))
                 blocks.append(
                     AnthropicPayload.toolResult(id: call.id, text: LinePrompt.results(found))
@@ -155,7 +130,7 @@ final class AnthropicLineResolver: LineDriving {
                 blocks.append(
                     AnthropicPayload.toolResult(
                         id: call.id,
-                        text: "There is no such search. Use \(AnthropicPayload.foodTool).",
+                        text: LinePrompt.noSuchSearch,
                         isError: true
                     )
                 )

@@ -47,8 +47,14 @@ nonisolated struct FoodMatch: Identifiable, Hashable, Sendable {
 /// function on the scorer.
 ///
 /// Pure, so the thresholds can be settled against a fixture set of real typed lines
-/// rather than by argument. Everything the model adds on top of this lands in the
-/// validation step; this is what runs when there is no model to ask.
+/// rather than by argument.
+///
+/// `probableAt` is what the line path reads, to decide whether a term found its food well
+/// enough to stop dropping words from it. `settledAt` and `FoodMatch.confidence` are how a
+/// row was graded when the app matched foods on a model's behalf; nothing grades a row that
+/// way now, because a model that chose a row states its own certainty. They are left
+/// measured rather than guessed at again, and whether anything should grade a row without a
+/// model is asked in `docs/OPEN-QUESTIONS.md`.
 nonisolated enum FoodMatcher {
     /// At or above this, a row is logged without asking.
     static let settledAt = 0.78

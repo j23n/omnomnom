@@ -12,20 +12,20 @@ import SwiftUI
 /// Two things stack above the field: a sentence about something that went wrong, and what
 /// was last logged with the way back from it. Each is absent unless it has something to say.
 ///
-/// It does the work too, because the environment it needs is here: the four rungs of the
-/// resolver, the logger, and the day the line goes into. Sending resolves the line and puts
-/// the sign-off screen up; nothing is ever logged from the field itself.
+/// It does the work too, because the environment it needs is here: the resolver, the
+/// logger, and the day the line goes into. Sending resolves the line and puts the sign-off
+/// screen up; nothing is ever logged from the field itself.
 struct ComposerBar: View {
     @Environment(\.composer) private var composer
     @Environment(\.modelContext) private var context
     @Environment(\.foodRepository) private var repository
     @Environment(\.health) private var health
     @Environment(\.appRouter) private var router
-    /// The validator runs on the same model the estimate module uses, behind the same
-    /// opt-in, so a user who has not turned that on is not quietly handed a model call.
+    /// Whether a model may read a line at all. Off means a line that has never been
+    /// logged resolves to nothing, and the field says so.
     @AppStorage(EstimationModule.enabledKey) private var estimationEnabled = false
     /// The opt-in that already governs searching Open Food Facts by name, read here because
-    /// the fourth rung is that same search asked by the resolver rather than by the user.
+    /// it decides whether the product search is offered to the model as a tool.
     @AppStorage(BarcodeModule.productSearchKey) private var productSearchEnabled = false
 
     var body: some View {
@@ -113,7 +113,7 @@ struct ComposerBar: View {
         }
     }
 
-    /// The four rungs, wired to this app's settings.
+    /// The resolver, wired to this app's two opt-ins.
     private var resolver: LineResolver {
         LineResolver.app(
             context: context,

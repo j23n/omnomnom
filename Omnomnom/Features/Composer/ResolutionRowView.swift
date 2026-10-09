@@ -226,7 +226,7 @@ private func row(
 
 #Preview("A bigger step", traits: .sizeThatFitsLayout) {
     List {
-        ResolutionRowView(row: row("Lentil soup", amount: 420, origin: .item, confidence: .settled, bucket: .more), checked: true, onPick: {}, onChange: { _ in })
+        ResolutionRowView(row: row("Lentil soup", amount: 420, origin: .database, confidence: .settled, bucket: .more), checked: true, onPick: {}, onChange: { _ in })
     }
 }
 

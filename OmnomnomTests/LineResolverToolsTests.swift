@@ -248,4 +248,49 @@ struct LineResolverToolsTests {
         #expect(resolver(context, fake).canReadALine)
         #expect(!LineResolver(context: context, repository: FakeRepository()).canReadALine)
     }
+
+    // MARK: - What a step measures from
+
+    @Test func aFoodEatenBeforeCanStepFromWhatWasEaten() async throws {
+        // The model gives a weight for every food it names; a step needs a reference, and
+        // the reference is what this person last had. It lives on the stored `Food` and is
+        // read on the way out, so a row the model chose offers Less and More exactly when
+        // the food has been eaten before.
+        let context = try TestStore.context()
+        let stored = Food(name: "Oat flakes", kind: .bundled, bundledID: 1, per100g: Nutrition(energy: 370))
+        stored.lastGrams = 180
+        context.insert(stored)
+        let fake = driver(items: [item(candidate: 1)], offering: [match(1, "Oat flakes")])
+        let row = try #require(await resolver(context, fake).resolve("oats").rows.first)
+
+        #expect(row.baseAmount == 180)
+        #expect(row.canStep)
+        // The amount is still the model's until someone steps: a reference is what a step
+        // would measure from, not a correction to what was estimated.
+        #expect(row.amount == 45)
+        #expect(row.bucket == nil)
+
+        // Measured from the reference and rounded to something a person recognises, which
+        // is the whole reason the reference is carried rather than recovered from the
+        // amount: 1.4 x 180 is 252, and the row says 250.
+        let stepped = row.stepped(to: .more)
+        #expect(stepped.bucket == .more)
+        #expect(stepped.amount == 250)
+    }
+
+    @Test func aFirstTimeFoodOffersNoSteps() async throws {
+        // Nothing to multiply, so the steps are absent rather than meaningless. "Usual" has
+        // to mean this person's usual, and offering it against a weight a model guessed
+        // would make one word mean a measured fact on one row and a guess on the next.
+        let context = try TestStore.context()
+        let fake = driver(items: [item(candidate: 1)], offering: [match(1, "Oat flakes")])
+        let row = try #require(await resolver(context, fake).resolve("oats").rows.first)
+
+        #expect(row.baseAmount == nil)
+        #expect(row.bucket == nil)
+        #expect(!row.canStep)
+        // And a step asked for anyway changes nothing, rather than stepping from the
+        // estimate as though it were a habit.
+        #expect(row.stepped(to: .more) == row)
+    }
 }

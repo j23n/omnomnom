@@ -3,59 +3,26 @@ import SwiftData
 import Testing
 @testable import Omnomnom
 
-/// A validator that answers from a fixed script, or fails.
-nonisolated struct FakeValidator: MatchValidating {
-    var verdicts: [MatchVerdict] = []
-    var failure: EstimationError?
-    /// Answers fewer verdicts than it was asked for, to exercise the all-or-nothing rule.
-    var answerShort = false
-
-    func validate(line: String, items: [ValidationItem]) async throws -> MatchVerdicts {
-        if let failure { throw failure }
-        if answerShort { return MatchVerdicts(verdicts: verdicts.dropLast().map { $0 }) }
-        return MatchVerdicts(verdicts: verdicts)
-    }
-}
-
-/// An estimator that names foods from a script, or fails.
+/// What a line comes to without a model reading it, and the search that offers a row the
+/// other foods it could have been.
 ///
-/// Where a test is about what happens *after* a food is named, the fake splits its line on
-/// commas and " and " and gives each part 100 g. That is not what a real model does — it is
-/// the least interesting thing a model could do, which is the point: these tests are about
-/// the rungs below it. A test about the model's own answer supplies `items` itself.
+/// Two things resolve a line now. A whole line logged before comes back from memory, which
+/// is in front of everything; anything else is read by a driving model, which
+/// `LineResolverToolsTests` covers, and resolves to nothing where there is no model to ask.
+/// Between them there used to be a ladder that guessed at the wording a composition table
+/// uses and searched on the guess.
 ///
-/// `failure` doubles as a way to prove a model was never asked: a test that expects recall
-/// to answer gives the estimator a failure it should never reach.
-nonisolated struct FakeEstimator: MealEstimating {
-    var items: [EstimatedItem]?
-    var meal: EstimatedMeal = .snack
-    var failure: EstimationError?
-
-    func estimate(_ input: EstimationInput) async throws -> MealEstimate {
-        if let failure { throw failure }
-        if let items { return MealEstimate(items: items, meal: meal, note: "") }
-        guard case .text(let line) = input else {
-            return MealEstimate(items: [], meal: meal, note: "")
-        }
-        let named = line
-            .replacingOccurrences(of: " and ", with: ",")
-            .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-            .map { EstimatedItem(name: $0, lookupTerm: $0, grams: 100) }
-        return MealEstimate(items: named, meal: meal, note: "")
-    }
-}
-
-/// The four rungs, in order, and what happens when the model is absent or wrong.
+/// The search that ladder was built around survives, because the sheet still offers the
+/// alternatives to a row's food — and `candidates(for:)` is its only door. So the
+/// narrowing, the head-phrase rules and the reference a food brings from history are
+/// asserted here on the shortlist it answers with, best first, rather than on a row a
+/// retriever built from it.
 struct LineResolverTests {
-    private func bundled(
-        _ id: Int, _ name: String, ingredient: Bool = false, popularity: Int = 0
-    ) -> BundledFood {
+    private func bundled(_ id: Int, _ name: String, popularity: Int = 0) -> BundledFood {
         BundledFood(
             id: id, name: name, category: nil,
             per100g: Nutrition(energy: 370, protein: 13, carbohydrates: 60, fatTotal: 7),
-            popularity: popularity, altNames: [], isIngredient: ingredient
+            popularity: popularity, altNames: []
         )
     }
 
@@ -65,7 +32,7 @@ struct LineResolverTests {
         return food
     }
 
-    // MARK: - Rung one: the whole line from memory
+    // MARK: - The whole line from memory
 
     @Test func aLineLoggedBeforeComesBackWholeWithoutSearching() async throws {
         let context = try TestStore.context()
@@ -79,13 +46,12 @@ struct LineResolverTests {
             ],
             in: context
         )
-        // An empty repository, so anything that reaches a search finds nothing, and an
-        // estimator that throws, so anything that reaches the model resolves to nothing.
+        // An empty repository, so anything that reaches a search finds nothing, and a
+        // driver that throws, so anything that reaches the model resolves to nothing.
         // Recall answering is the only way this test passes.
-        let resolver = LineResolver(
-            context: context, repository: FakeRepository(),
-            estimator: FakeEstimator(failure: .failed("the model was asked"))
-        )
+        let driver = FakeDriver()
+        driver.failure = .failed("the model was asked")
+        let resolver = LineResolver(context: context, repository: FakeRepository(), driver: driver)
         let resolution = await resolver.resolve("Banana and oats!")
 
         #expect(resolution.rows.count == 2)
@@ -105,273 +71,83 @@ struct LineResolverTests {
         try Phrase.remember(
             line: "oats", items: [PhraseDraftItem(name: "oats", amount: 40, food: oats)], in: context
         )
-        // Both would throw if reached, so recall is the only thing that can answer.
-        let validator = FakeValidator(failure: .cancelled)
-        let resolver = LineResolver(
-            context: context, repository: FakeRepository(), validator: validator,
-            estimator: FakeEstimator(failure: .failed("the model was asked"))
-        )
+        // A driver that throws on every call, so recall is the only thing that can answer.
+        let driver = FakeDriver()
+        driver.failure = .failed("the model was asked")
+        let resolver = LineResolver(context: context, repository: FakeRepository(), driver: driver)
         let resolution = await resolver.resolve("oats")
-        // A validator that throws on every call, and the line still resolves settled.
+
+        #expect(driver.asked == 0)
         #expect(resolution.rows.first?.confidence == .settled)
         #expect(!resolution.wasChecked)
     }
 
-    // MARK: - Rung two: one familiar food in a new line
-
-    @Test func aFamiliarFoodInsideANewLineComesFromHistory() async throws {
-        let context = try TestStore.context()
-        let oats = storedFood("Oats, rolled", in: context)
-        try Phrase.remember(
-            line: "oats", items: [PhraseDraftItem(name: "oats", amount: 45, food: oats)], in: context
-        )
-        let repository = FakeRepository(hits: ["banana": [bundled(2, "Banana, raw")]])
-        let resolver = LineResolver(context: context, repository: repository, estimator: FakeEstimator())
-        let resolution = await resolver.resolve("oats and banana")
-
-        #expect(resolution.rows.count == 2)
-        #expect(resolution.rows[0].origin == .item)
-        #expect(resolution.rows[0].amount == 45)
-        #expect(resolution.rows[1].origin == .database)
-    }
-
-    // MARK: - Rung three: the bundled tables
-
-    @Test func anUnknownLineIsMatchedInTheTables() async throws {
-        let context = try TestStore.context()
-        let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
-        let resolver = LineResolver(context: context, repository: repository, estimator: FakeEstimator())
-        let resolution = await resolver.resolve("oats")
-        #expect(resolution.rows.first?.origin == .database)
-        #expect(resolution.rows.first?.choice?.name == "Oats, rolled")
-        #expect(resolution.rows.first?.confidence == .settled)
-    }
-
-    @Test func aFoodNothingMatchesBlocksTheLog() async throws {
-        let context = try TestStore.context()
-        let resolver = LineResolver(context: context, repository: FakeRepository(), estimator: FakeEstimator())
-        let resolution = await resolver.resolve("something nobody has ever eaten")
-        #expect(resolution.rows.count == 1)
-        #expect(resolution.rows.first?.choice == nil)
-        #expect(resolution.rows.first?.blocks == true)
-        #expect(!resolution.canLog)
-        #expect(resolution.blockingCount == 1)
-    }
-
-    @Test func anIngredientFormBlocksRatherThanSettling() async throws {
-        // The coffee-powder case, with no model involved at all.
-        let context = try TestStore.context()
-        let repository = FakeRepository(hits: ["coffee": [bundled(9, "Coffee, instant, powder", ingredient: true)]])
-        let resolver = LineResolver(context: context, repository: repository, estimator: FakeEstimator())
-        let resolution = await resolver.resolve("coffee")
-        #expect(resolution.rows.first?.confidence == .unsure)
-        #expect(!resolution.canLog)
-    }
-
-    @Test func theModelsWeightIsTheAmount() async throws {
-        // This read an amount off the front of the words — "200g rice" — which is what the
-        // parser was for. The model reports a weight for everything it names, so the words
-        // are its problem and the figure arrives already made.
-        let context = try TestStore.context()
-        let repository = FakeRepository(hits: ["rice": [bundled(3, "Rice, cooked")]])
-        let estimator = FakeEstimator(
-            items: [EstimatedItem(name: "rice", lookupTerm: "rice", grams: 200)]
-        )
-        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
-        let resolution = await resolver.resolve("200g rice")
-        #expect(resolution.rows.first?.amount == 200)
-    }
-
-    @Test func theMealComesFromTheFoodsAndNotTheClock() async throws {
-        // The reason the model is asked which meal it is: no clock can know that oats at
-        // nine in the evening are breakfast.
-        let context = try TestStore.context()
-        let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
-        let estimator = FakeEstimator(
-            items: [EstimatedItem(name: "oats", lookupTerm: "oats", grams: 40)],
-            meal: .breakfast
-        )
-        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
-        let resolution = await resolver.resolve("oats")
-        #expect(resolution.meal == .breakfast)
-    }
-
-    @Test func withNoModelNothingNewResolves() async throws {
-        // The cost of one primary input. Search and the barcode scanner are how the app is
-        // used when neither Apple Intelligence nor an endpoint will answer.
-        let context = try TestStore.context()
-        let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
-        let resolver = LineResolver(context: context, repository: repository, estimator: nil)
-        let resolution = await resolver.resolve("oats")
-        #expect(resolution.isEmpty)
-    }
-
-    @Test func aModelThatFailsLeavesNothingRatherThanThrowing() async throws {
-        let context = try TestStore.context()
-        let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
-        let estimator = FakeEstimator(failure: .failed("no network"))
-        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
-        let resolution = await resolver.resolve("oats")
-        #expect(resolution.isEmpty)
-    }
-
-    @Test func aFirstTimeFoodIsOfferedNoBucket() async throws {
-        // "Usual" would mean nothing: there is no history to multiply.
-        let context = try TestStore.context()
-        let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
-        let resolver = LineResolver(context: context, repository: repository, estimator: FakeEstimator())
-        let resolution = await resolver.resolve("oats")
-        #expect(resolution.rows.first?.bucket == nil)
-    }
-
+    /// A remembered amount is this person's usual by definition — they logged it — so the
+    /// row arrives with the step it was last stored under, and Less and More have something
+    /// to multiply. Recall is the only path that still hands a row one: a food a model
+    /// chose today carries a reference but no step.
     @Test func aRecalledFoodIsOfferedABucket() async throws {
         let context = try TestStore.context()
         let oats = storedFood("Oats", in: context)
         try Phrase.remember(
             line: "oats", items: [PhraseDraftItem(name: "oats", amount: 40, food: oats)], in: context
         )
-        let resolver = LineResolver(context: context, repository: FakeRepository(), estimator: FakeEstimator())
+        let resolver = LineResolver(context: context, repository: FakeRepository())
         let resolution = await resolver.resolve("oats")
         #expect(resolution.rows.first?.bucket == .usual)
     }
 
-    // MARK: - Checking
-
-    @Test func theModelCanMoveARowToAnotherCandidate() async throws {
-        // The whole reason validation exists: "oat" retrieves the biscuits first and the
-        // model moves it to the oats.
-        let context = try TestStore.context()
-        let repository = FakeRepository(hits: [
-            "oat": [bundled(5, "Biscuits, oat"), bundled(1, "Oats, rolled")],
-        ])
-        let validator = FakeValidator(verdicts: [
-            MatchVerdict(item: 1, candidate: 1, certainty: .certain),
-        ])
-        let resolver = LineResolver(context: context, repository: repository, validator: validator, estimator: FakeEstimator())
-        let resolution = await resolver.resolve("oat")
-        #expect(resolution.wasChecked)
-        #expect(resolution.rows.first?.choice?.name == "Oats, rolled")
-        #expect(resolution.rows.first?.confidence == .settled)
-    }
-
-    @Test func noneOfTheseLeavesTheRowBlocking() async throws {
-        let context = try TestStore.context()
-        let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
-        let validator = FakeValidator(verdicts: [
-            MatchVerdict(item: 1, candidate: 0, certainty: .unsure),
-        ])
-        let resolver = LineResolver(context: context, repository: repository, validator: validator, estimator: FakeEstimator())
-        let resolution = await resolver.resolve("oats")
-        #expect(resolution.rows.first?.choice == nil)
-        #expect(!resolution.canLog)
-    }
-
-    @Test func anIDOutsideTheShortlistReadsAsNoneRatherThanAsAHint() async throws {
-        // The model can only ever pick a row a retriever found; it cannot name a food it
-        // was not offered.
-        let context = try TestStore.context()
-        let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
-        let validator = FakeValidator(verdicts: [
-            MatchVerdict(item: 1, candidate: 4_242, certainty: .certain),
-        ])
-        let resolver = LineResolver(context: context, repository: repository, validator: validator, estimator: FakeEstimator())
-        let resolution = await resolver.resolve("oats")
-        #expect(resolution.rows.first?.choice == nil)
-    }
-
-    @Test func probableFromTheModelCountsAsAGlance() async throws {
-        let context = try TestStore.context()
-        let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
-        let validator = FakeValidator(verdicts: [
-            MatchVerdict(item: 1, candidate: 1, certainty: .probable),
-        ])
-        let resolver = LineResolver(context: context, repository: repository, validator: validator, estimator: FakeEstimator())
-        let resolution = await resolver.resolve("oats")
-        #expect(resolution.glanceCount == 1)
-        #expect(resolution.canLog)
-    }
-
-    @Test func aValidatorThatFailsLeavesTheWholeLineUnchecked() async throws {
-        let context = try TestStore.context()
-        let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
-        let validator = FakeValidator(failure: .unavailable("Apple Intelligence is off"))
-        let resolver = LineResolver(context: context, repository: repository, validator: validator, estimator: FakeEstimator())
-        let resolution = await resolver.resolve("oats")
-        #expect(!resolution.wasChecked)
-        // The matcher's own reading stands, so the line is still usable.
-        #expect(resolution.rows.first?.confidence == .settled)
-        #expect(resolution.canLog)
-    }
-
-    @Test func aValidatorThatAnswersShortLeavesTheWholeLineUnchecked() async throws {
-        // All-or-nothing, so "not checked" stays a property of the screen.
-        let context = try TestStore.context()
-        let repository = FakeRepository(hits: [
-            "oats": [bundled(1, "Oats, rolled")],
-            "banana": [bundled(2, "Banana, raw")],
-        ])
-        let validator = FakeValidator(
-            verdicts: [
-                MatchVerdict(item: 1, candidate: 1, certainty: .certain),
-                MatchVerdict(item: 2, candidate: 2, certainty: .certain),
-            ],
-            answerShort: true
-        )
-        let resolver = LineResolver(context: context, repository: repository, validator: validator, estimator: FakeEstimator())
-        let resolution = await resolver.resolve("oats and banana")
-        #expect(!resolution.wasChecked)
-        #expect(resolution.rows.count == 2)
-    }
-
-    @Test func noValidatorIsAnOrdinaryConfigurationNotAFailure() async throws {
-        let context = try TestStore.context()
-        let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
-        let resolver = LineResolver(context: context, repository: repository, validator: nil, estimator: FakeEstimator())
-        let resolution = await resolver.resolve("oats")
-        #expect(!resolution.wasChecked)
-        #expect(resolution.canLog)
-    }
-
     // MARK: - Nothing to resolve
 
-    @Test func aLineWithNoFoodInItResolvesToNothing() async throws {
-        // The model found nothing to name. It used to be the parser that found nothing,
-        // which is the same outcome reached by a different party.
+    @Test func withNoModelNothingNewResolves() async throws {
+        // The cost of one primary input. Search and the barcode scanner are how the app is
+        // used when neither Apple Intelligence nor an endpoint will answer.
         let context = try TestStore.context()
-        let estimator = FakeEstimator(items: [])
-        let resolver = LineResolver(context: context, repository: FakeRepository(), estimator: estimator)
-        let resolution = await resolver.resolve("and some of my")
+        // The tables hold the food, and it makes no difference: nothing searches them on
+        // behalf of a line any more, so without a model the row is out of reach.
+        let repository = FakeRepository(hits: ["oats": [bundled(1, "Oats, rolled")]])
+        let resolver = LineResolver(context: context, repository: repository)
+        let resolution = await resolver.resolve("oats")
         #expect(resolution.isEmpty)
-        #expect(!resolution.canLog)
     }
 
-    @Test func aFailingSearchLeavesRowsUnmatchedRatherThanThrowing() async throws {
+    @Test func aLineWithNoFoodInItResolvesToNothing() async throws {
+        // The model read the line and named nothing in it. That is not a failure and there
+        // is nothing for the user to go and fix, so no sentence is offered with the empty
+        // resolution — the composer's own copy covers a line of filler words.
+        let context = try TestStore.context()
+        let driver = FakeDriver()
+        let resolver = LineResolver(context: context, repository: FakeRepository(), driver: driver)
+        let resolution = await resolver.resolve("and some of my")
+
+        #expect(resolution.isEmpty)
+        #expect(!resolution.canLog)
+        #expect(resolution.failure == nil)
+    }
+
+    @Test func aFailingSearchAnswersWithNothingRatherThanThrowing() async throws {
+        // A database that cannot be opened is not something the user can act on while
+        // reading a list of alternatives, so the list is empty and the row keeps the food
+        // it already has.
         let context = try TestStore.context()
         let repository = FakeRepository(failure: .databaseMissing)
-        let resolver = LineResolver(context: context, repository: repository, estimator: FakeEstimator())
-        let resolution = await resolver.resolve("oats, banana")
-        #expect(resolution.rows.count == 2)
-        #expect(resolution.rows.allSatisfy { $0.choice == nil })
+        let resolver = LineResolver(context: context, repository: repository)
+        #expect(await resolver.candidates(for: "oats, banana").isEmpty)
     }
 
     // MARK: - A term in the wording a table uses
 
     /// The report this came from: "a slice of Margherita pizza" showed as "pizza" with no
-    /// food behind it. Measured against the real tables, a term written the way the prompt
-    /// asks for it — with the commas a composition table uses — scored zero against the row
-    /// of that very name, so the whole term was discarded and one of its words answered
-    /// instead.
+    /// food behind it. Measured against the real tables, a term written the way a
+    /// composition table writes one — with the commas — scored zero against the row of that
+    /// very name, so the whole term was discarded and one of its words answered instead.
     @Test func aTermWrittenTheWayATableWritesOneStillMatches() async throws {
         let context = try TestStore.context()
         let margherita = bundled(11, "Pizza margherita (with tomato sauce, mozzarella)")
         let repository = FakeRepository(hits: ["Pizza, Margherita": [margherita]])
-        let estimator = FakeEstimator(
-            items: [EstimatedItem(name: "pizza", lookupTerm: "Pizza, Margherita", grams: 125)]
-        )
-        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
-        let row = try #require(await resolver.resolve("a slice of Margherita pizza").rows.first)
-        #expect(row.choice?.name == "Pizza margherita (with tomato sauce, mozzarella)")
-        #expect(!row.blocks)
+        let resolver = LineResolver(context: context, repository: repository)
+        let best = try #require(await resolver.candidates(for: "Pizza, Margherita").first)
+        #expect(best.name == "Pizza margherita (with tomato sauce, mozzarella)")
     }
 
     /// The worse half of the same fault. "Cooked" names 390 rows in the real tables, and the
@@ -388,41 +164,36 @@ struct LineResolverTests {
             // pasta row scores against "pasta".
             "cooked": [bundled(22, "Fish, cooked (average)", popularity: 23)],
         ])
-        let estimator = FakeEstimator(
-            items: [EstimatedItem(name: "pasta", lookupTerm: "pasta, cooked", grams: 180)]
-        )
-        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
-        let row = try #require(await resolver.resolve("pasta").rows.first)
-        #expect(row.choice?.name == "Pasta, cooked")
+        let resolver = LineResolver(context: context, repository: repository)
+        let best = try #require(await resolver.candidates(for: "pasta, cooked").first)
+        #expect(best.name == "Pasta, cooked")
     }
 
-    /// A narrowed match is the app answering a question nobody asked, so it is shown rather
-    /// than assumed, however well the one word scored.
-    @Test func aMatchFoundByNarrowingIsNeverSettled() async throws {
+    /// Narrowing is what reaches a table that words a food differently: nothing holds both
+    /// words of "oats, rolled", and the head alone finds the flakes.
+    @Test func aNarrowedTermStillFindsTheFood() async throws {
         let context = try TestStore.context()
         let repository = FakeRepository(hits: ["oats": [bundled(31, "Oat flakes")]])
-        let estimator = FakeEstimator(
-            items: [EstimatedItem(name: "oats", lookupTerm: "oats, rolled", grams: 50)]
-        )
-        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
-        let row = try #require(await resolver.resolve("oats").rows.first)
-        #expect(row.choice?.name == "Oat flakes")
-        #expect(row.confidence == .probable)
-        // Logged, not blocked: marked for a glance is the point of the middle tier.
-        #expect(!row.blocks)
+        let resolver = LineResolver(context: context, repository: repository)
+        let best = try #require(await resolver.candidates(for: "oats, rolled").first)
+        #expect(best.name == "Oat flakes")
     }
 
-    /// And a match on everything that was said still settles, so the cap above is about
-    /// narrowing rather than about the tables being distrusted.
-    @Test func aMatchOnTheWholeTermStillSettles() async throws {
+    /// And a term that answers whole is kept whole, so the narrowing stays a rescue for a
+    /// dead end rather than a second opinion on a term that worked.
+    @Test func aMatchOnTheWholeTermBeatsANarrowedOne() async throws {
         let context = try TestStore.context()
-        let repository = FakeRepository(hits: ["oat flakes": [bundled(31, "Oat flakes")]])
-        let estimator = FakeEstimator(
-            items: [EstimatedItem(name: "oats", lookupTerm: "oat flakes", grams: 50)]
-        )
-        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
-        let row = try #require(await resolver.resolve("oats").rows.first)
-        #expect(row.confidence == .settled)
+        let repository = FakeRepository(hits: [
+            "oat flakes": [bundled(31, "Oat flakes")],
+            // Curated, and what the head word on its own would have answered with. Never
+            // reached: the whole term answered, so no part of it is searched.
+            "oat": [bundled(32, "Oat milk", popularity: 90)],
+        ])
+        let resolver = LineResolver(context: context, repository: repository)
+        let choices = await resolver.candidates(for: "oat flakes")
+
+        #expect(choices.first?.name == "Oat flakes")
+        #expect(!choices.contains(where: { $0.name == "Oat milk" }))
     }
 
     // MARK: - What the fallback is allowed to look at
@@ -437,12 +208,9 @@ struct LineResolverTests {
             // Reachable only by searching the qualifier, which is now never searched.
             "natural": [bundled(42, "Natural mineral water", popularity: 60)],
         ])
-        let estimator = FakeEstimator(
-            items: [EstimatedItem(name: "yogurt", lookupTerm: "yogurt, natural", grams: 150)]
-        )
-        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
-        let row = try #require(await resolver.resolve("yogurt").rows.first)
-        #expect(row.choice?.name == "Yogurt mild, min. 3.5 % fat")
+        let resolver = LineResolver(context: context, repository: repository)
+        let best = try #require(await resolver.candidates(for: "yogurt, natural").first)
+        #expect(best.name == "Yogurt mild, min. 3.5 % fat")
     }
 
     /// The same fault through a preposition: a pain au chocolat was logged as *Chocolate*,
@@ -453,12 +221,9 @@ struct LineResolverTests {
             "croissant": [bundled(43, "Croissant (average)")],
             "chocolate": [bundled(44, "Chocolate", popularity: 100)],
         ])
-        let estimator = FakeEstimator(
-            items: [EstimatedItem(name: "pain au chocolat", lookupTerm: "croissant with chocolate", grams: 70)]
-        )
-        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
-        let row = try #require(await resolver.resolve("pain au chocolat").rows.first)
-        #expect(row.choice?.name == "Croissant (average)")
+        let resolver = LineResolver(context: context, repository: repository)
+        let best = try #require(await resolver.candidates(for: "croissant with chocolate").first)
+        #expect(best.name == "Croissant (average)")
     }
 
     /// The head phrase entire is tried before any part of it, so the more specific answer
@@ -469,231 +234,56 @@ struct LineResolverTests {
             "rye bread": [bundled(45, "Rye bread", popularity: 87)],
             "bread": [bundled(46, "Bread, bagel")],
         ])
-        let estimator = FakeEstimator(
-            items: [EstimatedItem(name: "toast", lookupTerm: "rye bread, toasted", grams: 50)]
-        )
-        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
-        let row = try #require(await resolver.resolve("toast").rows.first)
-        #expect(row.choice?.name == "Rye bread")
+        let resolver = LineResolver(context: context, repository: repository)
+        let best = try #require(await resolver.candidates(for: "rye bread, toasted").first)
+        #expect(best.name == "Rye bread")
     }
 
     /// A word has to answer what a row *is*. Prefix-matching the head is how "tonic water"
-    /// came back as *Watermelon raw*, and there is no tonic row, so the honest answer is
-    /// the one the sheet is built for: ask.
+    /// came back as *Watermelon raw*, and there is no tonic row — so nothing is the honest
+    /// answer, and the sheet asks rather than offering a melon.
     @Test func aRowWhoseHeadMerelyBeginsWithTheWordIsNotAnAnswer() async throws {
         let context = try TestStore.context()
         let repository = FakeRepository(hits: ["water": [bundled(47, "Watermelon raw", popularity: 40)]])
-        let estimator = FakeEstimator(
-            items: [EstimatedItem(name: "tonic water", lookupTerm: "tonic water", grams: 200)]
-        )
-        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
-        let row = try #require(await resolver.resolve("tonic water").rows.first)
-        #expect(row.choice == nil)
-        #expect(row.confidence == .unsure)
-        #expect(row.blocks)
+        let resolver = LineResolver(context: context, repository: repository)
+        #expect(await resolver.candidates(for: "tonic water").isEmpty)
     }
 
-    /// And when the head phrase finds nothing, nothing is what is reported. The words after
+    /// And when the head phrase finds nothing, nothing is what comes back. The words after
     /// the preposition are not consulted as a last resort, because that is where every one
     /// of the wrong answers came from.
-    @Test func aHeadPhraseThatFindsNothingBlocksRatherThanGuessing() async throws {
+    @Test func aHeadPhraseThatFindsNothingAnswersWithNothing() async throws {
         let context = try TestStore.context()
         let repository = FakeRepository(hits: ["beef": [bundled(48, "Beef boiled", popularity: 70)]])
-        let estimator = FakeEstimator(
-            items: [EstimatedItem(name: "lasagne", lookupTerm: "lasagne with beef", grams: 350)]
-        )
-        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
-        let row = try #require(await resolver.resolve("lasagne").rows.first)
-        #expect(row.choice == nil)
-        #expect(row.blocks)
+        let resolver = LineResolver(context: context, repository: repository)
+        #expect(await resolver.candidates(for: "lasagne with beef").isEmpty)
     }
 
     // MARK: - What a step measures from
 
     @Test func aFoodEatenBeforeBringsItsOwnReference() async throws {
-        // The stored row is where history lives. Without reading it, a food logged ten
-        // times through the search screen reached this screen with the model's estimate
-        // and no Less or More at all, because a search hit carries no past use of its own.
+        // The stored row is where history lives, and a table row carries none of its own:
+        // without reading it, a food logged ten times through the search screen reached
+        // the sheet with no Less or More at all. What a step multiplies is this figure.
         let context = try TestStore.context()
         let stored = Food(name: "Rice, cooked", kind: .bundled, bundledID: 3, per100g: Nutrition(energy: 130))
         stored.lastGrams = 180
         context.insert(stored)
         let repository = FakeRepository(hits: ["rice": [bundled(3, "Rice, cooked")]])
-        let estimator = FakeEstimator(items: [EstimatedItem(name: "rice", lookupTerm: "rice", grams: 250)])
-        let resolver = LineResolver(context: context, repository: repository, estimator: estimator)
-        let row = try #require(await resolver.resolve("a big plate of rice").rows.first)
+        let resolver = LineResolver(context: context, repository: repository)
+        let best = try #require(await resolver.candidates(for: "rice").first)
 
-        // What was eaten today is the model's figure; what this person usually has is the
-        // reference. Stepping down from a big plate has to mean less than usual.
-        #expect(row.amount == 250)
-        #expect(row.baseAmount == 180)
-        #expect(row.canStep)
-        #expect(row.stepped(to: .less).amount == AmountBucket.less.amount(of: 180))
+        #expect(best.name == "Rice, cooked")
+        #expect(best.lastAmount == 180)
     }
 
     @Test func aFoodNeverEatenOffersNoSteps() async throws {
+        // Nothing to multiply, so the steps are absent rather than meaningless: "usual" has
+        // to mean this person's usual, and a food they have never had has no usual.
         let context = try TestStore.context()
         let repository = FakeRepository(hits: ["rice": [bundled(3, "Rice, cooked")]])
-        let resolver = LineResolver(context: context, repository: repository, estimator: FakeEstimator())
-        let row = try #require(await resolver.resolve("rice").rows.first)
-        #expect(row.baseAmount == nil)
-        #expect(!row.canStep)
-    }
-
-    // MARK: - Rung four: Open Food Facts, competing
-
-    private static func product(_ name: String, score: Double) -> ProductMatch {
-        ProductMatch(
-            choice: FoodChoice(
-                source: .product(foodID: UUID()), name: name,
-                perUnit: Nutrition(energy: 620), lastAmount: nil
-            ),
-            score: score
-        )
-    }
-
-    @Test func aProductAnswersForAFoodTheTablesDoNotHold() async throws {
-        let context = try TestStore.context()
-        let resolver = LineResolver(
-            context: context, repository: FakeRepository(),
-            products: { _ in Self.product("Calvé Peanut Butter", score: 0.9) },
-            estimator: FakeEstimator()
-        )
-        let row = try #require(await resolver.resolve("calvé peanut butter").rows.first)
-        #expect(row.origin == .product)
-        #expect(row.choice?.name == "Calvé Peanut Butter")
-        // Logged and marked for a glance, never settled: nothing has checked a stranger's
-        // entry, and the row says "Matched by name, Open Food Facts" whatever was true of
-        // the rest of the line.
-        #expect(row.confidence == .probable)
-        #expect(row.origin.detail(checked: true) == "Matched by name, Open Food Facts")
-    }
-
-    @Test func theIndexIsAskedEvenWhereTheTablesAnswer() async throws {
-        // It used to be asked only where the tables held nothing, which meant it was never
-        // asked about the foods people mostly eat. Now both are asked and the score
-        // decides; here the product is the better answer to a branded term.
-        let context = try TestStore.context()
-        let repository = FakeRepository(hits: ["oat bar": [bundled(1, "Oat flakes")]])
-        let resolver = LineResolver(
-            context: context, repository: repository,
-            products: { _ in Self.product("Oatly Oat Bar", score: 0.95) },
-            estimator: FakeEstimator()
-        )
-        let row = try #require(await resolver.resolve("oat bar").rows.first)
-        #expect(row.origin == .product)
-        #expect(row.choice?.name == "Oatly Oat Bar")
-    }
-
-    @Test func aMeasuredRowWinsWhenItScoresAsWell() async throws {
-        // The tables are offline, licence-clean and analytically measured, so they take
-        // ties — the crowdsourced penalty is the whole of the thumb on the scale.
-        let context = try TestStore.context()
-        let repository = FakeRepository(hits: ["oats": [bundled(1, "Oat flakes", popularity: 90)]])
-        let resolver = LineResolver(
-            context: context, repository: repository,
-            products: { _ in Self.product("Branded Oats", score: 0.5) },
-            estimator: FakeEstimator()
-        )
-        let row = try #require(await resolver.resolve("oats").rows.first)
-        #expect(row.origin == .database)
-        #expect(row.choice?.name == "Oat flakes")
-    }
-
-    @Test func withoutTheOptInNoProductIsAsked() async throws {
-        // `nil` rather than an empty answer: the opt-in is off, so nothing may be asked at
-        // all, and an unmatched food goes to the user exactly as it did before.
-        let context = try TestStore.context()
-        let resolver = LineResolver(
-            context: context, repository: FakeRepository(), products: nil, estimator: FakeEstimator()
-        )
-        let row = try #require(await resolver.resolve("calvé peanut butter").rows.first)
-        #expect(row.choice == nil)
-        #expect(row.blocks)
-    }
-
-    @Test func aProductThatWonIsNeverHandedToTheValidator() async throws {
-        // The validator's candidates are the table rows, so an item whose row the product
-        // rung won cannot be answered correctly: naming an id moves the row onto a table
-        // row it already beat, and 0 empties it. Neither is a judgment about the food, so
-        // the row is not offered at all — and the table row beside it still is.
-        let context = try TestStore.context()
-        let repository = FakeRepository(hits: [
-            "oats": [bundled(5, "Biscuits, oat"), bundled(1, "Oats, rolled")],
-            "oat bar": [bundled(9, "Oat flakes")],
-        ])
-        let validator = FakeValidator(verdicts: [
-            MatchVerdict(item: 1, candidate: 1, certainty: .certain),
-        ])
-        let resolver = LineResolver(
-            context: context, repository: repository, validator: validator,
-            products: { $0 == "oat bar" ? Self.product("Oatly Oat Bar", score: 0.95) : nil },
-            estimator: FakeEstimator()
-        )
-        let resolution = await resolver.resolve("oats and oat bar")
-        #expect(resolution.rows.count == 2)
-        // One verdict for a line of two rows, and the line still counts as checked: the
-        // product row was left out of the count as well as out of the prompt, so the
-        // all-or-nothing rule is not tripped by its absence.
-        #expect(resolution.wasChecked)
-        #expect(resolution.rows.first?.origin == .database)
-        #expect(resolution.rows.first?.choice?.name == "Oats, rolled")
-        #expect(resolution.rows.first?.confidence == .settled)
-        #expect(resolution.rows.last?.origin == .product)
-        #expect(resolution.rows.last?.choice?.name == "Oatly Oat Bar")
-        #expect(resolution.rows.last?.confidence == .probable)
-    }
-
-    @Test func aVerdictOfNoneOfTheseCannotEmptyAProductRow() async throws {
-        // The sharp case. "None of these" is the honest answer to a list of table rows
-        // that does not hold the food the person ate — and applied to the product row it
-        // threw away a good match and blocked the log. The verdict is never asked for now,
-        // so a line of nothing but products reads as unchecked, which is what the sign-off
-        // screen already assumed: it offers its unchecked notice only where a row came
-        // from the tables.
-        let context = try TestStore.context()
-        let repository = FakeRepository(hits: ["oat bar": [bundled(9, "Oat flakes")]])
-        let validator = FakeValidator(verdicts: [
-            MatchVerdict(item: 1, candidate: 0, certainty: .unsure),
-        ])
-        let resolver = LineResolver(
-            context: context, repository: repository, validator: validator,
-            products: { _ in Self.product("Oatly Oat Bar", score: 0.95) },
-            estimator: FakeEstimator()
-        )
-        let resolution = await resolver.resolve("oat bar")
-        let row = try #require(resolution.rows.first)
-        #expect(row.origin == .product)
-        #expect(row.choice?.name == "Oatly Oat Bar")
-        #expect(row.confidence == .probable)
-        #expect(resolution.canLog)
-        #expect(!resolution.wasChecked)
-    }
-
-    // MARK: - Which of the two answers better
-
-    @Test func withNoProductTheTablesAnswerWhateverTheyScored() {
-        #expect(LineResolver.tablesWin(bundled: 0.1, wasNarrowed: false, product: nil))
-        #expect(LineResolver.tablesWin(bundled: nil, wasNarrowed: false, product: nil))
-    }
-
-    @Test func withNoTableRowTheProductAnswers() {
-        #expect(!LineResolver.tablesWin(bundled: nil, wasNarrowed: false, product: 0.5))
-    }
-
-    @Test func theHigherScoreWinsAndATieGoesToTheTables() {
-        #expect(LineResolver.tablesWin(bundled: 0.8, wasNarrowed: false, product: 0.7))
-        #expect(LineResolver.tablesWin(bundled: 0.8, wasNarrowed: false, product: 0.8))
-        #expect(!LineResolver.tablesWin(bundled: 0.8, wasNarrowed: false, product: 0.81))
-    }
-
-    @Test func aNarrowedTableMatchLosesToAProductThatAnsweredTheWholeTerm() {
-        // Narrowing means nothing answered what was said and a word of it was tried
-        // instead, so the score is against a question nobody asked. "Spaghetti with
-        // bolognese sauce" reaches a plain spaghetti row by dropping three words, and a
-        // ready meal of that name is what was eaten.
-        #expect(!LineResolver.tablesWin(bundled: 0.95, wasNarrowed: true, product: 0.5))
-        // With nothing to lose to, a narrowed match still answers.
-        #expect(LineResolver.tablesWin(bundled: 0.95, wasNarrowed: true, product: nil))
+        let resolver = LineResolver(context: context, repository: repository)
+        let best = try #require(await resolver.candidates(for: "rice").first)
+        #expect(best.lastAmount == nil)
     }
 }

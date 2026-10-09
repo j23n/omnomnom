@@ -174,3 +174,53 @@ what nobody has looked at yet, which is this file's job rather than the plan's.
     measured is selected against. The fix is not a design change: it is instrumentation on
     real lines, counting how often an item reaches the search at all, which is another
     reason the matcher is the critical path.
+
+## What one path for a line leaves open
+
+With the ladder deleted, a model that searches the database for itself is the only thing
+that reads a typed line. This is what follows from that, and not one of these is answerable
+by reading.
+
+32. **Apple's on-device model no longer reads a typed line, and whether it could is a device
+    question.** It takes no tools, so it cannot search the tables, and guessing their
+    wording is exactly what was deleted — the measured case is "Pasta, cooked" resolving to
+    *Fish, cooked (average)*. On device is still the default provider, so out of the box the
+    composer answers only a line logged before. Whether something loop-shaped can be built
+    on Foundation Models at all — a session asked for a search term, handed rows, and asked
+    again, which is the loop done by hand — is not a thing to settle in a document: it needs
+    a device with Apple Intelligence, the real tables, and the twenty-second budget measured
+    against a few real lines. Until somebody runs it, the honest position is that the
+    primary input needs a key.
+33. **The composer's camera went with it, and the choice there is a product decision.** A
+    photograph attached in the composer is `.photo` input to the same `LineDriving` path a
+    typed line takes, so on device it cannot be read either and the composer says no model
+    is set up to read it. The Add screen's photo estimate still works on-device by
+    construction, so the capability has moved rather than vanished — but one of three has to
+    be chosen: the composer's photo falls back to a description-only on-device estimate with
+    no database grounding behind it, or the composer's camera button hides itself when the
+    provider cannot read a photograph, or it stays as it is and Settings carries the
+    explanation. Settings currently says the on-device provider "cannot read a typed line",
+    which is honest about the typed case and silent about the photographed one.
+34. **"OpenAI-compatible" is a family resemblance, and there is no longer anything to fall
+    back to.** `LineDriving` needs a server that takes tool definitions, returns tool calls
+    and accepts tool results back, and plenty of what answers at `/v1/chat/completions`
+    does one of those badly or not at all. Before, an endpoint that could not hold a
+    conversation could still name foods for a retriever to look up; now an endpoint without
+    working tool support cannot read a line at all, and what the user sees is a line that
+    resolves to nothing rather than a feature that is missing. What that should do — refuse
+    at the point the endpoint is configured, degrade to something, or say so after the first
+    line fails — is unanswered, and the first step is finding out what the common
+    self-hosted servers actually do with a tool definition.
+35. **Nothing grades a row from a score any more, and two measured numbers have no reader.**
+    `settledAt` and `FoodMatch.confidence` are how a row was graded while the app matched
+    foods on a model's behalf: the score decided whether a row settled, was marked for a
+    glance, or blocked. With one path left, a row's confidence is the certainty of the model
+    that chose it, capped by the ingredient rule, so `FoodMatch.confidence` has no caller
+    and `settledAt` is a measured number nothing reads. Only `probableAt` is live, as the
+    bar that decides whether a term found its food well enough to stop dropping words from
+    it. The question is whether anything should ever grade a row without a model again — a
+    food picked from search is `chosen` and settled by the act of picking it, and a line
+    nothing can read has no rows at all, so there may be no case left to serve — and if
+    there is not, those thresholds are a measurement worth keeping written down rather than
+    code worth calling. Related: the sign-off sheet's unchecked sentence for a bundled row,
+    "Matched by name", now has no path that produces it for the same reason.

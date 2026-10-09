@@ -1,5 +1,24 @@
 import Foundation
 
+/// How sure the model is that a candidate is the food the line meant.
+nonisolated enum VerdictCertainty: String, Hashable, Sendable {
+    case certain
+    case probable
+    case unsure
+
+    /// The same certainty as a row's confidence.
+    ///
+    /// One mapping, because every driving provider reads a certainty and what "probable"
+    /// is worth on a row must not depend on which of them answered.
+    var confidence: MatchConfidence {
+        switch self {
+        case .certain: .settled
+        case .probable: .probable
+        case .unsure: .unsure
+        }
+    }
+}
+
 /// What a model that searched for itself answers with: one entry per food, each naming a
 /// candidate the searches returned, and the meal the foods belong to.
 ///

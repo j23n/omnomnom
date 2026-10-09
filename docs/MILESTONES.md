@@ -1387,3 +1387,63 @@ changes to look at first: `WidgetPhrase` now relies on the synthesised memberwis
 `WidgetSnapshot.init` lost a parameter, `PickableResultRow`'s memberwise init is synthesised
 where it used to be written out, and the library editors' toolbar reads `dismiss` from inside
 a `ViewModifier` rather than from the view that presents them.
+
+## The ladder comes out
+
+Not a milestone either: the deletion that "A model that holds the search" made possible.
+One path reads a typed line now, where there were two.
+
+**What went.** `ResolvableItem`, `MatchValidating`, `FoundationMatchValidator`,
+`MatchVerdict`, `MatchVerdicts`, `ValidationItem`, `ValidationPrompt`, `ProductRung`,
+`ProductMatch`, `LineResolver.tablesWin`, `LineResolver.databaseRow`, the per-item phrase
+recall, and the `estimator:`, `validator:` and `products:` fields that wired them together —
+four files out of the app target, and `LineResolver` from 622 lines to 304. Every one of
+them existed because the model naming the foods could not see the database: the guess at a
+composition table's wording, the search on that guess, the arbitration between the tables
+and Open Food Facts, the dropping of words when the whole term answered nothing, and the
+second request spent asking a model to choose among what the retriever had found. A model
+that searches needs none of it, so they went together rather than one at a time. What is
+left in front of the driving model is phrase recall, untouched, because a repeat under five
+seconds is worth more than anything a deletion buys.
+
+**The searches survive, and `candidates(for:)` is why.** `search`, `subsets` and `shortlist`
+keep every narrowing rule and the preparation-word rule exactly as they were. Their one
+caller is the "other foods this could have been" list a row offers when someone questions
+the food it was given, which is a question a person reads the answer to rather than one a
+score settles unasked. What went is the ladder's *use* of them to resolve a line, and with
+it the rule that a narrowed match never settles — that rule guarded a row the retriever had
+picked without being asked, and nothing picks one now.
+
+**The opt-in now governs what it reads as governing.** Meal estimation gated the validator,
+which meant the switch did not govern the request that actually sent the line. It gates the
+model that reads a line, so with it off nothing is asked of anything and a line never logged
+before resolves to nothing. `LogLineIntent` used to assemble its resolver by hand and read
+neither switch; it goes through `LineResolver.app` as the composer does, so a spoken line is
+governed by the same two.
+
+**What on device lost, which is the price of one path.** Apple's Foundation Models path does
+not conform to `LineDriving` and cannot: it takes no tools, so it would be back to guessing
+a term, and that guess is the thing the validator existed to paper over — the case measured
+in this log is "Pasta, cooked" answered with *Fish, cooked (average)*, settled and unasked.
+So on device reads neither a typed line nor a photograph attached to one in the composer,
+and it is still the default provider: the app as installed answers a line from memory or not
+at all until a key is set. What it keeps is the photograph-and-description estimate on the
+Add screen, one request with no searching in it, which is now the only thing `MealEstimating`
+serves. `RemoteMealEstimator` went for being unreachable rather than for being a rung —
+`Estimators.current()` was its only caller and existed to build the ladder's estimator, and
+the Add screen has always constructed the on-device one — so the remote one-shot estimate
+`PLAN.md` described was a standing error rather than something this change removed.
+
+`LineDriving` itself is provider-neutral, and an OpenAI-compatible conformer lands beside
+the Anthropic one, so "Your own endpoint" reads a line the same way rather than being
+stranded by the deletion.
+
+**The one request that got more careful.** The Anthropic request sends `fallbacks: "default"`
+with the server-side-fallback beta header, so a safety refusal is routed by category instead
+of failing outright. That was a nicety while a retriever could still answer a line on its
+own; it is the primary input's only path now.
+
+Unbuilt, and more so than usual. There is still no Swift toolchain here, so nothing has been
+compiled or run, and a deletion of this shape is exactly what a compiler finds cheaply and
+reading does not. The tests of the deleted machinery went with it. The first build is still
+the thing to do next.

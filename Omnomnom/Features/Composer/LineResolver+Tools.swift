@@ -5,17 +5,18 @@ import SwiftData
 extension LineResolver {
     /// A line resolved by a model that did its own searching.
     ///
-    /// The ladder above this one is three rungs and a second model pass: name the foods,
-    /// retrieve a shortlist per food, ask a model to choose from it, and recover with a
-    /// word-dropping fallback when a term found nothing. All of that exists because the
-    /// model naming the foods could not see the database and had to guess the wording a
-    /// composition table uses. Here it looks instead, so this path is one request, no
-    /// `lookupTerm`, no narrowing, and no arbitration between two retrievers — the rows of
-    /// both arrive as candidates in one list and the model picks among them.
+    /// This is how a line is read. There used to be a ladder beside it — name the foods,
+    /// retrieve a shortlist per food, ask a second model to choose from it, and recover
+    /// with a word-dropping fallback when a term found nothing — and all of it existed
+    /// because the model naming the foods could not see the database and had to guess the
+    /// wording a composition table uses. A model that looks needs none of it, so the
+    /// ladder is gone: no `lookupTerm`, no narrowing, no arbitration between two
+    /// retrievers. The rows of both sources arrive as candidates in one list and the model
+    /// picks among them.
     ///
-    /// What is kept from the ladder is the rung that matters for speed: a whole line logged
-    /// before still comes back from memory before anything is asked, which `resolve`
-    /// handles before it gets here.
+    /// What the ladder had that was worth keeping is in front of this: a whole line logged
+    /// before comes back from memory before anything is asked, which `resolve` handles
+    /// before it gets here.
     ///
     /// Never throws, for the same reason the other path does not: a failure anywhere leaves
     /// rows for the user to settle, and an empty resolution is a thing the composer already
@@ -82,8 +83,8 @@ extension LineResolver {
 
     /// A chosen product, fetched and cached through the flow a scan uses.
     ///
-    /// This is the round trip the path saves. The old rung asked Open Food Facts twice for
-    /// every term a line named — once to search, once to fetch the best hit by barcode —
+    /// This is a round trip the old path spent. It asked Open Food Facts twice for every
+    /// term a line named — once to search, once to fetch the best hit by barcode —
     /// whether or not anything then used the answer. Here the search is a tool result and
     /// the fetch happens once, for the row that won.
     private func productRow(

@@ -100,8 +100,8 @@ struct EstimationProviderView: View {
         }
     }
 
-    /// Claude, which is the one provider that searches this app's own database for itself.
-    /// Both fields default, so the only thing this screen asks for is a key.
+    /// Claude. Both fields default, so the only thing this screen asks for is a key, which
+    /// is the whole difference between this arm and the endpoint's.
     @ViewBuilder
     private var claudeSections: some View {
         Section {
@@ -156,6 +156,8 @@ struct EstimationProviderView: View {
         photoSection(isOn: $sendsPhotos, footer: Self.photoFooter)
         Section {
             Text(readiness)
+        } footer: {
+            Text(Self.toolsFooter)
         }
     }
 
@@ -211,9 +213,9 @@ struct EstimationProviderView: View {
             return "Almost. Add the name of the model to ask for."
         }
         if hasStoredKey {
-            return "Ready. Estimates are asked of \(url.absoluteString)."
+            return "Ready. Lines are resolved by \(remote.model) at \(url.absoluteString)."
         }
-        return "Ready, with no key. Estimates are asked of \(url.absoluteString); a hosted endpoint will refuse them, one on your own network may not need a key at all."
+        return "Ready, with no key. Lines are resolved by \(remote.model) at \(url.absoluteString); a hosted endpoint will refuse them, one on your own network may not need a key at all."
     }
 
     /// Writes what was typed and clears it in the same breath, so the key lives in `@State`
@@ -241,16 +243,31 @@ struct EstimationProviderView: View {
         AppLog.estimation.info("remote estimator key removed")
     }
 
+    /// The paragraph both remote providers owe, in one place.
+    ///
+    /// Shared because both now do the same thing with the database, and two copies of a
+    /// disclosure are two chances to describe it differently — which is how the duplicated
+    /// prose elsewhere in this app went wrong. A sentence that drifts in a privacy notice
+    /// is worse than one that drifts in a doc comment.
+    private static let databaseDisclosure = """
+        It also searches this app's food database for you, which is what makes it good at \
+        this. The database stays on the device; what travels is the search terms it chooses \
+        and the rows that came back, which are the app's own reference data and say nothing \
+        about you. With product search on, those terms reach Open Food Facts as well.
+        """
+
     /// The one disclosure in this app that cannot be shortened. Everything else it does is
     /// local, so this is the sentence that stops being true the moment a remote endpoint is
     /// chosen, and it says which text and which pictures go where.
     private static let disclosure = """
         An endpoint of your own is the one part of this app that sends what you write somewhere. \
         The meal you type on Today goes to the address above, with the model name and your key, \
-        each time an estimate is asked for — and the photo too, while Send photos is on.
+        each time a line is resolved — and the photo too, while Send photos is on.
 
-        Nothing else travels: your log, the food database and Health stay on this device. \
-        Where the address points and what is kept there is between you and whoever runs it.
+        \(EstimationProviderView.databaseDisclosure)
+
+        Nothing else travels: your log and Health stay on this device. Where the address \
+        points and what is kept there is between you and whoever runs it.
         """
 
     private static let keyFooter = """
@@ -260,20 +277,15 @@ struct EstimationProviderView: View {
         it to stop sending one.
         """
 
-    /// Claude's own disclosure. It differs from the endpoint's in one way that is worth a
-    /// sentence of its own: this provider reads the food database, so rows of it travel
-    /// back as part of the conversation. They are the app's own reference data rather than
-    /// anything about this person, and saying so is cheaper than letting someone discover
-    /// that a request carries more than what they typed.
+    /// Claude's own disclosure. It differs from the endpoint's only in where the request
+    /// goes and who holds the key; the paragraph about the database is the same one, because
+    /// what happens to the database is the same thing.
     private static let claudeDisclosure = """
         Claude is the one part of this app that sends what you write somewhere. The meal \
         you type on Today goes to Anthropic with your key, each time a line is resolved — \
         and the photo too, while Send photos is on.
 
-        It also searches this app's food database for you, which is what makes it good at \
-        this. The database stays on the device; what travels is the search terms it chooses \
-        and the rows that came back, which are the app's own reference data and say nothing \
-        about you. With product search on, those terms reach Open Food Facts as well.
+        \(EstimationProviderView.databaseDisclosure)
 
         Nothing else travels: your log and Health stay on this device.
         """
@@ -288,6 +300,18 @@ struct EstimationProviderView: View {
         Off to begin with, and a separate choice from the text: a photo of a meal carries \
         whatever else was in the frame. A photo only arises when Meal estimation is on, \
         which is where the camera is.
+        """
+
+    /// Said here, where someone has just finished configuring an endpoint, rather than left
+    /// to arrive as a failure. Reading a line means calling a tool to search the food
+    /// database, and tool calling is the part of "OpenAI-compatible" that a small
+    /// self-hosted server is likeliest not to have. There is nothing to ask in advance — no
+    /// capability document to read, and no way to find out but to send — so saying it once
+    /// in advance turns a puzzling refusal into an expected one.
+    private static let toolsFooter = """
+        Reading a line means searching the food database, which the model does by calling a \
+        tool. Hosted endpoints generally can; a small server of your own may not, and will \
+        say so the first time you send a line.
         """
 
     private static let photoFooter = """

@@ -119,10 +119,9 @@ struct TodayView: View {
     /// The day is shown underneath it straight away, so what was written is visible rather
     /// than only reported.
     ///
-    /// A resolver with no rungs wired in, because reading a remembered phrase needs none of
-    /// them: it reads the foods the phrase already points at. Building the ladder here would
-    /// stand up a validator and an Open Food Facts client on every widget tap to answer a
-    /// question that never asks them.
+    /// A resolver with no model wired in, because reading a remembered phrase needs none:
+    /// it reads the foods the phrase already points at. Wiring one up here would stand up a
+    /// search client on every widget tap to answer a question that never asks it.
     private func logFromWidget(_ id: UUID) async {
         model.showToday()
         guard let phrase = WidgetSnapshotWriter.phrase(id: id, in: context),

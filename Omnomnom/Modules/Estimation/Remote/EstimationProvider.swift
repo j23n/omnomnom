@@ -1,10 +1,17 @@
 import Foundation
 import Security
 
-/// Which model answers the composer.
+/// Which model is asked about a meal.
 ///
-/// On-device first wherever it can: it costs nothing, works without a network and sends
-/// nothing anywhere. The remote option exists because Apple Intelligence is absent on
+/// Reading what someone writes on Today means searching this app's database, which a model
+/// does by calling a tool for it. The two remote options can. Apple's on-device model takes
+/// no tools, so it answers the Add screen's estimate and nothing on Today — neither a typed
+/// line nor a photo attached beside one, both of which go down the same path. That is the
+/// one real cost of having deleted the retrieval the app used to do on a model's behalf,
+/// and `docs/OPEN-QUESTIONS.md` carries what might be done about it.
+///
+/// On-device still leads, because it costs nothing, works without a network and sends
+/// nothing anywhere. The remote options exist because Apple Intelligence is absent on
 /// older hardware, in some regions and whenever it is switched off, and because a larger
 /// model is simply better at breaking a named dish into its parts.
 /// Declaration order is the order Settings offers them, which is why Claude sits between
@@ -30,11 +37,11 @@ nonisolated enum EstimationProvider: String, CaseIterable, Codable, Sendable {
     var detail: String {
         switch self {
         case .onDevice:
-            "Apple Intelligence. Nothing leaves the device."
+            "Apple Intelligence, for the estimate on the Add screen. Nothing leaves the device. Reading a line or a photo on Today needs a model that can search the food database itself, which this one cannot."
         case .anthropic:
             "Anthropic's API, with a key of yours. It searches this app's food database itself, and what you type is sent to it."
         case .remote:
-            "An OpenAI-compatible endpoint you run or pay for. What you type is sent to it."
+            "An OpenAI-compatible endpoint you run or pay for. It searches this app's food database itself, and what you type is sent to it."
         }
     }
 
@@ -210,50 +217,53 @@ nonisolated enum EstimationKeychain {
     static func hasKey(_ slot: Slot) -> Bool { read(slot) != nil }
 }
 
-/// Builds the estimator the user's settings ask for.
+/// Builds the model the user's settings ask for.
 ///
-/// One place, because three screens need the answer and a second reading of these defaults
-/// would be a second chance to disagree about which model is answering. `nil` means none
-/// will: Apple Intelligence chosen and unavailable, or an endpoint chosen and not yet
-/// configured. The caller says so rather than failing — search and the barcode scanner are
-/// how the app is used when no model will answer.
+/// One place, because a second reading of these defaults would be a second chance to
+/// disagree about which model is answering. `nil` means none will — a provider chosen and
+/// not yet configured, or one that cannot read a line at all — and the caller says so
+/// rather than failing: search and the barcode scanner are how the app is used when no
+/// model will answer.
 nonisolated enum Estimators {
+    /// The model that will read a line, or `nil` when none will.
+    ///
+    /// `nil` means one of two things the caller need not tell apart: the chosen provider
+    /// takes no tools, so it cannot search this app's database and has nothing to read a
+    /// line with, or it can but has not been configured yet. Either way the composer says
+    /// so in the one sentence it has, and search and the scanner still work. Asking for the
+    /// driver is also how `LineResolver` learns whether a line can be read at all, which is
+    /// better than reading the provider setting a second time and risking a different
+    /// answer.
+    ///
+    /// A switch rather than a guard, so that adding a provider is a compile error here. The
+    /// searches are passed in because they belong to the device — the tables and the store
+    /// live on the main actor and this type has no business reaching for them.
     @MainActor
-    static func current() -> (any MealEstimating)? {
+    static func driver(searching searcher: any LineSearching) -> (any LineDriving)? {
         switch chosen() {
         case .onDevice:
-            guard EstimationAvailability.current().isAvailable else { return nil }
-            return FoundationMealEstimator()
+            return nil
+        case .anthropic:
+            let settings = anthropicSettings()
+            guard settings.isUsable else { return nil }
+            return AnthropicLineResolver(
+                settings: settings, key: EstimationKeychain.read(.anthropic), searcher: searcher
+            )
         case .remote:
             let settings = remoteSettings()
             guard settings.isUsable else { return nil }
-            return RemoteMealEstimator(settings: settings, key: EstimationKeychain.read(.openAICompatible))
-        // Claude answers the whole line in one conversation rather than naming foods for a
-        // retriever to look up, so it has no estimator to build. `driver` is where it is,
-        // and the two are deliberately exclusive: whichever one is non-nil is the path.
-        case .anthropic:
-            return nil
+            return OpenAICompatibleLineResolver(
+                settings: settings, key: EstimationKeychain.read(.openAICompatible),
+                searcher: searcher
+            )
         }
     }
 
-    /// The one-call path, when the chosen provider is one that can search for itself.
-    ///
-    /// `nil` for every other provider, which is what makes `LineResolver` able to pick a
-    /// path by asking rather than by reading the setting a second time. The searches are
-    /// passed in because they belong to the device — the tables and the store live on the
-    /// main actor and this type has no business reaching for them.
-    @MainActor
-    static func driver(searching searcher: any LineSearching) -> (any LineDriving)? {
-        guard chosen() == .anthropic else { return nil }
-        let settings = anthropicSettings()
-        guard settings.isUsable else { return nil }
-        return AnthropicLineResolver(
-            settings: settings, key: EstimationKeychain.read(.anthropic), searcher: searcher
-        )
-    }
-
-    /// Defaults to the device. A first run has sent nothing anywhere and should not need a
-    /// decision before it works.
+    /// Defaults to the device, which has sent nothing anywhere and needs no key. It is no
+    /// longer true that a first run needs no decision before everything works: the device
+    /// cannot read a typed line, so the composer asks for a provider to be chosen, in the
+    /// one sentence it has to say it in. Defaulting to a remote provider instead would
+    /// trade that for a first run that needs a key pasted in, which is worse.
     private static func chosen() -> EstimationProvider {
         guard let raw = UserDefaults.standard.string(forKey: EstimationProvider.key),
               let provider = EstimationProvider(rawValue: raw)
