@@ -102,11 +102,12 @@ struct MacroCompositionTests {
     }
 
     @Test func aMacronutrientContributingNothingIsNotDrawnAsASliver() {
-        // Gouda has no carbohydrate at all, so there is no carbohydrate band to draw.
+        // Gouda has no carbohydrate at all, so there is no carbohydrate band to draw. (Its
+        // 4.6 kcal that no macronutrient accounts for are the unattributed band, after them.)
         let composition = MacroComposition(
             of: Nutrition(energy: 379, protein: 22.5, carbohydrates: 0, fatTotal: 31.6)
         )
-        #expect(composition.bands.map(\.nutrient) == [.protein, .fatTotal])
+        #expect(composition.bands.compactMap(\.nutrient) == [.protein, .fatTotal])
     }
 
     @Test func theUnaccountedBandComesLastAndHasNoNutrient() {

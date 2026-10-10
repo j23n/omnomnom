@@ -301,7 +301,7 @@ struct OpenFoodFactsSearchTests {
         let body = #"""
         {"hits":[{"code":"8000500037560",
           "product_name":{"main":"Kinder Bueno","en":"Kinder Bueno bar","fr":"Kinder Bueno"},
-          "brands":"Ferrero","nutriments":{"energy-kcal_100g":571}}]}
+          "brands":"Ferrero",\#(macros)}]}
         """#
         let (client, _) = makeClient(.response(status: 200, body: body))
         let found = try await client.products(matching: "kinder")

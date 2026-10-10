@@ -107,7 +107,7 @@ struct FoodQueryTests {
         // always spelled out. Verified against the real index, not assumed.
         #expect(
             FoodQuery.ftsMatchExpression(for: "oat flakes")
-                == "\"oat\"* AND (\"flakes\"* OR \"flake\"*)"
+                == "\"oat\"* AND (\"flakes\"* OR \"flak\"* OR \"flake\"*)"
         )
     }
 

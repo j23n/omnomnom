@@ -45,7 +45,7 @@ struct EstimateDraftTests {
         draft.rows[1].choice = bread
         #expect(draft.hasUnmatchedRows == false)
         #expect(draft.items?.count == 2)
-        #expect(draft.totals.energy == 149 + 78)
+        #expect(draft.totals.energy == Double(149 + 78))
     }
 
     @Test func theAmountMustParseAndStayInRange() {

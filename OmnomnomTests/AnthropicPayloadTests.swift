@@ -215,8 +215,8 @@ struct AnthropicPayloadTests {
 
     @Test func theFinalTextBlockIsReadAsTheAnswer() throws {
         let step = try AnthropicPayload.step(from: reply("""
-            {"stop_reason":"end_turn","content":[{"type":"text","text":"{\\"items\\":[
-              {\\"name\\":\\"oats\\",\\"candidate\\":3,\\"grams\\":45,\\"certainty\\":\\"certain\\",\\"implausible\\":false}
+            {"stop_reason":"end_turn","content":[{"type":"text","text":"{\\"items\\":[\\n\
+              {\\"name\\":\\"oats\\",\\"candidate\\":3,\\"grams\\":45,\\"certainty\\":\\"certain\\",\\"implausible\\":false}\\n\
             ],\\"meal\\":\\"breakfast\\",\\"note\\":\\"a usual bowl\\"}"}]}
             """))
         guard case .answer(let answer) = step else {
