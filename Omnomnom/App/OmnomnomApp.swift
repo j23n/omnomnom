@@ -1,4 +1,7 @@
 import AppIntents
+#if FEEDBACK
+import FeedbackKit
+#endif
 import Foundation
 import os
 import SwiftData
@@ -13,6 +16,10 @@ struct OmnomnomApp: App {
     private let services: AppServices
     /// Where an app intent leaves what it wants shown.
     private let router: AppRouter
+    #if FEEDBACK
+    /// In-app feedback, in Debug builds (`FeedbackSupport`).
+    @State private var feedback = FeedbackCenter.omnomnom()
+    #endif
 
     /// Runs on the main actor during launch (`App` is main-actor isolated). Reconciliation
     /// starts here, before any scene exists, so a background Health launch registers its
@@ -51,6 +58,10 @@ struct OmnomnomApp: App {
             if let container {
                 RootView()
                     .modelContainer(container)
+                    #if FEEDBACK
+                    .feedbackRedaction(feedback)
+                    .environment(feedback)
+                    #endif
             } else {
                 StorageUnavailableView()
             }

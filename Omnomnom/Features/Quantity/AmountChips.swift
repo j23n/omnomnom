@@ -59,6 +59,7 @@ struct AmountChips: View {
                         onSelect(chip.value)
                     } label: {
                         Text(chip.label)
+                            .privacySensitive()
                     }
                     .buttonStyle(.bordered)
                     .accessibilityLabel(chip.label)

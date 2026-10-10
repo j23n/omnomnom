@@ -16,6 +16,7 @@ struct ForeignMealsSection: View {
                         Text("\(meal.sourceName) · \(meal.start.formatted(date: .omitted, time: .shortened))")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .privacySensitive()
                     }
                     Spacer()
                     ValueText(meal.nutrition.energy, unit: .kilocalorie)

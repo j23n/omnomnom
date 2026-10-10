@@ -42,6 +42,7 @@ struct TotalsRow: View {
             }
             if let foreign {
                 Text(Self.foreignNote(foreign))
+                    .privacySensitive()
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

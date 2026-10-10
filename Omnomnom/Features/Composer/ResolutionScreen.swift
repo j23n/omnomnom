@@ -119,6 +119,7 @@ struct ResolutionScreen: View {
             if let energy = resolution.total.energy {
                 Section("This line") {
                     LabeledContent("Energy", value: Formatters.amount(energy, unit: .kilocalorie))
+                        .privacySensitive()
                 }
             }
 

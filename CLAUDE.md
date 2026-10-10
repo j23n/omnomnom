@@ -6,7 +6,8 @@ Commit messages describe the change on its own terms. Never reference milestones
 
 ## Code
 
-- No third-party dependencies in the app target or in `Tools/fooddb`.
+- No third-party dependencies in the app target or in `Tools/fooddb`. The one package, j23n's own FeedbackKit, is compiled in only with the `FEEDBACK` condition (Debug builds; README.md, "Feedback").
+- `make` is the interface (README.md): `make test`, `make build`, `make test-app`; CI runs `make ci-linux` and `make ci-macos` through j23n/apple-ci's shared workflows. Don't edit `.apple-ci/apple.mk`; `make update-apple-ci` refreshes it.
 - Swift: Swift 6 language mode, strict concurrency, default actor isolation `MainActor`. No `HK` type leaves the HealthKit actor.
 - Python: 3.9 or newer (Xcode's bundled `python3` is 3.9), standard library only, type hints, `python3 -m unittest` from `Tools/fooddb`.
 

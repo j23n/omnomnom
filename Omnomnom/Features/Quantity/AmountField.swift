@@ -91,6 +91,7 @@ struct AmountField: View {
                 .font(.largeTitle.weight(.semibold))
                 .multilineTextAlignment(.trailing)
                 .focused(isFocused)
+                .privacySensitive()
                 .accessibilityLabel(unit.accessibilityLabel)
                 .accessibilityValue(text.isEmpty ? "no amount" : "\(text) \(unit.spokenName)")
             Text(unit.symbol)

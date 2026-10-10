@@ -61,23 +61,26 @@ Without these files the app still launches, but search reports that the database
 
 ## Generate the project
 
-The Xcode project is generated from `project.yml` and is not checked in. Once per machine:
+The Xcode project is generated from `project.yml` and is not checked in. In the repository root, once per machine and whenever `project.yml` changes:
 
 ```sh
-brew install xcodegen
-```
-
-Then, in the repository root, before the first build and whenever `project.yml` changes:
-
-```sh
-xcodegen generate
+make bootstrap      # installs XcodeGen if it's missing, then generates the project
+make project        # regenerates it when project.yml changed
 ```
 
 ## Build the app
 
 Open the generated `Omnomnom.xcodeproj` in Xcode 26 and run the shared `Omnomnom` scheme on an iPhone or simulator running iOS 26. Signing is automatic; set your team in the target's Signing settings. The simulator's Health app accepts writes, so the whole flow can be tried there; only the device checks listed in `PLAN.md` need hardware.
 
-Swift 6 language mode, strict concurrency, default actor isolation `MainActor`. No third-party dependencies: XcodeGen writes the project file and is linked into nothing, and no package is fetched at build time.
+From the command line, the same targets as the other j23n apps ([j23n/apple-ci](https://github.com/j23n/apple-ci)): `make test` (the pipeline's tests), `make build` (the app for the iOS Simulator, unsigned), `make test-app` (`OmnomnomTests` in the simulator), and `make ci-linux` and `make ci-macos`, which CI runs. `.apple-ci/apple.mk` holds the shared rules; `make update-apple-ci` refreshes it.
+
+Swift 6 language mode, strict concurrency, default actor isolation `MainActor`. No third-party dependencies: XcodeGen writes the project file and is linked into nothing. The one package fetched at build time is j23n's own FeedbackKit, and only Debug builds use it (see Feedback).
+
+## Feedback
+
+Debug builds (the `FEEDBACK` compilation condition, set for the Debug configuration in `project.yml`) include in-app feedback with [FeedbackKit](https://github.com/j23n/feedbackkit): shaking the iPhone, taking a screenshot (a banner offers it) or Settings › Feedback opens a form with a screenshot of the screen, which Quick Look's Markup can annotate. The report goes to the owner's private inbox, [j23n/feedback](https://github.com/j23n/feedback), where it's triaged before an issue is filed here; the screenshot never leaves the inbox.
+
+Every view marked `.privacySensitive()` is redacted in the screenshot: `ValueText`, and so every figure of what someone ate, the amounts being typed, the trends and the times of meals from other apps. A new view that shows such a figure uses `ValueText` or is marked too. Settings › Feedback turns it off, holds the GitHub token (a fine-grained token for j23n/feedback with Issues and Contents read and write, kept in the Keychain) and sends what's waiting. Release builds never create a feedback center (`Omnomnom/Support/FeedbackSupport.swift`).
 
 ## Modules
 

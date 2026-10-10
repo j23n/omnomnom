@@ -39,6 +39,13 @@ configs:
   Debug: debug
   Release: release
 
+# In-app feedback (README.md, "Feedback"): j23n's own package, compiled in only with the FEEDBACK
+# condition, which the app target sets for Debug. Pinned to a commit of j23n/feedbackkit.
+packages:
+  FeedbackKit:
+    url: https://github.com/j23n/feedbackkit
+    revision: dd4df0adebaa834e04679388e88ca791d17b1515
+
 # The widget's Info.plist and this file, so both are reachable in Xcode's navigator. The
 # plist sits outside every target folder on purpose: a synchronized folder would copy it
 # into the bundle as a resource, and an extension whose Info.plist is a resource rather
@@ -145,7 +152,13 @@ targets:
         embed: true
         # Already signed by its own build, and copied as Xcode copies it.
         codeSign: false
+      - package: FeedbackKit
+        product: FeedbackKit
     settings:
+      configs:
+        # In-app feedback in the builds you run from Xcode, never in an archive.
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) FEEDBACK"
       base:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor

@@ -46,6 +46,7 @@ struct NutrientChart: View {
             Text(subtitle)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .privacySensitive()
         }
     }
 
@@ -107,6 +108,7 @@ struct NutrientChart: View {
             AxisMarks(values: .automatic(desiredCount: 3))
         }
         .frame(height: 96)
+        .privacySensitive()
         .accessibilityLabel(trend.nutrient.displayName)
         .accessibilityValue(Self.accessibilitySummary(trend))
     }

@@ -106,6 +106,7 @@ struct IngredientRow: View {
                 Text(Formatters.amount(ingredient.energy, unit: .kilocalorie))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .privacySensitive()
             }
             Spacer()
             TextField("0", text: $ingredient.amountText)

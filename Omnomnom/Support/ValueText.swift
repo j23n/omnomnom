@@ -23,6 +23,8 @@ struct ValueText: View {
     var body: some View {
         Text(text)
             .monospacedDigit()
+            // What someone ate is theirs: a feedback screenshot redacts it (FeedbackSupport).
+            .privacySensitive()
             .accessibilityLabel(spoken)
     }
 }

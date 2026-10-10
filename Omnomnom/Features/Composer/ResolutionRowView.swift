@@ -116,6 +116,7 @@ struct ResolutionRowView: View {
                         .monospacedDigit()
                 }
             }
+            .privacySensitive()
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Amount, \(amountText)")

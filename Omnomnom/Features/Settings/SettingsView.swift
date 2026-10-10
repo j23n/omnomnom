@@ -1,3 +1,6 @@
+#if FEEDBACK
+import FeedbackKit
+#endif
 import SwiftUI
 
 /// Health status, the opt-in modules with their state, data sources, and an About row
@@ -78,6 +81,9 @@ struct SettingsView: View {
                 } footer: {
                     Text(cadence.explanation + " A day you mark complete always counts toward the trends, whether or not it was asked about.")
                 }
+                #if FEEDBACK
+                FeedbackSection()
+                #endif
                 Section("Data") {
                     NavigationLink("Remembered lines") {
                         RememberedLinesView()
@@ -142,6 +148,20 @@ struct SettingsView: View {
     }
 }
 
+
+#if FEEDBACK
+/// Sending feedback from the app, in Debug builds (`FeedbackSupport`): on or off, the
+/// gestures, the GitHub token and what's waiting to be sent. Previews have no feedback center.
+private struct FeedbackSection: View {
+    @Environment(FeedbackCenter.self) private var feedback: FeedbackCenter?
+
+    var body: some View {
+        if let feedback {
+            FeedbackSettingsSection(center: feedback)
+        }
+    }
+}
+#endif
 #if DEBUG
 #Preview("Health, all authorized") {
     SettingsView(estimationAvailability: .available(photo: false))
