@@ -6,16 +6,18 @@ import Foundation
 /// screenshot or Settings › Feedback opens FeedbackKit's form, and the report goes to the
 /// owner's private inbox, j23n/feedback, where it's triaged before an issue is filed here.
 ///
-/// The screenshot redacts every view marked `privacySensitive()`: what someone ate, as
-/// `ValueText` shows it, the amounts typed and the trends. A new view that shows a figure of
-/// someone's intake uses `ValueText` or is marked too.
+/// The screenshot carries nothing of the person's: with FeedbackKit's `.allContent` redaction,
+/// SwiftUI draws placeholders for every text and image for the capture, and the titles and text
+/// fields UIKit draws are painted over, so foods, meals, recipes, amounts, times, photographs and
+/// what was typed are all hidden; the screen's layout and the tab bar stay. It fails safe: a new
+/// view is hidden without being marked.
 extension FeedbackCenter {
     static func omnomnom() -> FeedbackCenter {
         FeedbackCenter(configuration: FeedbackConfiguration(
             inbox: GitHubRepository(owner: "j23n", name: "feedback"),
             app: "omnomnom",
             kinds: [.bug, .idea, FeedbackKind(id: "content", title: "Food data")],
-            redaction: .privacySensitiveViews
+            redaction: .allContent
         ))
     }
 }
