@@ -39,6 +39,11 @@ configs:
   Debug: debug
   Release: release
 
+# Your team, from the gitignored Signing.xcconfig at the root (make signing TEAM=…).
+configFiles:
+  Debug: Config/Project.xcconfig
+  Release: Config/Project.xcconfig
+
 # In-app feedback (README.md, "Feedback"): j23n's own package, compiled in only with the FEEDBACK
 # condition, which the app target sets for Debug. Pinned to a commit of j23n/feedbackkit.
 packages:
@@ -113,6 +118,8 @@ settings:
     TARGETED_DEVICE_FAMILY: "1,2"
     # One version for the whole app, where Xcode had written the same pair into each
     # target. The widget cannot be at a different version from the app that contains it.
+    # The build number of a built bundle is the number of commits (postBuildScripts below);
+    # this is only what a build without git history keeps.
     CURRENT_PROJECT_VERSION: "1"
     MARKETING_VERSION: "0.1"
   configs:
@@ -141,6 +148,14 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: "26.0"
+    # The build number: the number of commits, set when the bundle is built (j23n/apple-ci
+    # README.md, "Build numbers"). The script reads .git, hence no script sandbox here.
+    postBuildScripts:
+      - name: Build number
+        script: '"$SRCROOT/.apple-ci/build-number.sh"'
+        inputFiles:
+          - $(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)
+        basedOnDependencyAnalysis: false
     # The app and the code it shares with the widget. `OmnomnomShared` is one folder in
     # two targets, not a framework: a framework would be a third binary to sign and embed
     # for the sake of a handful of types that have to agree.
@@ -164,6 +179,7 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         CODE_SIGN_ENTITLEMENTS: Omnomnom/Omnomnom.entitlements
         CODE_SIGN_STYLE: Automatic
+        ENABLE_USER_SCRIPT_SANDBOXING: "NO"
         ENABLE_PREVIEWS: "YES"
         GENERATE_INFOPLIST_FILE: "YES"
         INFOPLIST_KEY_NSCameraUsageDescription: "The camera reads barcodes on packaged food and photographs meals, recipes and foods. Photos you keep stay on this device."
@@ -185,6 +201,14 @@ targets:
     type: app-extension
     platform: iOS
     deploymentTarget: "26.0"
+    # The build number: the number of commits, set when the bundle is built (j23n/apple-ci
+    # README.md, "Build numbers"). The script reads .git, hence no script sandbox here.
+    postBuildScripts:
+      - name: Build number
+        script: '"$SRCROOT/.apple-ci/build-number.sh"'
+        inputFiles:
+          - $(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)
+        basedOnDependencyAnalysis: false
     sources:
       - OmnomnomWidget
       - OmnomnomShared
@@ -193,6 +217,7 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         CODE_SIGN_ENTITLEMENTS: OmnomnomWidget/OmnomnomWidget.entitlements
         CODE_SIGN_STYLE: Automatic
+        ENABLE_USER_SCRIPT_SANDBOXING: "NO"
         ENABLE_PREVIEWS: "YES"
         # Written by hand, not generated. An extension's Info.plist has to carry an
         # NSExtension dictionary, and the INFOPLIST_KEY_ settings that generate a plist
