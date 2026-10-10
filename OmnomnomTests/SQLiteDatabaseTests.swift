@@ -11,7 +11,7 @@ struct SQLiteDatabaseTests {
     @Test func opensTheFixtureAndReadsMeta() async throws {
         let database = try openFixture()
         #expect(try await database.metaValue(forKey: "food_count") == "7")
-        #expect(try await database.metaValue(forKey: "schema_version") == "2")
+        #expect(try await database.metaValue(forKey: "schema_version") == "3")
         #expect(try await database.metaValue(forKey: "does_not_exist") == nil)
     }
 
