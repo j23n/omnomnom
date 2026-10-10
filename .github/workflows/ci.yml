@@ -3,14 +3,18 @@
 #
 # The app is built with Xcode 27 against the iOS 27 SDK, and with Xcode 26 too, which leaves out
 # the two iOS 27 calls (Omnomnom/Modules/Estimation/OnDeviceSDK.swift). `macos` builds and tests
-# with the runner's Xcode 26; `macos-xcode-27` does the same with Xcode 27 and passes with a note
-# in its summary, without running, until the hosted runners have it. The repository is public,
-# so the hosted runners cost nothing.
+# with the runner's Xcode 26; `macos-xcode-27` does the same with Xcode 27 once the repository
+# variable HOSTED_XCODE_27 is `true` (Settings › Secrets and variables › Actions › Variables), set
+# when apple-ci's Runner inventory lists Xcode 27 on the hosted runners. Until then it's skipped
+# and starts no runner.
 name: CI
 
+# apple-ci's workflows run each job once per commit: Linux on every push, macOS on pull requests,
+# pushes to main and runs by hand (Actions › CI › Run workflow), as its README's "When CI runs" says.
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -34,6 +38,7 @@ jobs:
       xcode: "26"
 
   macos-xcode-27:
+    if: vars.HOSTED_XCODE_27 == 'true'
     uses: j23n/apple-ci/.github/workflows/macos.yml@main
     with:
       name: macOS · app and tests with Xcode 27 (iOS 27 SDK)
