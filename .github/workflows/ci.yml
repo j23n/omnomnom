@@ -1,0 +1,33 @@
+# The shared Linux and macOS jobs (j23n/apple-ci), which run `make ci-linux` and `make ci-macos`:
+# the food database pipeline's tests, then the app built for the iOS Simulator and its tests.
+#
+# The app is built against the iOS 27 SDK (Foundation Models image input, the Health query for a
+# time-limited authorization window), so the macOS job asks for Xcode 27. Until the hosted
+# runners have it, the job passes with a note in its summary instead of running.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch or pull request cancels the run in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    uses: j23n/apple-ci/.github/workflows/linux.yml@main
+    with:
+      name: Linux · food database pipeline
+      apt-packages: python3
+
+  macos:
+    uses: j23n/apple-ci/.github/workflows/macos.yml@main
+    with:
+      name: macOS · pipeline, app and tests (iOS Simulator)
+      xcode: "27"
+      xcode-missing: skip
