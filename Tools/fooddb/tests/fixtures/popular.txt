@@ -1,0 +1,11 @@
+# The ranking the app's test database is built with (OmnomnomTests/Fixtures/foods.sqlite,
+# README.md, "Tests"): the FDC fixtures' foods, most common first. The shipped list is
+# written against the European tables and matches none of them, and OmnomnomTests checks
+# popularity figures and the order they give.
+Apples, raw, with skin
+Bananas, raw
+Egg, whole, raw, fresh
+Milk, whole, 3.25% milkfat, with added vitamin D
+Chicken, broilers or fryers, breast, meat only, cooked, roasted
+Rice, white, long-grain, regular, enriched, cooked
+Bread, whole-wheat, commercially prepared

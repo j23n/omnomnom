@@ -92,7 +92,7 @@ Barcode scanning is off until the user turns it on in Settings › Modules. Dete
 
 ```sh
 cd Tools/fooddb
-python3 -m fooddb build --fdc tests/fixtures/fdc --out ../../OmnomnomTests/Fixtures/foods.sqlite --sources-out ../../OmnomnomTests/Fixtures/sources.json
+python3 -m fooddb build --fdc tests/fixtures/fdc --popular tests/fixtures/popular.txt --out ../../OmnomnomTests/Fixtures/foods.sqlite --sources-out ../../OmnomnomTests/Fixtures/sources.json
 ```
 
 Pipeline tests: `cd Tools/fooddb && python3 -m unittest`.
