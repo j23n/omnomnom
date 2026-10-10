@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import SwiftUI
+import os
 
 /// The field, and everything the last line it sent has to say.
 ///

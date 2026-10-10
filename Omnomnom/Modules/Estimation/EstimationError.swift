@@ -42,9 +42,11 @@ nonisolated enum EstimationError: Error, Hashable, Sendable, LocalizedError {
         if let error = error as? LanguageModelSession.GenerationError {
             return map(generation: error)
         }
+        #if compiler(>=6.4)
         if #available(iOS 27, *), let error = error as? LanguageModelError {
             return map(model: error)
         }
+        #endif
         return .failed(error.localizedDescription)
     }
 
@@ -67,7 +69,9 @@ nonisolated enum EstimationError: Error, Hashable, Sendable, LocalizedError {
         }
     }
 
-    /// The framework's newer error on iOS 27; the session may throw either.
+    #if compiler(>=6.4)
+    /// The framework's newer error on iOS 27; the session may throw either. Its SDK comes
+    /// with Xcode 27 (`OnDeviceSDK.swift`).
     @available(iOS 27, *)
     private static func map(model error: LanguageModelError) -> EstimationError {
         switch error {
@@ -85,4 +89,5 @@ nonisolated enum EstimationError: Error, Hashable, Sendable, LocalizedError {
             .failed(error.localizedDescription)
         }
     }
+    #endif
 }

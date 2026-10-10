@@ -26,7 +26,7 @@ actor FoundationMealEstimator: MealEstimating {
 
     func estimate(_ input: EstimationInput) async throws -> MealEstimate {
         let session = LanguageModelSession(instructions: EstimationPrompt.instructions)
-        let options = GenerationOptions(samplingMode: .greedy)
+        let options = GenerationOptions.greedy
         do {
             switch input {
             case .text(let description):

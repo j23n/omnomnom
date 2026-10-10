@@ -29,9 +29,10 @@ import os
 ///
 /// **Greedy sampling, so this is the one path that is actually deterministic.** The remote
 /// drivers both gave up `temperature: 0` — current reasoning models reject it — so the same
-/// line can resolve two ways there on consecutive days. Here `samplingMode: .greedy` is
-/// accepted, as it already is for the Add screen's estimate, so a line that is resolved
-/// twice resolves the same way twice without leaning on phrase memory to hide it.
+/// line can resolve two ways there on consecutive days. Here greedy sampling
+/// (`GenerationOptions.greedy`) is accepted, as it already is for the Add screen's estimate,
+/// so a line that is resolved twice resolves the same way twice without leaning on phrase
+/// memory to hide it.
 ///
 /// **Main-actor for the reason the other two give**: the searches end at the shared
 /// `ModelContext`, since the product one writes a cache row, so the thing holding them has
@@ -63,7 +64,7 @@ final class FoundationLineResolver: LineDriving {
         // want the model passed in rather than defaulted, which would add `model:` to both
         // call sites and nothing else.
         let session = LanguageModelSession(tools: tools, instructions: LinePrompt.instructions)
-        let options = GenerationOptions(samplingMode: .greedy)
+        let options = GenerationOptions.greedy
         do {
             let generated: GeneratedLine
             switch input {

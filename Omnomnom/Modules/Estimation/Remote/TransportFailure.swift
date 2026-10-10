@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// What a failed request to a remote estimator becomes, in the user's terms.
 ///

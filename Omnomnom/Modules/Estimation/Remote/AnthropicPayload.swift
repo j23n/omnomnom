@@ -340,7 +340,7 @@ nonisolated struct AnthropicMessage: Hashable, Sendable {
 /// is what makes reading `input.term` safe without a fallback for every shape.
 ///
 /// Every search takes the one argument.
-extension AnthropicPayload {
+nonisolated extension AnthropicPayload {
     static func tool(named name: String, description: String, term: String) -> JSONValue {
         .object([
             "name": .string(name),

@@ -123,12 +123,13 @@ nonisolated enum FoodMatcher {
     /// Ties break by id so that one term always resolves the same way; a matcher that
     /// answers differently on two runs cannot be tested against a fixture set.
     static func shortlist(_ candidates: [BundledFood], term: String, limit: Int = 8) -> [FoodMatch] {
-        candidates
-            .map { FoodMatch(food: $0, score: score($0, term: term)) }
+        let matches = candidates
+            .map { (food: BundledFood) -> FoodMatch in FoodMatch(food: food, score: score(food, term: term)) }
             .filter { $0.score > 0 }
-            .sorted { $0.score == $1.score ? $0.food.id < $1.food.id : $0.score > $1.score }
-            .prefix(limit)
-            .map { $0 }
+        let ranked = matches.sorted { (a: FoodMatch, b: FoodMatch) -> Bool in
+            a.score == b.score ? a.food.id < b.food.id : a.score > b.score
+        }
+        return Array(ranked.prefix(limit))
     }
 
     /// The one row to take for a term, or `nil` when nothing matched at all.

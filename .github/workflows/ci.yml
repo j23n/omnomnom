@@ -1,9 +1,11 @@
 # The shared Linux and macOS jobs (j23n/apple-ci), which run `make ci-linux` and `make ci-macos`:
 # the food database pipeline's tests, then the app built for the iOS Simulator and its tests.
 #
-# The app is built against the iOS 27 SDK (Foundation Models image input, the Health query for a
-# time-limited authorization window), so the macOS job asks for Xcode 27. Until the hosted
-# runners have it, the job passes with a note in its summary instead of running.
+# The app is built with Xcode 27 against the iOS 27 SDK, and with Xcode 26 too, which leaves out
+# the two iOS 27 calls (Omnomnom/Modules/Estimation/OnDeviceSDK.swift). `macos` builds and tests
+# with the runner's Xcode 26; `macos-xcode-27` does the same with Xcode 27 and passes with a note
+# in its summary, without running, until the hosted runners have it. The repository is public,
+# so the hosted runners cost nothing.
 name: CI
 
 on:
@@ -28,6 +30,12 @@ jobs:
   macos:
     uses: j23n/apple-ci/.github/workflows/macos.yml@main
     with:
-      name: macOS · pipeline, app and tests (iOS Simulator)
+      name: macOS · pipeline, app and tests with Xcode 26 (iOS Simulator)
+      xcode: "26"
+
+  macos-xcode-27:
+    uses: j23n/apple-ci/.github/workflows/macos.yml@main
+    with:
+      name: macOS · app and tests with Xcode 27 (iOS 27 SDK)
       xcode: "27"
       xcode-missing: skip

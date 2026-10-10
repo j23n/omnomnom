@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import SwiftUI
+import os
 
 /// The selected day's totals and entries. The day is the title, and day navigation and
 /// the Add button live in the toolbar.

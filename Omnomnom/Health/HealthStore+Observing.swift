@@ -79,7 +79,10 @@ extension HealthStore: HealthObserving {
     /// is left out (read as `.distantPast`). `nil` when HealthKit could not say, in which
     /// case no type is treated as fully read. Time-limited authorization and the API that
     /// reports it are iOS 27 features, so iOS 26 always has full history.
+    /// An Xcode 26 build has no iOS 27 SDK (`OnDeviceSDK.swift`), so it reads every type as
+    /// fully readable, as on iOS 26.
     private func readableSinceDates() async -> [Nutrient: Date]? {
+        #if compiler(>=6.4)
         guard #available(iOS 27, *) else { return [:] }
         let types = Set<HKObjectType>(Nutrient.allCases.map { HealthObjects.quantityType(for: $0) })
         do {
@@ -95,6 +98,9 @@ extension HealthStore: HealthObserving {
             AppLog.health.notice("readable window unknown, no full-read pruning: \(error.localizedDescription, privacy: .public)")
             return nil
         }
+        #else
+        return [:]
+        #endif
     }
 
     func samples(in interval: DateInterval) async throws -> [HealthNutritionSample] {

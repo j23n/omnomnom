@@ -1,6 +1,7 @@
 import Foundation
 import FoundationModels
 
+#if compiler(>=6.4)
 /// Attaching a photograph to an on-device prompt, which is an iOS 27 API.
 ///
 /// The only place in the app that touches it, so a signature change on a first build is one
@@ -37,3 +38,19 @@ nonisolated enum PhotoPrompt {
         return response.content
     }
 }
+#else
+
+/// Built with Xcode 26, whose iOS 26 SDK has no image attachments (`OnDeviceSDK.swift`): a
+/// photograph is answered as on a device below iOS 27, and only Xcode 27 builds read one.
+@available(iOS 27, *)
+nonisolated enum PhotoPrompt {
+    static let pixelSize = 1024
+
+    static func respond<Content: Generable>(
+        session: LanguageModelSession, imageData: Data, text: String,
+        generating: Content.Type, options: GenerationOptions
+    ) async throws -> Content {
+        throw EstimationError.photoUnavailable
+    }
+}
+#endif

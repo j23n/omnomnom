@@ -1,6 +1,7 @@
 import AppIntents
 import Foundation
 import SwiftData
+import os
 
 /// Logging a meal from a spoken or typed sentence, without opening the app.
 ///
