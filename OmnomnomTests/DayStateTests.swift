@@ -39,7 +39,8 @@ struct DayStateTests {
             // no percentage and no figure of any kind — a count is one formatting
             // decision away from a score.
             #expect(!state.note.contains("%"))
-            #expect(!state.note.contains(where: \.isNumber))
+            let holdsAFigure = state.note.contains(where: \.isNumber)
+            #expect(!holdsAFigure)
         }
     }
 }

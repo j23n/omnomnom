@@ -90,6 +90,7 @@ struct TrayTests {
         #expect(gathered.canLog)
         #expect(gathered.glanceCount == 0)
         #expect(gathered.blockingCount == 0)
-        #expect(gathered.rows.allSatisfy(\.isSettled))
+        let allSettled = gathered.rows.allSatisfy(\.isSettled)
+        #expect(allSettled)
     }
 }
