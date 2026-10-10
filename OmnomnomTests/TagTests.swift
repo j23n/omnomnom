@@ -24,13 +24,13 @@ struct TagTests {
         let again = try #require(try Tag.named("  breakfast ", in: context))
         #expect(first === again)
         #expect(first.name == "Breakfast")
-        #expect(try context.fetchCount(FetchDescriptor<Tag>()) == 1)
+        #expect(try context.fetchCount(FetchDescriptor<Omnomnom.Tag>()) == 1)
     }
 
     @Test func namedRefusesABlankName() throws {
         let context = try TestStore.context()
         #expect(try Tag.named("   ", in: context) == nil)
-        #expect(try context.fetchCount(FetchDescriptor<Tag>()) == 0)
+        #expect(try context.fetchCount(FetchDescriptor<Omnomnom.Tag>()) == 0)
     }
 
     @Test func aTagCountsEverythingThatCarriesIt() throws {
